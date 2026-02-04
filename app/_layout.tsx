@@ -1,24 +1,22 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import Toast from 'react-native-toast-message'; // 1. Import the Toast component
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Home' }} />
+          <Stack.Screen name="products" options={{ title: "Products" }} />
+          <Stack.Screen name="products/[id]" options={{ title: "Product Details" }} />
+          <Stack.Screen name="products/edit/[id]" options={{ title: "Edit Product" }} />
+          <Stack.Screen name="chat/[roomId]" options={{ title: "Chat" }} />
+          {/* ADD THIS NEW SCREEN */}
+          <Stack.Screen name="sell" options={{ title: "Sell Your Item" }} /> 
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="payment" options={{ title: "Complete Payment" }} />
+        </Stack>
+      <Toast />
+    </>
+
   );
 }

@@ -1,98 +1,263 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Link, useFocusEffect, useRouter } from 'expo-router'; // 1. Import useFocusEffect
+import { Baby, Home, LayoutGrid, Search, Shirt, Smartphone } from 'lucide-react-native';
+import React, { useCallback, useState } from 'react'; // 2. Import useCallback
+import {
+  ActivityIndicator,
+  FlatList, // 3. Import ActivityIndicator for loading
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import EgbayLogo from '../../assets/images/egbay.svg';
+import { useAuth } from '../../hooks/useAuth';
+// 5. Import your product service and types
+import { productService, type Product } from '../../src/services/lib/products';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const { user } = useAuth();
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // --- NEW: State for your products ---
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const categories = [
+    { id: 5, name: "All Categories", icon: LayoutGrid, description: "Browse all our products" },
+    { id: 1, name: "Electronics", icon: Smartphone, description: "Latest gadgets and tech" },
+    { id: 2, name: "Fashion", icon: Shirt, description: "Clothing and accessories" },
+    { id: 3, name: "Home", icon: Home, description: "Home and garden essentials" },
+    { id: 4, name: "Toys", icon: Baby, description: "Fun for all ages" },
+  ];
+
+  // --- NEW: Function to load products ---
+  const loadProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await productService.getProducts();
+      setProducts(data || []);
+    } catch (error) {
+      console.error("Failed to load products on home screen:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // --- NEW: This hook automatically re-runs when the screen is focused ---
+  useFocusEffect(
+    useCallback(() => {
+      // This will now reload the product list every time you come back to the home screen
+      loadProducts();
+    }, [loadProducts])
+  );
+
+  const handleSearch = () => {
+    if (searchQuery.trim() === '') return;
+    // @ts-ignore
+    router.push({ pathname: '/products', params: { search: searchQuery } });
+  };
+
+const renderCategory = ({ item }: { item: typeof categories[0] }) => {
+    const IconComponent = item.icon;
+    
+    const href = item.name === "All Categories" 
+      ? '/products' 
+      : `/products?category=${item.name}`;
+
+    return (
+      // The 'as any' here tells the editor to ignore the "fake" error.
+      <Link href={href as any} asChild>
+        <TouchableOpacity style={styles.categoryCard}>
+          <View style={styles.categoryIconContainer}>
+            <IconComponent color="#2563EB" size={28} />
+          </View>
+          <Text style={styles.categoryName}>{item.name}</Text>
+          <Text style={styles.categoryDescription}>{item.description}</Text>
+        </TouchableOpacity>
+      </Link>
+    );
+  };
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+      <ScrollView>
+        <LinearGradient
+          colors={['#3B82F6', '#8B5CF6']}
+          style={styles.heroContainer}
+        >
+          <View style={styles.logoContainer}>
+            <EgbayLogo width={220} height={80} />
+          </View>
+          <Text style={styles.heroSubtitle}>
+            Discover amazing deals on thousands of items
+          </Text>
+          <View style={styles.searchContainer}>
+            <Search style={styles.searchIcon} color="#6B7280" size={20} />
+            <TextInput
+              placeholder="What are you looking for?"
+              placeholderTextColor="#6B7280"
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={handleSearch}
+              returnKeyType="search"
+            />
+          </View>
+        </LinearGradient>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Shop by Category</Text>
+          <FlatList
+            data={categories}
+            renderItem={renderCategory}
+            keyExtractor={(item) => item.id.toString()}
+            numColumns={2}
+            scrollEnabled={false}
+          />
+        </View>
+
+        {/* --- NEW: Section for Recently Added Products --- */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recently Added</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#2563EB" />
+          ) : (
+            <FlatList
+              data={products.slice(0, 4)} // Show only the first 4 products
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.productCard} onPress={() => router.push(`/products/${item.id}`)}>
+                  <Image source={{ uri: item.images?.[0] || 'https://placehold.co/400x300/E2E8F0/4A5568?text=Image' }} style={styles.productImage} />
+                  <View style={styles.productInfo}>
+                    <Text style={styles.productTitle} numberOfLines={1}>{item.title}</Text>
+                    <Text style={styles.productPrice}>${Number(item.price).toFixed(2)}</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              scrollEnabled={false}
+            />
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  heroContainer: {
+    padding: 24,
+    paddingTop: 70,
+    paddingBottom: 40,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  heroSubtitle: {
+    fontSize: 18,
+    color: '#E0E7FF',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingHorizontal: 16,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  searchIcon: {
+    marginRight: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  searchInput: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  section: {
+    padding: 20,
+    backgroundColor: '#F9FAFB',
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  categoryCard: {
+    flex: 1,
+    margin: 8,
+    padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  categoryIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#DBEAFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  categoryName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  categoryDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  // NEW STYLES for the "Recently Added" section
+  productCard: {
+    flex: 1,
+    margin: 8,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    overflow: 'hidden'
+  },
+  productImage: {
+    width: '100%',
+    aspectRatio: 1,
+  },
+  productInfo: {
+    padding: 10,
+  },
+  productTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  productPrice: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2563EB',
+    marginTop: 4,
   },
 });

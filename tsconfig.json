@@ -2,10 +2,17 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    
+    // 1. ADD THIS LINE: It is crucial for 'paths' to work correctly.
+    "baseUrl": ".", 
+    
     "paths": {
+      // Your existing alias
       "@/*": [
         "./*"
-      ]
+      ],
+      // 2. ADD THIS LINE: The mapping for the remote Deno import
+      "https://esm.sh/@supabase/supabase-js@2": ["./node_modules/@supabase/supabase-js"]
     }
   },
   "include": [

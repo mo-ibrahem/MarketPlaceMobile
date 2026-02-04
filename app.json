@@ -1,15 +1,19 @@
 {
   "expo": {
-    "name": "MarketPlaceMobile",
-    "slug": "MarketPlaceMobile",
+    "name": "Egbay",
+    "slug": "MarketPlaceMobile", // It's good practice to keep the slug the same
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "marketplacemobile",
+    "icon": "./assets/images/egbay.png",
+    "scheme": "egbbay",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.moibrahem.MarketPlaceMobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -38,11 +42,18 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5a561e69-67bf-4cc0-95c2-85266db42fc6"
+      }
     }
   }
 }
