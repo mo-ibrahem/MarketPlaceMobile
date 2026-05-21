@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import Toast from 'react-native-toast-message'; // 1. Import the Toast component
+import Toast from 'react-native-toast-message';
 
 export default function RootLayout() {
   return (
@@ -10,13 +10,10 @@ export default function RootLayout() {
           <Stack.Screen name="products/[id]" options={{ title: "Product Details" }} />
           <Stack.Screen name="products/edit/[id]" options={{ title: "Edit Product" }} />
           <Stack.Screen name="chat/[roomId]" options={{ title: "Chat" }} />
-          {/* ADD THIS NEW SCREEN */}
-          <Stack.Screen name="sell" options={{ title: "Sell Your Item" }} /> 
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="payment" options={{ title: "Complete Payment" }} />
         </Stack>
       <Toast />
     </>
-
   );
 }

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Egbay",
     "slug": "MarketPlaceMobile", // It's good practice to keep the slug the same
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/egbay.png",
     "scheme": "egbbay",
@@ -11,6 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.moibrahem.MarketPlaceMobile",
+      "buildNumber": "2", // ADDED: Increment this for every upload (1, 2, 3...)
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
