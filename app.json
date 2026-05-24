@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Egbay",
-    "slug": "MarketPlaceMobile", // It's good practice to keep the slug the same
+    "slug": "MarketPlaceMobile",
     "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/egbay.png",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.moibrahem.MarketPlaceMobile",
-      "buildNumber": "2", // ADDED: Increment this for every upload (1, 2, 3...)
+      "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -44,7 +44,14 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Egbay to access your photos so you can upload product images for your listings.",
+          "cameraPermission": "Allow Egbay to access your camera so you can take pictures of the items you want to sell."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
