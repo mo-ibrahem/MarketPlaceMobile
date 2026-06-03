@@ -2,36 +2,39 @@ import { useRouter } from 'expo-router';
 import { Eye, EyeOff } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import EgbayLogo from '../assets/images/egbay.svg';
 import { auth } from '../src/services/lib/supabase';
 
-export default function LoginScreen() {
+export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  const handleSignIn = async () => {
+  const handleSignUp = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password.");
+      Alert.alert("Error", "Please enter a valid email and password.");
       return;
     }
     setLoading(true);
-    const { error } = await auth.signIn(email, password);
+    const name = email.split('@')[0];
+    const { error } = await auth.signUp(email, password, name);
+    
     if (error) {
-      Alert.alert("Login Failed", error.message);
+      Alert.alert("Sign Up Failed", error.message);
     } else {
-      router.replace('/');
+      Alert.alert("Success!", "Account created. You can now log in.");
+      router.back(); // Sends them back to the login screen after signing up
     }
     setLoading(false);
   };
@@ -40,12 +43,13 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.logoContainer}>
-          <EgbayLogo width={220} height={150} />
+          <EgbayLogo width={150} height={100} />
+          
         </View>
 
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder="New Email"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -56,7 +60,7 @@ export default function LoginScreen() {
         <View style={styles.passwordContainer}>
             <TextInput
             style={styles.passwordInput}
-            placeholder="Password"
+            placeholder="Create Password"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -68,20 +72,19 @@ export default function LoginScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.button, styles.signInButton]}
-          onPress={handleSignIn}
+          style={[styles.button, styles.signUpButton]}
+          onPress={handleSignUp}
           disabled={loading}
         >
-          {loading ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Sign In</Text>}
+          {loading ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Register Account</Text>}
         </TouchableOpacity>
 
-        {/* 🚨 THIS IS THE ONLY CHANGE: It now navigates to /signup */}
         <TouchableOpacity
-          style={[styles.button, styles.signUpButton]}
-          onPress={() => router.push('/signup')}
+          style={[styles.button, styles.backButton]}
+          onPress={() => router.back()}
           disabled={loading}
         >
-          <Text style={styles.buttonText}>Create an Account</Text>
+          <Text style={styles.backButtonText}>Back to Login</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -91,13 +94,15 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F9FAFB' },
   container: { flex: 1, justifyContent: 'center', paddingHorizontal: 32 },
-  logoContainer: { alignItems: 'center', marginBottom: 40 },
+  logoContainer: { alignItems: 'center', marginBottom: 30 },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#1F2937', marginTop: 10 },
   input: { backgroundColor: 'white', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', fontSize: 16, marginBottom: 20 },
   passwordContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 20 },
   passwordInput: { flex: 1, paddingVertical: 14, paddingHorizontal: 16, fontSize: 16 },
   eyeIcon: { padding: 14 },
   button: { padding: 16, borderRadius: 12, alignItems: 'center', marginBottom: 16 },
-  signInButton: { backgroundColor: '#2563EB' },
-  signUpButton: { backgroundColor: '#4B5563' },
+  signUpButton: { backgroundColor: '#2563EB' }, // Blue for primary action
+  backButton: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#E5E7EB' },
   buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  backButtonText: { color: '#4B5563', fontSize: 16, fontWeight: '600' },
 });
