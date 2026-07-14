@@ -1,7 +1,8 @@
 import * as ImagePicker from 'expo-image-picker';
-import { useFocusEffect, useRouter } from 'expo-router'; // 1. IMPORT useFocusEffect
-import { Camera, Edit, Eye, Lock, LogOut, Save, Trash2 } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { Camera, Edit, Eye, Globe, Lock, LogOut, Save, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -17,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
+import { useLanguage } from '../../hooks/useLanguage';
 import { getChatRooms, type ChatRoomInfo } from '../../src/services/lib/chatService';
 import { productService, profileService, type Product, type UserProfile } from '../../src/services/lib/products';
 import { auth, supabase } from '../../src/services/lib/supabase';
@@ -24,6 +26,8 @@ import { auth, supabase } from '../../src/services/lib/supabase';
 export default function ProfileScreen() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
+  const { language, changeLanguage } = useLanguage();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [userProducts, setUserProducts] = useState<Product[]>([]);
@@ -320,9 +324,54 @@ export default function ProfileScreen() {
           {activeTab === 'chats' && renderChatList()}
           {activeTab === 'settings' && renderSettings()}
           
+          {/* ── Language Switcher ── */}
+          <View style={styles.languageSection}>
+            <View style={styles.languageSectionHeader}>
+              <Globe size={20} color="#4B5563" />
+              <Text style={styles.languageSectionTitle}>{t('language.title')}</Text>
+            </View>
+            <View style={styles.languagePills}>
+              <TouchableOpacity
+                style={[
+                  styles.languagePill,
+                  language === 'en' && styles.languagePillActive,
+                ]}
+                onPress={() => changeLanguage('en')}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.languagePillText,
+                    language === 'en' && styles.languagePillTextActive,
+                  ]}
+                >
+                  🇬🇧  {t('language.english')}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.languagePill,
+                  language === 'ar' && styles.languagePillActive,
+                ]}
+                onPress={() => changeLanguage('ar')}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.languagePillText,
+                    language === 'ar' && styles.languagePillTextActive,
+                  ]}
+                >
+                  🇸🇦  {t('language.arabic')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
             <LogOut color="white" size={18} />
-            <Text style={styles.signOutText}>Sign Out</Text>
+            <Text style={styles.signOutText}>{t('auth.logout')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -376,4 +425,53 @@ const styles = StyleSheet.create({
     separator: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 24 },
     avatarUploadButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', padding: 14, borderRadius: 12, marginBottom: 20 },
     avatarUploadButtonText: { fontSize: 16, color: '#4B5563', marginLeft: 8 },
+    // Language switcher
+    languageSection: {
+      backgroundColor: 'white',
+      borderRadius: 16,
+      padding: 20,
+      marginTop: 24,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    languageSectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+      gap: 8,
+    },
+    languageSectionTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: '#1F2937',
+    },
+    languagePills: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    languagePill: {
+      flex: 1,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 50,
+      borderWidth: 2,
+      borderColor: '#E5E7EB',
+      alignItems: 'center',
+      backgroundColor: '#F9FAFB',
+    },
+    languagePillActive: {
+      borderColor: '#2563EB',
+      backgroundColor: '#EFF6FF',
+    },
+    languagePillText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#6B7280',
+    },
+    languagePillTextActive: {
+      color: '#2563EB',
+    },
 });

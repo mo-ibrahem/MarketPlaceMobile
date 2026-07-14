@@ -1,10 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link, useFocusEffect, useRouter } from 'expo-router'; // 1. Import useFocusEffect
+import { Link, useFocusEffect, useRouter } from 'expo-router';
 import { Baby, Home, LayoutGrid, Search, Shirt, Smartphone } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react'; // 2. Import useCallback
+import React, { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  FlatList, // 3. Import ActivityIndicator for loading
+  FlatList,
   Image,
   ScrollView,
   StyleSheet,
@@ -16,43 +17,64 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import EgbayLogo from '../../assets/images/egbay.svg';
 import { useAuth } from '../../hooks/useAuth';
-// 5. Import your product service and types
 import { productService, type Product } from '../../src/services/lib/products';
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // --- NEW: State for your products ---
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   const categories = [
-    { id: 5, name: "All Categories", icon: LayoutGrid, description: "Browse all our products" },
-    { id: 1, name: "Electronics", icon: Smartphone, description: "Latest gadgets and tech" },
-    { id: 2, name: "Fashion", icon: Shirt, description: "Clothing and accessories" },
-    { id: 3, name: "Home", icon: Home, description: "Home and garden essentials" },
-    { id: 4, name: "Toys", icon: Baby, description: "Fun for all ages" },
+    {
+      id: 5,
+      nameKey: 'home.categories.allCategories',
+      icon: LayoutGrid,
+      descKey: 'home.categoryDescriptions.allCategories',
+    },
+    {
+      id: 1,
+      nameKey: 'home.categories.electronics',
+      icon: Smartphone,
+      descKey: 'home.categoryDescriptions.electronics',
+    },
+    {
+      id: 2,
+      nameKey: 'home.categories.fashion',
+      icon: Shirt,
+      descKey: 'home.categoryDescriptions.fashion',
+    },
+    {
+      id: 3,
+      nameKey: 'home.categories.home',
+      icon: Home,
+      descKey: 'home.categoryDescriptions.home',
+    },
+    {
+      id: 4,
+      nameKey: 'home.categories.toys',
+      icon: Baby,
+      descKey: 'home.categoryDescriptions.toys',
+    },
   ];
 
-  // --- NEW: Function to load products ---
   const loadProducts = useCallback(async () => {
     try {
       setLoading(true);
       const data = await productService.getProducts();
       setProducts(data || []);
     } catch (error) {
-      console.error("Failed to load products on home screen:", error);
+      console.error('Failed to load products on home screen:', error);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // --- NEW: This hook automatically re-runs when the screen is focused ---
   useFocusEffect(
     useCallback(() => {
-      // This will now reload the product list every time you come back to the home screen
       loadProducts();
     }, [loadProducts])
   );
@@ -63,43 +85,40 @@ export default function HomeScreen() {
     router.push({ pathname: '/products', params: { search: searchQuery } });
   };
 
-const renderCategory = ({ item }: { item: typeof categories[0] }) => {
+  const renderCategory = ({ item }: { item: (typeof categories)[0] }) => {
     const IconComponent = item.icon;
-    
-    const href = item.name === "All Categories" 
-      ? '/products' 
-      : `/products?category=${item.name}`;
+    const name = t(item.nameKey);
+
+    const href =
+      name === t('home.categories.allCategories')
+        ? '/products'
+        : `/products?category=${encodeURIComponent(name)}`;
 
     return (
-      // The 'as any' here tells the editor to ignore the "fake" error.
       <Link href={href as any} asChild>
         <TouchableOpacity style={styles.categoryCard}>
           <View style={styles.categoryIconContainer}>
             <IconComponent color="#2563EB" size={28} />
           </View>
-          <Text style={styles.categoryName}>{item.name}</Text>
-          <Text style={styles.categoryDescription}>{item.description}</Text>
+          <Text style={styles.categoryName}>{name}</Text>
+          <Text style={styles.categoryDescription}>{t(item.descKey)}</Text>
         </TouchableOpacity>
       </Link>
     );
   };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
       <ScrollView>
-        <LinearGradient
-          colors={['#3B82F6', '#8B5CF6']}
-          style={styles.heroContainer}
-        >
+        <LinearGradient colors={['#3B82F6', '#8B5CF6']} style={styles.heroContainer}>
           <View style={styles.logoContainer}>
             <EgbayLogo width={220} height={80} />
           </View>
-          <Text style={styles.heroSubtitle}>
-            Discover amazing deals on thousands of items
-          </Text>
+          <Text style={styles.heroSubtitle}>{t('home.heroSubtitle')}</Text>
           <View style={styles.searchContainer}>
             <Search style={styles.searchIcon} color="#6B7280" size={20} />
             <TextInput
-              placeholder="What are you looking for?"
+              placeholder={t('home.searchPlaceholder')}
               placeholderTextColor="#6B7280"
               style={styles.searchInput}
               value={searchQuery}
@@ -111,7 +130,7 @@ const renderCategory = ({ item }: { item: typeof categories[0] }) => {
         </LinearGradient>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Shop by Category</Text>
+          <Text style={styles.sectionTitle}>{t('home.shopByCategory')}</Text>
           <FlatList
             data={categories}
             renderItem={renderCategory}
@@ -121,20 +140,33 @@ const renderCategory = ({ item }: { item: typeof categories[0] }) => {
           />
         </View>
 
-        {/* --- NEW: Section for Recently Added Products --- */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recently Added</Text>
+          <Text style={styles.sectionTitle}>{t('home.recentlyAdded')}</Text>
           {loading ? (
             <ActivityIndicator size="large" color="#2563EB" />
           ) : (
             <FlatList
-              data={products.slice(0, 4)} // Show only the first 4 products
+              data={products.slice(0, 4)}
               renderItem={({ item }) => (
-                <TouchableOpacity style={styles.productCard} onPress={() => router.push(`/products/${item.id}`)}>
-                  <Image source={{ uri: item.images?.[0] || 'https://placehold.co/400x300/E2E8F0/4A5568?text=Image' }} style={styles.productImage} />
+                <TouchableOpacity
+                  style={styles.productCard}
+                  onPress={() => router.push(`/products/${item.id}`)}
+                >
+                  <Image
+                    source={{
+                      uri:
+                        item.images?.[0] ||
+                        'https://placehold.co/400x300/E2E8F0/4A5568?text=Image',
+                    }}
+                    style={styles.productImage}
+                  />
                   <View style={styles.productInfo}>
-                    <Text style={styles.productTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.productPrice}>${Number(item.price).toFixed(2)}</Text>
+                    <Text style={styles.productTitle} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.productPrice}>
+                      ${Number(item.price).toFixed(2)}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               )}
@@ -203,7 +235,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
@@ -223,13 +255,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: 4,
+    textAlign: 'center',
   },
   categoryDescription: {
     fontSize: 12,
     color: '#6B7280',
     textAlign: 'center',
   },
-  // NEW STYLES for the "Recently Added" section
   productCard: {
     flex: 1,
     margin: 8,
@@ -240,7 +272,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    overflow: 'hidden'
+    overflow: 'hidden',
   },
   productImage: {
     width: '100%',
