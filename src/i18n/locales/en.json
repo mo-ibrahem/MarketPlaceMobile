@@ -84,28 +84,40 @@
     "loadError": "Failed to load products."
   },
   "sell": {
-    "title": "Sell an Item",
+    "screenTitle": "Sell Your Item",
     "productTitle": "Product Title",
+    "titlePlaceholder": "e.g., iPhone 14 Pro",
     "productDescription": "Description",
-    "productPrice": "Price (EGP)",
+    "descriptionPlaceholder": "Describe your item in detail...",
+    "productPrice": "Price ($)",
+    "pricePlaceholder": "0.00",
     "productCategory": "Category",
     "productCondition": "Condition",
-    "productLocation": "Location",
-    "addImages": "Add Images",
-    "listItem": "List Item for Sale",
-    "titlePlaceholder": "What are you selling?",
-    "descriptionPlaceholder": "Describe your item...",
-    "pricePlaceholder": "0.00",
-    "locationPlaceholder": "City, Governorate",
+    "uploadImages": "Upload Images",
+    "selectPhotos": "Select Photos",
+    "listProduct": "List Product",
     "conditions": {
       "new": "New",
-      "likeNew": "Like New",
-      "good": "Good",
-      "fair": "Fair",
-      "poor": "Poor"
+      "used": "Used"
     },
-    "successMessage": "Your item has been listed!",
-    "errorMessage": "Failed to list item. Please try again."
+    "categories": {
+      "electronics": "Electronics",
+      "fashion": "Fashion",
+      "home": "Home",
+      "toys": "Toys",
+      "books": "Books",
+      "sports": "Sports",
+      "beauty": "Beauty",
+      "automotive": "Automotive"
+    },
+    "permissionTitle": "Permission Required",
+    "permissionMessage": "We need access to your photos to upload product images. Please enable it in settings.",
+    "openSettings": "Open Settings",
+    "missingFieldsTitle": "Missing Fields",
+    "missingFieldsMessage": "Please fill in all fields and add an image.",
+    "notLoggedInError": "You must be logged in to sell a product.",
+    "successMessage": "Your product has been listed.",
+    "errorMessage": "Failed to list product."
   },
   "profile": {
     "title": "Profile",

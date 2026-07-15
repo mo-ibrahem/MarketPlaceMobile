@@ -84,27 +84,39 @@
     "loadError": "فشل تحميل المنتجات."
   },
   "sell": {
-    "title": "بيع منتج",
+    "screenTitle": "بيع منتجك",
     "productTitle": "عنوان المنتج",
+    "titlePlaceholder": "مثال: آيفون 14 برو",
     "productDescription": "الوصف",
-    "productPrice": "السعر (جنيه)",
+    "descriptionPlaceholder": "صف منتجك بالتفصيل...",
+    "productPrice": "السعر ($)",
+    "pricePlaceholder": "0.00",
     "productCategory": "الفئة",
     "productCondition": "الحالة",
-    "productLocation": "الموقع",
-    "addImages": "إضافة صور",
-    "listItem": "عرض المنتج للبيع",
-    "titlePlaceholder": "ماذا تبيع؟",
-    "descriptionPlaceholder": "صف منتجك...",
-    "pricePlaceholder": "0.00",
-    "locationPlaceholder": "المدينة، المحافظة",
+    "uploadImages": "رفع الصور",
+    "selectPhotos": "اختر صوراً",
+    "listProduct": "عرض المنتج للبيع",
     "conditions": {
       "new": "جديد",
-      "likeNew": "كالجديد",
-      "good": "جيد",
-      "fair": "مقبول",
-      "poor": "ضعيف"
+      "used": "مستعمل"
     },
-    "successMessage": "تم عرض منتجك للبيع!",
+    "categories": {
+      "electronics": "إلكترونيات",
+      "fashion": "أزياء",
+      "home": "منزل",
+      "toys": "ألعاب",
+      "books": "كتب",
+      "sports": "رياضة",
+      "beauty": "جمال",
+      "automotive": "سيارات"
+    },
+    "permissionTitle": "إذن مطلوب",
+    "permissionMessage": "نحتاج إلى الوصول إلى صورك لرفع صور المنتج. يرجى تفعيله من الإعدادات.",
+    "openSettings": "فتح الإعدادات",
+    "missingFieldsTitle": "حقول مفقودة",
+    "missingFieldsMessage": "يرجى ملء جميع الحقول وإضافة صورة.",
+    "notLoggedInError": "يجب تسجيل الدخول لبيع منتج.",
+    "successMessage": "تم عرض منتجك للبيع بنجاح.",
     "errorMessage": "فشل عرض المنتج. يرجى المحاولة مجدداً."
   },
   "profile": {

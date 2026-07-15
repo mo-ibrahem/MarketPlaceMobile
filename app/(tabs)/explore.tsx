@@ -1,6 +1,23 @@
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Camera, Edit, Eye, Globe, Lock, LogOut, Save, Trash2 } from 'lucide-react-native';
+import {
+  Bell,
+  Camera,
+  ChevronRight,
+  Edit3,
+  Eye,
+  Globe,
+  Heart,
+  Lock,
+  LogOut,
+  MessageCircle,
+  Package,
+  Save,
+  ShoppingBag,
+  Trash2,
+  User,
+} from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -20,8 +37,26 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { getChatRooms, type ChatRoomInfo } from '../../src/services/lib/chatService';
-import { productService, profileService, type Product, type UserProfile } from '../../src/services/lib/products';
+import {
+  productService,
+  profileService,
+  type Product,
+  type UserProfile,
+} from '../../src/services/lib/products';
 import { auth, supabase } from '../../src/services/lib/supabase';
+
+// ─── Tab config ───────────────────────────────────────────────────────────────
+
+const TABS = [
+  { id: 'products', label: 'Listings', icon: Package  },
+  { id: 'wishlist', label: 'Saved',    icon: Heart    },
+  { id: 'chats',    label: 'Chats',    icon: MessageCircle },
+  { id: 'settings', label: 'Settings', icon: User     },
+] as const;
+
+type TabId = typeof TABS[number]['id'];
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
   const { user, loading: authLoading } = useAuth();
@@ -29,22 +64,18 @@ export default function ProfileScreen() {
   const { t } = useTranslation();
   const { language, changeLanguage } = useLanguage();
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [userProducts, setUserProducts] = useState<Product[]>([]);
+  const [profile,          setProfile]          = useState<UserProfile | null>(null);
+  const [userProducts,     setUserProducts]     = useState<Product[]>([]);
   const [wishlistProducts, setWishlistProducts] = useState<Product[]>([]);
-  const [chatRooms, setChatRooms] = useState<ChatRoomInfo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('products');
-  
-  const [editProfileData, setEditProfileData] = useState({
-    full_name: '',
-    phone: '',
-  });
-  const [passwordData, setPasswordData] = useState({
-    newPassword: '',
-    confirmPassword: '',
-  });
+  const [chatRooms,        setChatRooms]        = useState<ChatRoomInfo[]>([]);
+  const [isLoading,        setIsLoading]        = useState(true);
+  const [activeTab,        setActiveTab]        = useState<TabId>('products');
 
+  const [editProfileData, setEditProfileData] = useState({ full_name: '', phone: '' });
+  const [passwordData,    setPasswordData]    = useState({ newPassword: '', confirmPassword: '' });
+  const [showPassword,    setShowPassword]    = useState(false);
+
+  // ── Permissions ─────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       if (Platform.OS !== 'web') {
@@ -53,6 +84,7 @@ export default function ProfileScreen() {
     })();
   }, []);
 
+  // ── Data loading ─────────────────────────────────────────────────────────────
   const loadUserData = useCallback(async () => {
     if (!user) return;
     try {
@@ -63,75 +95,52 @@ export default function ProfileScreen() {
         productService.getWishlist(),
         getChatRooms(),
       ]);
-      
       setProfile(profileData);
       setUserProducts(products);
       setWishlistProducts(wishlist);
       setChatRooms(chats || []);
-      
       setEditProfileData({
         full_name: profileData?.full_name || '',
-        phone: profileData?.phone || '',
+        phone:     profileData?.phone     || '',
       });
-
-    } catch (error) {
-      console.error("Error loading user data:", error);
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Failed to load your profile data.',
-        });    
+    } catch (e) {
+      console.error('Profile: load failed', e);
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load your profile.' });
     } finally {
-          setIsLoading(false);
-        }
-      }, [user]);
+      setIsLoading(false);
+    }
+  }, [user]);
 
-  // 2. ADD THIS HOOK TO AUTOMATICALLY RELOAD DATA
   useFocusEffect(
-    useCallback(() => {
-      if (user) {
-        loadUserData();
-      }
-    }, [user, loadUserData])
+    useCallback(() => { if (user) loadUserData(); }, [user, loadUserData])
   );
-  
+
+  // ── Actions ──────────────────────────────────────────────────────────────────
+
   const handleAvatarUpload = async () => {
-    const permissionResult = await ImagePicker.getMediaLibraryPermissionsAsync();
-    if (permissionResult.granted === false) {
-        Toast.show({
-          type: 'info', // 'info' (blue) is a good choice for informational messages
-          text1: 'Permission Required',
-          text2: 'Please go to your phone settings to allow photo access.',
-          visibilityTime: 6000 // Show it for a longer time (6 seconds) so the user can read it
-        });      
+    const { granted } = await ImagePicker.getMediaLibraryPermissionsAsync();
+    if (!granted) {
+      Toast.show({ type: 'info', text1: 'Permission Required', text2: 'Enable photo access in Settings.', visibilityTime: 5000 });
       return;
     }
-
-    const pickerResult = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images',
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images', allowsEditing: true, aspect: [1, 1], quality: 0.6,
     });
-
-    if (!pickerResult.canceled && user) {
-      const image = pickerResult.assets[0];
+    if (!result.canceled && user) {
+      const img = result.assets[0];
       setIsLoading(true);
       try {
-        const arraybuffer = await fetch(image.uri).then(res => res.arrayBuffer());
-        const fileExt = image.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
-        const path = `${user.id}/${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage.from('avatars').upload(path, arraybuffer, { contentType: `image/${fileExt}` });
-        if (uploadError) throw uploadError;
-
+        const buf     = await fetch(img.uri).then(r => r.arrayBuffer());
+        const ext     = img.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
+        const path    = `${user.id}/${Date.now()}.${ext}`;
+        const { error } = await supabase.storage.from('avatars').upload(path, buf, { contentType: `image/${ext}` });
+        if (error) throw error;
         const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-        
         await profileService.updateProfile(user.id, { avatar_url: publicUrl });
         await loadUserData();
-        Toast.show({ type: 'success', text1: 'Success', text2: 'Avatar updated!' });
-      } catch (error: any) {
-        Toast.show({ type: 'error', text1: 'Upload Failed', text2: error.message });
+        Toast.show({ type: 'success', text1: 'Avatar updated!' });
+      } catch (e: any) {
+        Toast.show({ type: 'error', text1: 'Upload Failed', text2: e.message });
       } finally {
         setIsLoading(false);
       }
@@ -142,336 +151,665 @@ export default function ProfileScreen() {
     if (!user) return;
     setIsLoading(true);
     try {
-      await profileService.updateProfile(user.id, { 
-        full_name: editProfileData.full_name, 
-        phone: editProfileData.phone 
+      await profileService.updateProfile(user.id, {
+        full_name: editProfileData.full_name,
+        phone:     editProfileData.phone,
       });
       await loadUserData();
-      Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated.' });
-    } catch (error: any) {
+      Toast.show({ type: 'success', text1: 'Profile saved!' });
+    } catch (e: any) {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update profile.' });
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      Toast.show({ type: 'error', text1: 'Error', text2: "New passwords don't match." });
-      return;
+      Toast.show({ type: 'error', text1: 'Passwords don\'t match' }); return;
     }
     if (passwordData.newPassword.length < 6) {
-      Toast.show({ type: 'error', text1: 'Error', text2: "Password must be at least 6 characters long." });
-      return;
+      Toast.show({ type: 'error', text1: 'Password too short', text2: 'Minimum 6 characters.' }); return;
     }
     setIsLoading(true);
     const { error } = await auth.supabase.auth.updateUser({ password: passwordData.newPassword });
     if (error) {
       Toast.show({ type: 'error', text1: 'Error', text2: error.message });
     } else {
-      Toast.show({ type: 'success', text1: 'Success', text2: 'Password updated successfully!' });
+      Toast.show({ type: 'success', text1: 'Password updated!' });
       setPasswordData({ newPassword: '', confirmPassword: '' });
     }
     setIsLoading(false);
   };
-  
-  const handleSignOut = async () => {
-    await auth.signOut();
-    router.replace('/login');
+
+  const handleSignOut = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: async () => { await auth.signOut(); router.replace('/login'); } },
+    ]);
   };
-  
+
   const handleDeleteProduct = (productId: string) => {
-    Alert.alert( "Delete Product", "Are you sure you want to delete this product?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: async () => {
-            try {
-              await productService.deleteProduct(productId);
-              Toast.show({
-                type: 'success',
-                text1: 'Success',
-                text2: 'Product has been deleted.'
-              });              loadUserData();
-            } catch (error) { Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: 'Failed to delete product.'
-              }); }
-          },
+    Alert.alert('Delete Listing', 'This action cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            await productService.deleteProduct(productId);
+            Toast.show({ type: 'success', text1: 'Listing deleted.' });
+            loadUserData();
+          } catch {
+            Toast.show({ type: 'error', text1: 'Failed to delete listing.' });
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
+
+  // ── Loading / guard ──────────────────────────────────────────────────────────
 
   if (authLoading || isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={styles.loadingText}>Loading Profile...</Text>
+        <ActivityIndicator size="large" color="#6366F1" />
+        <Text style={styles.loadingText}>Loading Profile…</Text>
       </View>
     );
   }
+  if (!user) return null;
 
-  if (!user) { return null; }
-  
-  const renderProductList = (products: Product[], emptyMessage: string) => {
+  // ── Sub-renders ──────────────────────────────────────────────────────────────
+
+  const displayName = profile?.full_name || user.email?.split('@')[0] || 'User';
+  const initials    = displayName.slice(0, 2).toUpperCase();
+
+  const renderProductList = (products: Product[], emptyMsg: string) => {
     if (products.length === 0) {
-      return <Text style={styles.emptyText}>{emptyMessage}</Text>;
-    }
-    return products.map(product => (
-      <TouchableOpacity 
-        key={product.id} 
-        style={styles.productCard} 
-        onPress={() => router.push(`/products/${product.id}`)}
-      >
-        <Image source={{ uri: product.images?.[0] || 'https://placehold.co/400x300/E2E8F0/4A5568?text=Image' }} style={styles.productImage} />
-        <View style={styles.productInfo}>
-            <Text style={styles.productTitle} numberOfLines={1}>{product.title}</Text>
-            <Text style={styles.productPrice}>${Number(product.price).toFixed(2)}</Text>
-            <View style={styles.productActions}>
-                <TouchableOpacity style={styles.actionButton} onPress={(e) => { e.stopPropagation(); router.push(`/products/${product.id}`); }}><Eye size={16} color="#4B5563" /></TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton} onPress={(e) => { e.stopPropagation(); router.push(`/products/edit/${product.id}`); }}><Edit size={16} color="#4B5563" /></TouchableOpacity>
-                {activeTab === 'products' && (
-                    <TouchableOpacity onPress={(e) => { e.stopPropagation(); handleDeleteProduct(product.id); }} style={styles.actionButton}><Trash2 size={16} color="#EF4444" /></TouchableOpacity>
-                )}
-            </View>
+      return (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyEmoji}>{activeTab === 'wishlist' ? '❤️' : '📦'}</Text>
+          <Text style={styles.emptyTitle}>{emptyMsg}</Text>
+          {activeTab === 'products' && (
+            <TouchableOpacity style={styles.emptyAction} onPress={() => router.push('/sell' as any)}>
+              <Text style={styles.emptyActionText}>List your first item →</Text>
+            </TouchableOpacity>
+          )}
         </View>
-      </TouchableOpacity>
-    ));
+      );
+    }
+    return (
+      <View style={styles.listingGrid}>
+        {products.map(product => (
+          <TouchableOpacity
+            key={product.id}
+            style={styles.listingCard}
+            onPress={() => router.push(`/products/${product.id}`)}
+            activeOpacity={0.9}
+          >
+            <Image
+              source={{ uri: product.images?.[0] || 'https://placehold.co/300x300/F1F5F9/64748B?text=Item' }}
+              style={styles.listingImg}
+            />
+            {/* Price pill */}
+            <View style={styles.listingPricePill}>
+              <Text style={styles.listingPriceText}>${Number(product.price).toFixed(2)}</Text>
+            </View>
+            {/* Actions (only on My Listings) */}
+            {activeTab === 'products' && (
+              <View style={styles.listingActions}>
+                <TouchableOpacity
+                  style={styles.listingActionBtn}
+                  onPress={e => { e.stopPropagation(); router.push(`/products/edit/${product.id}`); }}
+                >
+                  <Edit3 size={13} color="#6366F1" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.listingActionBtn, styles.listingDeleteBtn]}
+                  onPress={e => { e.stopPropagation(); handleDeleteProduct(product.id); }}
+                >
+                  <Trash2 size={13} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
+            )}
+            <View style={styles.listingCardBody}>
+              <Text style={styles.listingTitle} numberOfLines={1}>{product.title}</Text>
+              <View style={[styles.conditionPill, product.condition === 'New' ? styles.conditionNew : styles.conditionUsed]}>
+                <Text style={[styles.conditionText, product.condition === 'New' ? styles.conditionTextNew : styles.conditionTextUsed]}>
+                  {product.condition}
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
   };
 
   const renderChatList = () => {
     if (chatRooms.length === 0) {
-      return <Text style={styles.emptyText}>You have no active conversations.</Text>;
+      return (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyEmoji}>💬</Text>
+          <Text style={styles.emptyTitle}>No conversations yet</Text>
+          <Text style={styles.emptySubtitle}>Message a seller to get started</Text>
+        </View>
+      );
     }
     return chatRooms.map(chat => (
-      <TouchableOpacity 
-        key={chat.room_id} 
-        style={styles.chatCard} 
+      <TouchableOpacity
+        key={chat.room_id}
+        style={styles.chatCard}
         onPress={() => router.push(`/chat/${chat.room_id}`)}
+        activeOpacity={0.85}
       >
-        <Image source={{ uri: chat.other_user_avatar_url || 'https://placehold.co/100x100/E2E8F0/4A5568?text=User' }} style={styles.chatAvatar} />
+        <Image
+          source={{ uri: chat.other_user_avatar_url || 'https://placehold.co/100x100/EEF2FF/6366F1?text=U' }}
+          style={styles.chatAvatar}
+        />
         <View style={styles.chatInfo}>
           <Text style={styles.chatName}>{chat.other_user_name}</Text>
-          <Text style={styles.chatPreview}>Tap to view conversation</Text>
+          <Text style={styles.chatPreview}>Tap to open conversation</Text>
         </View>
+        <ChevronRight color="#CBD5E1" size={20} />
       </TouchableOpacity>
     ));
   };
 
   const renderSettings = () => (
-    <View style={styles.settingsContainer}>
-        <Text style={styles.sectionTitle}>Edit Profile</Text>
-        <Text style={styles.label}>Profile Picture</Text>
-        <TouchableOpacity style={styles.avatarUploadButton} onPress={handleAvatarUpload}>
-            <Camera size={18} color="#4B5563" />
-            <Text style={styles.avatarUploadButtonText}>Change Avatar</Text>
+    <View style={{ gap: 16 }}>
+      {/* Profile section */}
+      <View style={styles.settingsCard}>
+        <Text style={styles.settingsCardTitle}>👤  Edit Profile</Text>
+
+        {/* Avatar */}
+        <TouchableOpacity style={styles.avatarRow} onPress={handleAvatarUpload} activeOpacity={0.8}>
+          {profile?.avatar_url ? (
+            <Image source={{ uri: profile.avatar_url }} style={styles.settingsAvatar} />
+          ) : (
+            <View style={styles.settingsAvatarFallback}>
+              <Text style={styles.settingsAvatarInitials}>{initials}</Text>
+            </View>
+          )}
+          <View style={styles.avatarRowText}>
+            <Text style={styles.avatarRowLabel}>Profile Photo</Text>
+            <Text style={styles.avatarRowSub}>Tap to change</Text>
+          </View>
+          <View style={styles.avatarCameraIcon}>
+            <Camera size={16} color="#6366F1" />
+          </View>
         </TouchableOpacity>
-        <Text style={styles.label}>Full Name</Text>
+
+        <View style={styles.settingsDivider} />
+
+        {/* Name */}
+        <Text style={styles.fieldLabel}>Full Name</Text>
         <TextInput
-            style={styles.input}
-            placeholder="Your full name"
-            value={editProfileData.full_name}
-            onChangeText={(text) => setEditProfileData({...editProfileData, full_name: text})}
+          style={styles.settingsInput}
+          placeholder="Your full name"
+          placeholderTextColor="#94A3B8"
+          value={editProfileData.full_name}
+          onChangeText={text => setEditProfileData(d => ({ ...d, full_name: text }))}
+          returnKeyType="next"
         />
-        <Text style={styles.label}>Phone Number</Text>
+
+        {/* Phone */}
+        <Text style={styles.fieldLabel}>Phone Number</Text>
         <TextInput
-            style={styles.input}
-            placeholder="Your phone number"
-            value={editProfileData.phone}
-            onChangeText={(text) => setEditProfileData({...editProfileData, phone: text})}
-            keyboardType="phone-pad"
+          style={styles.settingsInput}
+          placeholder="Your phone number"
+          placeholderTextColor="#94A3B8"
+          value={editProfileData.phone}
+          onChangeText={text => setEditProfileData(d => ({ ...d, phone: text }))}
+          keyboardType="phone-pad"
+          returnKeyType="done"
         />
-        <TouchableOpacity style={styles.saveButton} onPress={handleSaveChanges} disabled={isLoading}><Save size={18} color="white" /><Text style={styles.saveButtonText}>Save Profile Changes</Text></TouchableOpacity>
-        <View style={styles.separator} />
-        <Text style={styles.sectionTitle}>Change Password</Text>
-        <TextInput style={styles.input} placeholder="New Password" secureTextEntry value={passwordData.newPassword} onChangeText={(text) => setPasswordData({...passwordData, newPassword: text})} />
-        <TextInput style={styles.input} placeholder="Confirm New Password" secureTextEntry value={passwordData.confirmPassword} onChangeText={(text) => setPasswordData({...passwordData, confirmPassword: text})} />
-        <TouchableOpacity style={styles.saveButton} onPress={handleChangePassword} disabled={isLoading}><Lock size={18} color="white" /><Text style={styles.saveButtonText}>Update Password</Text></TouchableOpacity>
+
+        <TouchableOpacity style={styles.saveBtn} onPress={handleSaveChanges} disabled={isLoading}>
+          <Save size={17} color="white" />
+          <Text style={styles.saveBtnText}>Save Changes</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Password section */}
+      <View style={styles.settingsCard}>
+        <Text style={styles.settingsCardTitle}>🔒  Change Password</Text>
+
+        <Text style={styles.fieldLabel}>New Password</Text>
+        <View style={styles.passwordRow}>
+          <TextInput
+            style={[styles.settingsInput, { flex: 1, marginBottom: 0 }]}
+            placeholder="New password"
+            placeholderTextColor="#94A3B8"
+            secureTextEntry={!showPassword}
+            value={passwordData.newPassword}
+            onChangeText={text => setPasswordData(d => ({ ...d, newPassword: text }))}
+          />
+          <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(v => !v)}>
+            <Eye size={18} color={showPassword ? '#6366F1' : '#94A3B8'} />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Confirm Password</Text>
+        <TextInput
+          style={styles.settingsInput}
+          placeholder="Confirm new password"
+          placeholderTextColor="#94A3B8"
+          secureTextEntry={!showPassword}
+          value={passwordData.confirmPassword}
+          onChangeText={text => setPasswordData(d => ({ ...d, confirmPassword: text }))}
+        />
+
+        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: '#4F46E5' }]} onPress={handleChangePassword}>
+          <Lock size={17} color="white" />
+          <Text style={styles.saveBtnText}>Update Password</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Language */}
+      <View style={styles.settingsCard}>
+        <Text style={styles.settingsCardTitle}>🌐  {t('language.title')}</Text>
+        <View style={styles.langRow}>
+          <TouchableOpacity
+            style={[styles.langPill, language === 'en' && styles.langPillActive]}
+            onPress={() => changeLanguage('en')}
+          >
+            <Text style={styles.langEmoji}>🇬🇧</Text>
+            <Text style={[styles.langLabel, language === 'en' && styles.langLabelActive]}>{t('language.english')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.langPill, language === 'ar' && styles.langPillActive]}
+            onPress={() => changeLanguage('ar')}
+          >
+            <Text style={styles.langEmoji}>🇸🇦</Text>
+            <Text style={[styles.langLabel, language === 'ar' && styles.langLabelActive]}>{t('language.arabic')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Sign out */}
+      <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
+        <LogOut color="#EF4444" size={18} />
+        <Text style={styles.signOutText}>Sign Out</Text>
+      </TouchableOpacity>
     </View>
   );
 
+  // ── Main render ──────────────────────────────────────────────────────────────
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView>
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <Image source={{ uri: profile?.avatar_url || 'https://placehold.co/100x100/E2E8F0/4A5568?text=User' }} style={styles.avatar} />
-            <View style={styles.headerText}>
-                <Text style={styles.fullName}>{profile?.full_name || user.email?.split('@')[0]}</Text>
-                <Text style={styles.email}>{user.email}</Text>
-                {profile?.phone && <Text style={styles.phoneText}>{profile.phone}</Text>}
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+
+        {/* ════════ HERO BANNER ════════ */}
+        <LinearGradient
+          colors={['#4F46E5', '#7C3AED']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroBanner}
+        >
+          {/* Avatar */}
+          <TouchableOpacity onPress={handleAvatarUpload} style={styles.heroAvatarWrap} activeOpacity={0.85}>
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.heroAvatar} />
+            ) : (
+              <View style={styles.heroAvatarFallback}>
+                <Text style={styles.heroAvatarInitials}>{initials}</Text>
+              </View>
+            )}
+            <View style={styles.heroAvatarCamera}>
+              <Camera size={14} color="white" />
             </View>
-            {/* 3. UPDATED: This button now switches to the Settings tab */}
-            <TouchableOpacity onPress={() => setActiveTab('settings')} style={styles.editButtonContainer}>
-              <Edit size={24} color="#4B5563" />
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.statsContainer}>
-            <View style={styles.statBox}><Text style={styles.statNumber}>{userProducts.length}</Text><Text style={styles.statLabel}>Products</Text></View>
-            <View style={styles.statBox}><Text style={styles.statNumber}>{wishlistProducts.length}</Text><Text style={styles.statLabel}>Wishlist</Text></View>
-          </View>
-
-          <View style={styles.tabContainer}>
-            <TouchableOpacity style={[styles.tabButton, activeTab === 'products' && styles.activeTab]} onPress={() => setActiveTab('products')}><Text style={[styles.tabText, activeTab === 'products' && styles.activeTabText]}>My Products</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.tabButton, activeTab === 'wishlist' && styles.activeTab]} onPress={() => setActiveTab('wishlist')}><Text style={[styles.tabText, activeTab === 'wishlist' && styles.activeTabText]}>Wishlist</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.tabButton, activeTab === 'chats' && styles.activeTab]} onPress={() => setActiveTab('chats')}><Text style={[styles.tabText, activeTab === 'chats' && styles.activeTabText]}>Chats</Text></TouchableOpacity>
-          </View>
-
-          {activeTab === 'products' && renderProductList(userProducts, "You haven't listed any products yet.")}
-          {activeTab === 'wishlist' && renderProductList(wishlistProducts, "Your wishlist is empty.")}
-          {activeTab === 'chats' && renderChatList()}
-          {activeTab === 'settings' && renderSettings()}
-          
-          {/* ── Language Switcher ── */}
-          <View style={styles.languageSection}>
-            <View style={styles.languageSectionHeader}>
-              <Globe size={20} color="#4B5563" />
-              <Text style={styles.languageSectionTitle}>{t('language.title')}</Text>
-            </View>
-            <View style={styles.languagePills}>
-              <TouchableOpacity
-                style={[
-                  styles.languagePill,
-                  language === 'en' && styles.languagePillActive,
-                ]}
-                onPress={() => changeLanguage('en')}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={[
-                    styles.languagePillText,
-                    language === 'en' && styles.languagePillTextActive,
-                  ]}
-                >
-                  🇬🇧  {t('language.english')}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.languagePill,
-                  language === 'ar' && styles.languagePillActive,
-                ]}
-                onPress={() => changeLanguage('ar')}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={[
-                    styles.languagePillText,
-                    language === 'ar' && styles.languagePillTextActive,
-                  ]}
-                >
-                  🇸🇦  {t('language.arabic')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
-            <LogOut color="white" size={18} />
-            <Text style={styles.signOutText}>{t('auth.logout')}</Text>
           </TouchableOpacity>
+
+          <Text style={styles.heroName}>{displayName}</Text>
+          <Text style={styles.heroEmail}>{user.email}</Text>
+          {profile?.phone && <Text style={styles.heroPhone}>📞 {profile.phone}</Text>}
+        </LinearGradient>
+
+        {/* ════════ STAT STRIP ════════ */}
+        <View style={styles.statStrip}>
+          <StatCard
+            value={userProducts.length}
+            label="Listings"
+            icon={<ShoppingBag color="#6366F1" size={20} />}
+            bg="#EEF2FF"
+            onPress={() => setActiveTab('products')}
+          />
+          <View style={styles.statDivider} />
+          <StatCard
+            value={wishlistProducts.length}
+            label="Saved"
+            icon={<Heart color="#EC4899" size={20} />}
+            bg="#FCE7F3"
+            onPress={() => setActiveTab('wishlist')}
+          />
+          <View style={styles.statDivider} />
+          <StatCard
+            value={chatRooms.length}
+            label="Chats"
+            icon={<MessageCircle color="#0EA5E9" size={20} />}
+            bg="#E0F2FE"
+            onPress={() => setActiveTab('chats')}
+          />
         </View>
+
+        {/* ════════ TABS ════════ */}
+        <View style={styles.tabBar}>
+          {TABS.map(tab => {
+            const Icon    = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={[styles.tabBtn, isActive && styles.tabBtnActive]}
+                onPress={() => setActiveTab(tab.id)}
+                activeOpacity={0.8}
+              >
+                <Icon size={18} color={isActive ? '#6366F1' : '#94A3B8'} />
+                <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* ════════ TAB CONTENT ════════ */}
+        <View style={styles.tabContent}>
+          {activeTab === 'products'  && renderProductList(userProducts,     "You haven't listed anything yet.")}
+          {activeTab === 'wishlist'  && renderProductList(wishlistProducts,  "Your wishlist is empty.")}
+          {activeTab === 'chats'     && renderChatList()}
+          {activeTab === 'settings'  && renderSettings()}
+        </View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// 4. REMOVE unused styles and make sure the rest are present
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+
+function StatCard({
+  value, label, icon, bg, onPress,
+}: {
+  value: number; label: string; icon: React.ReactNode; bg: string; onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={styles.statCard} onPress={onPress} activeOpacity={0.8}>
+      <View style={[styles.statIconBg, { backgroundColor: bg }]}>{icon}</View>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#F9FAFB' },
-    container: { padding: 20 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' },
-    loadingText: { marginTop: 10, color: '#4B5563' },
-    header: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, position: 'relative' },
-    avatar: { width: 80, height: 80, borderRadius: 40, marginRight: 16 },
-    headerText: { flex: 1 },
-    fullName: { fontSize: 24, fontWeight: 'bold', color: '#1F2937' },
-    email: { fontSize: 16, color: '#6B7280' },
-    phoneText: { fontSize: 16, color: '#4B5563', marginTop: 4 },
-    editButtonContainer: { position: 'absolute', top: 0, right: 0, padding: 8 },
-    statsContainer: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 24, backgroundColor: 'white', padding: 16, borderRadius: 12 },
-    statBox: { alignItems: 'center' },
-    statNumber: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
-    statLabel: { fontSize: 14, color: '#6B7280', marginTop: 4 },
-    tabContainer: { flexDirection: 'row', marginBottom: 20, backgroundColor: '#E5E7EB', borderRadius: 12, padding: 4 },
-    tabButton: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
-    activeTab: { backgroundColor: 'white', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 3 },
-    tabText: { fontSize: 14, fontWeight: '600', color: '#4B5563', textAlign: 'center' },
-    activeTabText: { color: '#1F2937' },
-    productCard: { backgroundColor: 'white', borderRadius: 12, flexDirection: 'row', marginBottom: 16, overflow: 'hidden' },
-    productImage: { width: 100, height: 100 },
-    productInfo: { flex: 1, padding: 12, justifyContent: 'space-between' },
-    productTitle: { fontSize: 16, fontWeight: '600' },
-    productPrice: { fontSize: 14, color: '#2563EB', fontWeight: 'bold' },
-    productActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16 },
-    actionButton: { padding: 4 },
-    emptyText: { textAlign: 'center', color: '#6B7280', marginTop: 20, marginBottom: 20 },
-    signOutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#EF4444', padding: 16, borderRadius: 12, marginTop: 32 },
-    signOutText: { color: 'white', fontSize: 16, fontWeight: '600', marginLeft: 8 },
-    chatCard: { backgroundColor: 'white', borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 },
-    chatAvatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
-    chatInfo: { flex: 1 },
-    chatName: { fontSize: 16, fontWeight: '600', color: '#1F2937' },
-    chatPreview: { fontSize: 14, color: '#6B7280', marginTop: 4 },
-    settingsContainer: { backgroundColor: 'white', padding: 20, borderRadius: 12 },
-    sectionTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937', marginBottom: 20 },
-    label: { fontSize: 16, fontWeight: '600', color: '#374151', marginBottom: 8 },
-    input: { backgroundColor: '#F9FAFB', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', fontSize: 16, marginBottom: 16 },
-    saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#16A34A', padding: 16, borderRadius: 12, marginTop: 10 },
-    saveButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold', marginLeft: 8 },
-    separator: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 24 },
-    avatarUploadButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', padding: 14, borderRadius: 12, marginBottom: 20 },
-    avatarUploadButtonText: { fontSize: 16, color: '#4B5563', marginLeft: 8 },
-    // Language switcher
-    languageSection: {
-      backgroundColor: 'white',
-      borderRadius: 16,
-      padding: 20,
-      marginTop: 24,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      elevation: 3,
-    },
-    languageSectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 16,
-      gap: 8,
-    },
-    languageSectionTitle: {
-      fontSize: 17,
-      fontWeight: '700',
-      color: '#1F2937',
-    },
-    languagePills: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-    languagePill: {
-      flex: 1,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderRadius: 50,
-      borderWidth: 2,
-      borderColor: '#E5E7EB',
-      alignItems: 'center',
-      backgroundColor: '#F9FAFB',
-    },
-    languagePillActive: {
-      borderColor: '#2563EB',
-      backgroundColor: '#EFF6FF',
-    },
-    languagePillText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: '#6B7280',
-    },
-    languagePillTextActive: {
-      color: '#2563EB',
-    },
+  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
+  loadingText: { marginTop: 12, color: '#64748B', fontSize: 15 },
+
+  // Hero
+  heroBanner: {
+    paddingTop: 56,
+    paddingBottom: 36,
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  heroAvatarWrap: { position: 'relative', marginBottom: 14 },
+  heroAvatar: { width: 96, height: 96, borderRadius: 48, borderWidth: 3, borderColor: 'rgba(255,255,255,0.6)' },
+  heroAvatarFallback: {
+    width: 96, height: 96, borderRadius: 48,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)',
+  },
+  heroAvatarInitials: { fontSize: 34, fontWeight: '800', color: 'white' },
+  heroAvatarCamera: {
+    position: 'absolute', bottom: 2, right: 2,
+    backgroundColor: '#6366F1', borderRadius: 14,
+    width: 28, height: 28, justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: 'white',
+  },
+  heroName:  { fontSize: 24, fontWeight: '800', color: 'white', marginBottom: 4 },
+  heroEmail: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
+  heroPhone: { fontSize: 13, color: 'rgba(255,255,255,0.65)' },
+
+  // Stat strip
+  statStrip: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    marginHorizontal: 20,
+    marginTop: -20,
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 8,
+    gap: 4,
+  },
+  statCard: { flex: 1, alignItems: 'center', gap: 6 },
+  statIconBg: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
+  statValue: { fontSize: 20, fontWeight: '800', color: '#1E293B' },
+  statLabel: { fontSize: 12, color: '#94A3B8', fontWeight: '600' },
+  statDivider: { width: 1, backgroundColor: '#F1F5F9', marginVertical: 4 },
+
+  // Tabs
+  tabBar: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginTop: 20,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', gap: 4, borderRadius: 12 },
+  tabBtnActive: { backgroundColor: '#EEF2FF' },
+  tabLabel: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
+  tabLabelActive: { color: '#6366F1' },
+
+  // Tab content
+  tabContent: { paddingHorizontal: 20, paddingTop: 20 },
+
+  // Listing grid (2-column)
+  listingGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  listingCard: {
+    width: '47.5%',
+    backgroundColor: 'white',
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  listingImg: { width: '100%', aspectRatio: 1 },
+  listingPricePill: {
+    position: 'absolute',
+    bottom: 56,
+    left: 8,
+    backgroundColor: '#2563EB',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  listingPriceText: { color: 'white', fontSize: 12, fontWeight: '800' },
+  listingActions: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    gap: 6,
+    flexDirection: 'column',
+  },
+  listingActionBtn: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 10,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listingDeleteBtn: { backgroundColor: '#FEF2F2' },
+  listingCardBody: {
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  listingTitle: { fontSize: 12, fontWeight: '700', color: '#1E293B', flex: 1, marginRight: 6 },
+  conditionPill: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  conditionNew: { backgroundColor: '#D1FAE5' },
+  conditionUsed: { backgroundColor: '#FEF3C7' },
+  conditionText: { fontSize: 9, fontWeight: '800' },
+  conditionTextNew: { color: '#065F46' },
+  conditionTextUsed: { color: '#92400E' },
+
+  // Empty state
+  emptyState: { alignItems: 'center', paddingVertical: 48 },
+  emptyEmoji: { fontSize: 48, marginBottom: 12 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: '#1E293B', marginBottom: 6, textAlign: 'center' },
+  emptySubtitle: { fontSize: 14, color: '#94A3B8', textAlign: 'center' },
+  emptyAction: {
+    marginTop: 16,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  emptyActionText: { color: '#6366F1', fontWeight: '700', fontSize: 14 },
+
+  // Chat
+  chatCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  chatAvatar: { width: 52, height: 52, borderRadius: 26, marginRight: 14 },
+  chatInfo: { flex: 1 },
+  chatName: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 3 },
+  chatPreview: { fontSize: 13, color: '#94A3B8' },
+
+  // Settings cards
+  settingsCard: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  settingsCardTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 20 },
+  settingsDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
+
+  // Avatar row in settings
+  avatarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 12,
+  },
+  settingsAvatar: { width: 52, height: 52, borderRadius: 26 },
+  settingsAvatarFallback: {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center',
+  },
+  settingsAvatarInitials: { fontSize: 18, fontWeight: '800', color: '#6366F1' },
+  avatarRowText: { flex: 1 },
+  avatarRowLabel: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
+  avatarRowSub: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  avatarCameraIcon: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center', alignItems: 'center',
+  },
+
+  // Field / input
+  fieldLabel: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 8, marginTop: 4 },
+  settingsInput: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    fontSize: 15,
+    color: '#1E293B',
+    marginBottom: 14,
+  },
+  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  eyeBtn: {
+    width: 46, height: 46,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Save button
+  saveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#10B981',
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginTop: 6,
+  },
+  saveBtnText: { color: 'white', fontSize: 15, fontWeight: '800' },
+
+  // Language
+  langRow: { flexDirection: 'row', gap: 12 },
+  langPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+  },
+  langPillActive: { borderColor: '#6366F1', backgroundColor: '#EEF2FF' },
+  langEmoji: { fontSize: 18 },
+  langLabel: { fontSize: 14, fontWeight: '700', color: '#64748B' },
+  langLabelActive: { color: '#6366F1' },
+
+  // Sign out
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 16,
+    paddingVertical: 16,
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
+  },
+  signOutText: { color: '#EF4444', fontSize: 15, fontWeight: '800' },
 });
