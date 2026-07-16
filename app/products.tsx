@@ -42,6 +42,12 @@ export default function ProductsScreen() {
   const [sortBy, setSortBy] = useState<SortKey>('newest');
   const [conditions, setConditions] = useState<Set<ConditionFilter>>(new Set());
   const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
+  // Price range
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [priceOpen, setPriceOpen] = useState(false);
+  const [appliedMin, setAppliedMin] = useState('');
+  const [appliedMax, setAppliedMax] = useState('');
 
   // ── Data ──────────────────────────────────────────────────────────────────
 
@@ -85,15 +91,21 @@ export default function ProductsScreen() {
       list = list.filter(p => conditions.has(p.condition as ConditionFilter));
     }
 
+    // Price range
+    if (appliedMin !== '') list = list.filter(p => Number(p.price) >= Number(appliedMin));
+    if (appliedMax !== '') list = list.filter(p => Number(p.price) <= Number(appliedMax));
+
     if (sortBy === 'price_asc') list.sort((a, b) => Number(a.price) - Number(b.price));
     if (sortBy === 'price_desc') list.sort((a, b) => Number(b.price) - Number(a.price));
 
     return list;
-  }, [products, searchText, conditions, sortBy]);
+  }, [products, searchText, conditions, sortBy, appliedMin, appliedMax]);
 
   const hasFilters =
     conditions.size > 0 ||
     sortBy !== 'newest' ||
+    appliedMin !== '' ||
+    appliedMax !== '' ||
     searchText !== (search ?? '');
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -110,6 +122,11 @@ export default function ProductsScreen() {
     setSearchText(search ?? '');
     setSortBy('newest');
     setConditions(new Set());
+    setMinPrice('');
+    setMaxPrice('');
+    setAppliedMin('');
+    setAppliedMax('');
+    setPriceOpen(false);
   };
 
   const toggleWishlist = async (product: Product) => {
@@ -190,6 +207,7 @@ export default function ProductsScreen() {
 
           <View style={styles.chipDivider} />
 
+          {/* Condition */}
           {(['New', 'Used'] as ConditionFilter[]).map(c => (
             <TouchableOpacity
               key={c}
@@ -200,6 +218,19 @@ export default function ProductsScreen() {
             </TouchableOpacity>
           ))}
 
+          {/* Price filter chip */}
+          <TouchableOpacity
+            style={[styles.chip, (priceOpen || appliedMin || appliedMax) ? styles.chipActive : undefined]}
+            onPress={() => setPriceOpen(v => !v)}
+          >
+            <Text style={[styles.chipText, (priceOpen || appliedMin || appliedMax) ? styles.chipTextActive : undefined]}>
+              {appliedMin || appliedMax
+                ? `$${appliedMin || '0'} – $${appliedMax || '∞'}`
+                : 'Price'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Clear all */}
           {hasFilters && (
             <TouchableOpacity style={styles.clearChip} onPress={clearFilters}>
               <X color="#EF4444" size={11} />
@@ -207,6 +238,43 @@ export default function ProductsScreen() {
             </TouchableOpacity>
           )}
         </ScrollView>
+
+        {/* Price range panel */}
+        {priceOpen && (
+          <View style={styles.pricePanel}>
+            <View style={styles.priceInputRow}>
+              <View style={styles.priceInputWrap}>
+                <Text style={styles.priceInputLabel}>Min $</Text>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="0"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="numeric"
+                  value={minPrice}
+                  onChangeText={setMinPrice}
+                />
+              </View>
+              <View style={styles.priceDash} />
+              <View style={styles.priceInputWrap}>
+                <Text style={styles.priceInputLabel}>Max $</Text>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="Any"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="numeric"
+                  value={maxPrice}
+                  onChangeText={setMaxPrice}
+                />
+              </View>
+              <TouchableOpacity
+                style={styles.priceApplyBtn}
+                onPress={() => { setAppliedMin(minPrice); setAppliedMax(maxPrice); setPriceOpen(false); }}
+              >
+                <Text style={styles.priceApplyText}>Apply</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Result count */}
         {!loading && (
@@ -551,4 +619,43 @@ const styles = StyleSheet.create({
     borderColor: '#BFDBFE',
   },
   clearBtnText: { color: '#2563EB', fontSize: 15, fontWeight: '800' },
+
+  // Price range panel
+  pricePanel: {
+    backgroundColor: 'white',
+    marginHorizontal: 16,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 6,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  priceInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  priceInputWrap: { flex: 1 },
+  priceInputLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8', marginBottom: 5, letterSpacing: 0.4 },
+  priceInput: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  priceDash: { width: 12, height: 2, backgroundColor: '#CBD5E1', borderRadius: 1, marginTop: 18 },
+  priceApplyBtn: {
+    backgroundColor: '#2563EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 18,
+  },
+  priceApplyText: { color: 'white', fontSize: 13, fontWeight: '800' },
 });

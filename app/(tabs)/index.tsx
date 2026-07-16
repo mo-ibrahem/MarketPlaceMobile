@@ -11,7 +11,7 @@ import {
   Smartphone,
   Sparkles,
   TrendingUp,
-  X,
+  X
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,7 @@ import {
   Animated,
   FlatList,
   Image,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -34,13 +35,26 @@ import { productService, type Product } from '../../src/services/lib/products';
 
 const QUICK_SEARCHES = ['Electronics', 'iPhone', 'Fashion', 'Furniture', 'Toys', 'Books'];
 
+const TRENDING_SEARCHES = [
+  { label: 'iPhone 15', emoji: '🔥' },
+  { label: 'Laptop', emoji: '🔥' },
+  { label: 'Jordan', emoji: '👟' },
+  { label: 'PlayStation', emoji: '🎮' },
+  { label: 'Sofa', emoji: '🛋️' },
+  { label: 'Camera', emoji: '📷' },
+  { label: 'Dress', emoji: '👗' },
+  { label: 'Books', emoji: '📚' },
+];
+
 const CATEGORIES = [
-  { id: 'all',         nameKey: 'home.categories.allCategories', icon: LayoutGrid,  color: '#6366F1', bg: '#EEF2FF' },
-  { id: 'Electronics', nameKey: 'home.categories.electronics',   icon: Smartphone,  color: '#0EA5E9', bg: '#E0F2FE' },
-  { id: 'Fashion',     nameKey: 'home.categories.fashion',       icon: Shirt,       color: '#EC4899', bg: '#FCE7F3' },
-  { id: 'Home',        nameKey: 'home.categories.home',          icon: Home,        color: '#10B981', bg: '#D1FAE5' },
-  { id: 'Toys',        nameKey: 'home.categories.toys',          icon: Baby,        color: '#F59E0B', bg: '#FEF3C7' },
-  { id: 'Sports',      nameKey: 'sell.categories.sports',        icon: Dumbbell,    color: '#EF4444', bg: '#FEE2E2' },
+  { id: 'all', nameKey: 'home.categories.allCategories', icon: LayoutGrid, color: '#6366F1', bg: '#EEF2FF' },
+  { id: 'Electronics', nameKey: 'home.categories.electronics', icon: Smartphone, color: '#0EA5E9', bg: '#E0F2FE' },
+  { id: 'Fashion', nameKey: 'home.categories.fashion', icon: Shirt, color: '#EC4899', bg: '#FCE7F3' },
+  { id: 'Home', nameKey: 'home.categories.home', icon: Home, color: '#10B981', bg: '#D1FAE5' },
+  { id: 'Toys', nameKey: 'home.categories.toys', icon: Baby, color: '#F59E0B', bg: '#FEF3C7' },
+  { id: 'Sports', nameKey: 'sell.categories.sports', icon: Dumbbell, color: '#EF4444', bg: '#FEE2E2' },
+
+
 ] as const;
 
 // ─── Home Screen ─────────────────────────────────────────────────────────────
@@ -54,6 +68,7 @@ export default function HomeScreen() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
 
   // ── Data Loading ────────────────────────────────────────────────────────────
@@ -75,6 +90,12 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => { loadProducts(); }, [loadProducts])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadProducts();
+    setRefreshing(false);
+  }, [loadProducts]);
 
   // ── Derived data ────────────────────────────────────────────────────────────
 
@@ -129,7 +150,13 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
-      <ScrollView showsVerticalScrollIndicator={false} bounces>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        bounces
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" />
+        }
+      >
 
         {/* ════════════════ HERO ════════════════ */}
         <LinearGradient
@@ -138,9 +165,12 @@ export default function HomeScreen() {
           end={{ x: 1, y: 1 }}
           style={[styles.hero, { paddingTop: insets.top + 24 }]}
         >
-          {/* Logo backdrop */}
-          <View style={styles.logoBadge}>
-            <EgbayLogo width={170} height={58} />
+          {/* ── Logo showcase ── */}
+          <View style={styles.logoWrapper}>
+            <View style={styles.logoBadge}>
+              <EgbayLogo width={240} height={82} />
+            </View>
+            <View style={styles.logoGlow} />
           </View>
 
           <Text style={styles.heroSubtitle}>{t('home.heroSubtitle')}</Text>
@@ -219,6 +249,31 @@ export default function HomeScreen() {
               </TouchableOpacity>
             );
           })}
+        </ScrollView>
+
+        {/* ════════════════ TRENDING SEARCHES ════════════════ */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.titleRow}>
+            <Text style={{ fontSize: 18 }}>🔥</Text>
+            <Text style={[styles.sectionTitle, { marginLeft: 6 }]}>Trending Searches</Text>
+          </View>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.trendingSearchRow}
+        >
+          {TRENDING_SEARCHES.map(item => (
+            <TouchableOpacity
+              key={item.label}
+              style={styles.trendingSearchChip}
+              onPress={() => router.push({ pathname: '/products', params: { search: item.label } } as any)}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.trendingSearchEmoji}>{item.emoji}</Text>
+              <Text style={styles.trendingSearchText}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
 
         {/* ════════════════ TRENDING NOW ════════════════ */}
@@ -362,7 +417,7 @@ function Pulse({ style }: { style?: object }) {
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity, { toValue: 1,    duration: 750, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 750, useNativeDriver: true }),
         Animated.timing(opacity, { toValue: 0.35, duration: 750, useNativeDriver: true }),
       ])
     );
@@ -400,15 +455,35 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
   },
+  logoWrapper: {
+    alignItems: 'center',
+    marginBottom: 20,
+    position: 'relative',
+  },
   logoBadge: {
-    alignSelf: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 20,
-    paddingHorizontal: 22,
-    paddingVertical: 10,
-    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    paddingHorizontal: 32,
+    paddingVertical: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 14,
+    // subtle inner border for polish
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
+    borderColor: 'rgba(255,255,255,0.9)',
+  },
+  logoGlow: {
+    position: 'absolute',
+    bottom: -12,
+    width: 180,
+    height: 20,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    borderRadius: 50,
+    // acts as a drop-shadow blur beneath the card
+    transform: [{ scaleX: 1 }],
+    zIndex: -1,
   },
   heroSubtitle: {
     color: 'rgba(255,255,255,0.82)',
@@ -590,4 +665,25 @@ const styles = StyleSheet.create({
   // Empty
   emptyBox: { alignItems: 'center', padding: 40 },
   emptyText: { color: '#94A3B8', fontSize: 15, textAlign: 'center', lineHeight: 22 },
+
+  // Trending searches
+  trendingSearchRow: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+  trendingSearchChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  trendingSearchEmoji: { fontSize: 14 },
+  trendingSearchText: { fontSize: 13, fontWeight: '700', color: '#374151' },
 });

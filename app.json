@@ -2,7 +2,7 @@
   "expo": {
     "name": "Egbay",
     "slug": "MarketPlaceMobile",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/egbay.png",
     "scheme": "egbbay",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.moibrahem.MarketPlaceMobile",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
