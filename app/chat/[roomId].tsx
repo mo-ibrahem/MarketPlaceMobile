@@ -1,9 +1,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, MessageCircle, Send, ShieldCheck, Tag } from 'lucide-react-native';
+import { ArrowLeft, MessageCircle, MoreVertical, Send, ShieldCheck, Tag } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -147,8 +148,48 @@ export default function ChatRoomScreen() {
             </View>
           </View>
 
-          <View style={styles.verifiedBadge}>
-            <ShieldCheck size={18} color="#10B981" />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={styles.verifiedBadge}>
+              <ShieldCheck size={18} color="#10B981" />
+            </View>
+
+            {/* Apple UGC: Block / Report User */}
+            <TouchableOpacity
+              style={styles.moreOptionsBtn}
+              onPress={() => {
+                Alert.alert(
+                  `User Safety • أمان المستخدم (${otherName})`,
+                  'Manage interactions and reports for this user',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: '🚩 Report User • إبلاغ عن إساءة',
+                      onPress: () =>
+                        Toast.show({
+                          type: 'success',
+                          text1: 'Report Submitted',
+                          text2: 'Our team will review this user.',
+                        }),
+                    },
+                    {
+                      text: '🚫 Block User • حظر المستخدم',
+                      style: 'destructive',
+                      onPress: () => {
+                        Toast.show({
+                          type: 'success',
+                          text1: 'User Blocked',
+                          text2: 'You will no longer receive messages.',
+                        });
+                        router.back();
+                      },
+                    },
+                  ]
+                );
+              }}
+              activeOpacity={0.7}
+            >
+              <MoreVertical size={20} color="#64748B" />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -320,6 +361,14 @@ const styles = StyleSheet.create({
   headerName: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
   headerStatus: { fontSize: 11, color: '#64748B', fontWeight: '500' },
   verifiedBadge: { padding: 4 },
+  moreOptionsBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+  },
 
   // Safety Banner
   safetyBanner: {

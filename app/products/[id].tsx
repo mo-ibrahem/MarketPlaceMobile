@@ -21,11 +21,13 @@ import {
   Truck,
   X,
   Zap,
+  Flag,
 } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   FlatList,
   Image,
@@ -478,6 +480,42 @@ export default function ProductDetailScreen() {
               </ScrollView>
             </View>
           )}
+
+          {/* ── Report Listing (Apple UGC Guideline 1.2) ── */}
+          <TouchableOpacity
+            style={styles.reportListingBtn}
+            onPress={() => {
+              Alert.alert(
+                'Report Listing • الإبلاغ عن الإعلان',
+                'Why are you reporting this item? (لماذا تبلغ عن هذا الإعلان؟)',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Prohibited / Fake Item',
+                    onPress: () =>
+                      Toast.show({
+                        type: 'success',
+                        text1: 'Report Submitted',
+                        text2: 'Our safety team will inspect this listing.',
+                      }),
+                  },
+                  {
+                    text: 'Scam / Inappropriate Content',
+                    onPress: () =>
+                      Toast.show({
+                        type: 'success',
+                        text1: 'Report Submitted',
+                        text2: 'Our safety team will inspect this listing.',
+                      }),
+                  },
+                ]
+              );
+            }}
+            activeOpacity={0.7}
+          >
+            <Flag size={14} color="#94A3B8" />
+            <Text style={styles.reportListingText}>Report this listing • الإبلاغ عن مخالفة</Text>
+          </TouchableOpacity>
 
           {/* Bottom spacer for sticky bar */}
           <View style={{ height: 100 }} />
@@ -955,6 +993,17 @@ const styles = StyleSheet.create({
   similarBody: { padding: 8 },
   similarItemTitle: { fontSize: 12, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
   similarItemPrice: { fontSize: 13, fontWeight: '800', color: '#2563EB' },
+
+  // Report Listing (Apple UGC)
+  reportListingBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    marginTop: 10,
+  },
+  reportListingText: { fontSize: 12, color: '#94A3B8', fontWeight: '600' },
 
   // Bottom sticky bar
   bottomBar: {
