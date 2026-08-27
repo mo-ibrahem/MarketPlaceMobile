@@ -561,7 +561,11 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         {/* ════════ SELLER TRUST TIER CARD ════════ */}
-        <View style={styles.sellerTierCard}>
+        <TouchableOpacity
+          style={styles.sellerTierCard}
+          onPress={() => router.push('/seller-verification' as any)}
+          activeOpacity={0.85}
+        >
           <View style={styles.tierIconWrap}>
             <ShieldCheck color="#10B981" size={20} />
           </View>
@@ -574,7 +578,8 @@ export default function ProfileScreen() {
             </View>
             <Text style={styles.tierSub}>Egyptian National ID Verified • 100% Escrow Protection</Text>
           </View>
-        </View>
+          <ChevronRight size={16} color="#94A3B8" />
+        </TouchableOpacity>
 
         {/* ════════ TABS ════════ */}
         <View style={styles.tabBar}>

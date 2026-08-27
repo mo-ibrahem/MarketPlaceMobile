@@ -21,6 +21,7 @@ export default function RootLayout() {
         <Stack.Screen name="wallet" options={{ headerShown: false, title: 'My Wallet' }} />
         <Stack.Screen name="order/[orderId]" options={{ headerShown: false, title: 'Order Status' }} />
         <Stack.Screen name="payout-settings" options={{ headerShown: false, title: 'Payout Settings' }} />
+        <Stack.Screen name="seller-verification" options={{ headerShown: false, title: 'Seller Verification' }} />
       </Stack>
       <Toast />
     </LanguageProvider>

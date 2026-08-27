@@ -271,7 +271,7 @@ export default function WalletScreen() {
               </View>
               <TouchableOpacity
                 style={styles.upgradeBtn}
-                onPress={() => setTierModalVisible(true)}
+                onPress={() => router.push('/seller-verification' as any)}
                 activeOpacity={0.85}
               >
                 <Sparkles size={13} color="#2563EB" />

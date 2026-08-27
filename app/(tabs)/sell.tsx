@@ -10,6 +10,8 @@ import {
   FileText,
   ImagePlus,
   MapPin,
+  ShieldCheck,
+  Sparkles,
   Tag,
   X,
 } from "lucide-react-native";
@@ -292,6 +294,19 @@ export default function SellScreen() {
           );
         })}
       </View>
+
+      {/* ── Seller Tier Status Ribbon ── */}
+      <TouchableOpacity
+        style={styles.sellerTierRibbon}
+        onPress={() => router.push('/seller-verification' as any)}
+        activeOpacity={0.85}
+      >
+        <ShieldCheck size={16} color="#2563EB" />
+        <Text style={styles.sellerTierRibbonText}>
+          Tier 2 Verified: <Text style={{ fontWeight: '800', color: '#1E40AF' }}>50 Listings Quota (4% Fee)</Text>
+        </Text>
+        <Text style={styles.sellerTierRibbonCta}>Upgrade →</Text>
+      </TouchableOpacity>
 
       {/* ── Scrollable content ── */}
       <ScrollView
@@ -662,6 +677,23 @@ const styles = StyleSheet.create({
 
   // Scroll content
   scrollContent: { paddingHorizontal: 20, paddingTop: 8 },
+
+  // Seller Tier Ribbon
+  sellerTierRibbon: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#EFF6FF",
+    marginHorizontal: 16,
+    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+  },
+  sellerTierRibbonText: { flex: 1, fontSize: 11, color: "#2563EB", fontWeight: "600" },
+  sellerTierRibbonCta: { fontSize: 11, fontWeight: "800", color: "#2563EB" },
 
   // Step headings
   stepHeading: { fontSize: 24, fontWeight: "800", color: "#0F172A", marginBottom: 6 },

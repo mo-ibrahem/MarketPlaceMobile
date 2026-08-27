@@ -127,6 +127,99 @@ export interface Database {
           delivered_at?: string
         }
       }
+      user_wallets: {
+        Row: {
+          id: string
+          user_id: string
+          pending_balance: number
+          available_balance: number
+          currency: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          pending_balance?: number
+          available_balance?: number
+          currency?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          pending_balance?: number
+          available_balance?: number
+          currency?: string
+          updated_at?: string
+        }
+      }
+      wallet_transactions: {
+        Row: {
+          id: string
+          wallet_id?: string
+          order_id?: string
+          type: string
+          amount: number
+          fee_amount: number
+          status: string
+          description?: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          wallet_id?: string
+          order_id?: string
+          type: string
+          amount: number
+          fee_amount?: number
+          status?: string
+          description?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          wallet_id?: string
+          order_id?: string
+          type?: string
+          amount?: number
+          fee_amount?: number
+          status?: string
+          description?: string
+          created_at?: string
+        }
+      }
+      payout_methods: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          account_identifier: string
+          account_holder_name: string
+          is_default: boolean
+          is_verified: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          account_identifier: string
+          account_holder_name: string
+          is_default?: boolean
+          is_verified?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          account_identifier?: string
+          account_holder_name?: string
+          is_default?: boolean
+          is_verified?: boolean
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
