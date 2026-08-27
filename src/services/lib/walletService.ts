@@ -583,7 +583,7 @@ export async function requestPayout(
 
     return {
       success: true,
-      message: `Successfully transferred EGP ${amount.toLocaleString()} to ${payoutMethod.account_identifier} (${payoutMethod.type.replace('_', ' ').toUpperCase()})`,
+      message: `Successfully transferred EGP ${amount.toLocaleString()} to ${payoutMethod.account_identifier}`,
       transactionId: txId,
     };
   } catch (err) {
@@ -606,5 +606,92 @@ export async function requestPayout(
     success: true,
     message: `Successfully transferred EGP ${amount.toLocaleString()} to ${payoutMethod.account_identifier}`,
     transactionId: txId,
+  };
+}
+
+/**
+ * Deduct Spendable Funds from Available Balance for checkout / split-payment
+ */
+export async function deductWalletSpendableFunds(
+  userId: string,
+  amount: number,
+  orderId: string,
+  itemTitle?: string
+): Promise<{ success: boolean; message: string; remainingBalance: number }> {
+  const wallet = await getUserWallet(userId);
+  const available = Number(wallet.available_balance) || 0;
+
+  if (amount > available) {
+    throw new Error(`Insufficient wallet balance. Available: EGP ${available.toLocaleString()}`);
+  }
+
+  const newAvailable = available - amount;
+
+  try {
+    await supabase
+      .from('user_wallets' as any)
+      .update({
+        available_balance: newAvailable,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('user_id', userId);
+
+    await supabase.from('wallet_transactions' as any).insert({
+      wallet_id: wallet.id,
+      order_id: orderId,
+      type: 'fee_deduction',
+      amount: amount,
+      fee_amount: 0,
+      status: 'completed',
+      description: `Purchase: ${itemTitle || 'Marketplace Item'} (Wallet Checkout)`,
+      created_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('[WalletService] Fallback updating spendable funds in memory:', err);
+  }
+
+  wallet.available_balance = newAvailable;
+  inMemoryTransactions.unshift({
+    id: `tx_spend_${Date.now()}`,
+    order_id: orderId,
+    type: 'fee_deduction',
+    amount: amount,
+    fee_amount: 0,
+    status: 'completed',
+    description: `Purchase: ${itemTitle || 'Marketplace Item'} (Wallet Checkout)`,
+    created_at: new Date().toISOString(),
+  });
+
+  return {
+    success: true,
+    message: `Applied EGP ${amount.toLocaleString()} from Wallet`,
+    remainingBalance: newAvailable,
+  };
+}
+
+/**
+ * Update Payout Schedule (Daily, Weekly, Monthly) and Express Payout settings
+ */
+export async function updatePayoutSchedule(
+  userId: string,
+  schedule: 'daily' | 'weekly' | 'monthly',
+  expressEnabled: boolean = true
+): Promise<{ success: boolean; message: string }> {
+  try {
+    await supabase
+      .from('user_wallets' as any)
+      .update({
+        payout_schedule: schedule,
+        express_payout_enabled: expressEnabled,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('user_id', userId);
+  } catch (err) {
+    console.warn('[WalletService] Fallback saving schedule in memory:', err);
+  }
+
+  return {
+    success: true,
+    message: `Payout schedule updated to ${schedule.toUpperCase()}`,
   };
 }

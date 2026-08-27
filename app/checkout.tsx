@@ -14,6 +14,7 @@ import {
   Smartphone,
   Truck,
   User,
+  Wallet,
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +38,7 @@ import { useAuth } from '../hooks/useAuth';
 import { createMarketplaceOrder } from '../src/services/lib/orderService';
 import { startPaymobCheckoutSession } from '../src/services/lib/paymobService';
 import { productService, type Product } from '../src/services/lib/products';
+import { deductWalletSpendableFunds, getUserWallet, type UserWallet } from '../src/services/lib/walletService';
 
 const GOVERNORATES = ['Cairo', 'Giza', 'Alexandria', 'Dakahlia', 'Sharqia', 'Qalyubia', 'Gharbia', 'Red Sea'];
 
@@ -49,6 +51,8 @@ export default function CheckoutScreen() {
   const { width } = useWindowDimensions();
 
   const [product, setProduct] = useState<Product | null>(null);
+  const [wallet, setWallet] = useState<UserWallet | null>(null);
+  const [useWalletBalance, setUseWalletBalance] = useState(true);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -62,23 +66,30 @@ export default function CheckoutScreen() {
   const [streetAddress, setStreetAddress] = useState('90th Street, Building 4');
 
   useEffect(() => {
-    async function loadProduct() {
+    async function loadData() {
       if (!productId) return;
       try {
         const data = await productService.getProductById(productId);
         setProduct(data);
+        if (user) {
+          const w = await getUserWallet(user.id);
+          setWallet(w);
+        }
       } catch (err) {
         console.error('Error loading checkout product:', err);
       } finally {
         setLoading(false);
       }
     }
-    loadProduct();
-  }, [productId]);
+    loadData();
+  }, [productId, user]);
 
   const deliveryFee = deliveryMethod === 'courier' ? 65 : 0;
   const itemPrice = Number(product?.price || 0);
   const totalPrice = itemPrice + deliveryFee;
+  const walletBalance = Number(wallet?.available_balance || 0);
+  const walletDeduction = useWalletBalance ? Math.min(walletBalance, totalPrice) : 0;
+  const remainingDue = Math.max(0, totalPrice - walletDeduction);
 
   const handleProceedToPayment = async () => {
     if (!product || !user) {
@@ -117,12 +128,31 @@ export default function CheckoutScreen() {
         },
       });
 
-      // 2. If card / wallet selected, initiate Paymob payment session
+      // 2. Deduct Spendable Funds if applied
+      if (walletDeduction > 0) {
+        await deductWalletSpendableFunds(user.id, walletDeduction, order.id, product.title);
+      }
+
+      // 3. If 100% paid with wallet, complete order instantly!
+      if (remainingDue === 0) {
+        Toast.show({
+          type: 'success',
+          text1: 'Paid with Wallet Balance! 🛍️🎉',
+          text2: `Order #${order.id.slice(-6)} placed with full Escrow Protection!`,
+        });
+        router.replace({
+          pathname: '/order/[orderId]',
+          params: { orderId: order.id },
+        } as any);
+        return;
+      }
+
+      // 4. If card / wallet selected, initiate Paymob payment session for remainingDue
       if (paymentMethod === 'card' || paymentMethod === 'wallet') {
         const session = await startPaymobCheckoutSession({
-          amountEgp: totalPrice,
+          amountEgp: remainingDue,
           merchantOrderId: order.id,
-          itemName: product.title,
+          itemName: `${product.title} (Split Payment)`,
           billingData: {
             first_name: fullName.split(' ')[0] || 'Buyer',
             last_name: fullName.split(' ')[1] || 'Egbay',
@@ -140,7 +170,7 @@ export default function CheckoutScreen() {
           params: {
             paymentToken: session.paymentToken,
             orderId: order.id,
-            totalEgp: totalPrice.toString(),
+            totalEgp: remainingDue.toString(),
           },
         } as any);
       } else {
@@ -325,9 +355,58 @@ export default function CheckoutScreen() {
               </View>
             )}
 
+            {/* ════════ EBAY SPENDABLE FUNDS & SPLIT PAYMENT CARD ════════ */}
+            {walletBalance > 0 && (
+              <View style={styles.walletSplitCard}>
+                <View style={styles.walletSplitTop}>
+                  <View style={styles.walletSplitIconBox}>
+                    <Wallet color="#10B981" size={20} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.walletSplitTitle}>Apply Wallet Balance</Text>
+                    <Text style={styles.walletSplitSub}>
+                      Available: <Text style={{ fontWeight: '800', color: '#0F172A' }}>EGP {walletBalance.toLocaleString()}</Text>
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.togglePill, useWalletBalance && styles.togglePillActive]}
+                    onPress={() => setUseWalletBalance(!useWalletBalance)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.toggleCircle, useWalletBalance && styles.toggleCircleActive]} />
+                  </TouchableOpacity>
+                </View>
+
+                {useWalletBalance && (
+                  <View style={styles.walletSplitBreakdown}>
+                    <Text style={styles.walletSplitBreakdownText}>
+                      • Deduct from Wallet:{' '}
+                      <Text style={{ fontWeight: '800', color: '#10B981' }}>
+                        -EGP {walletDeduction.toLocaleString()}
+                      </Text>
+                    </Text>
+                    {remainingDue > 0 ? (
+                      <Text style={styles.walletSplitBreakdownText}>
+                        • Remaining Due via Card/Gateway:{' '}
+                        <Text style={{ fontWeight: '800', color: '#2563EB' }}>
+                          EGP {remainingDue.toLocaleString()}
+                        </Text>
+                      </Text>
+                    ) : (
+                      <Text style={[styles.walletSplitBreakdownText, { color: '#059669', fontWeight: '800' }]}>
+                        ✨ 100% Covered by Wallet — 1-Tap Instant Checkout!
+                      </Text>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* Payment Method Selector */}
-            <Text style={styles.sectionHeading}>Select Payment Option</Text>
-            <View style={styles.paymentOptions}>
+            {remainingDue > 0 && (
+              <>
+                <Text style={styles.sectionHeading}>Select Payment Option (Remaining Due)</Text>
+                <View style={styles.paymentOptions}>
               {/* Option 1: Card */}
               <TouchableOpacity
                 style={[styles.payOptionCard, paymentMethod === 'card' && styles.payOptionActive]}
@@ -391,6 +470,8 @@ export default function CheckoutScreen() {
                 </View>
               </TouchableOpacity>
             </View>
+            </>
+            )}
 
             {/* Price Breakdown */}
             <View style={styles.summaryBox}>
@@ -407,10 +488,22 @@ export default function CheckoutScreen() {
                 <Text style={styles.summaryLabel}>Buyer Escrow Protection</Text>
                 <Text style={[styles.summaryValue, { color: '#059669', fontWeight: '700' }]}>FREE</Text>
               </View>
+              {walletDeduction > 0 && (
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: '#059669' }]}>Paid from Wallet Balance</Text>
+                  <Text style={[styles.summaryValue, { color: '#059669', fontWeight: '800' }]}>
+                    -EGP {walletDeduction.toLocaleString()}
+                  </Text>
+                </View>
+              )}
               <View style={styles.divider} />
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Total Amount</Text>
-                <Text style={styles.totalValue}>EGP {totalPrice.toLocaleString()}</Text>
+                <Text style={styles.totalLabel}>
+                  {remainingDue === 0 ? 'Total (Covered by Wallet)' : 'Remaining Due to Pay'}
+                </Text>
+                <Text style={styles.totalValue}>
+                  EGP {(remainingDue === 0 ? totalPrice : remainingDue).toLocaleString()}
+                </Text>
               </View>
             </View>
           </View>
@@ -419,8 +512,12 @@ export default function CheckoutScreen() {
         {/* Sticky Bottom Action Bar */}
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
           <View style={styles.bottomTotal}>
-            <Text style={styles.bottomTotalLabel}>Total to Pay</Text>
-            <Text style={styles.bottomTotalValue}>EGP {totalPrice.toLocaleString()}</Text>
+            <Text style={styles.bottomTotalLabel}>
+              {remainingDue === 0 ? 'Wallet Payment' : 'Total to Pay'}
+            </Text>
+            <Text style={styles.bottomTotalValue}>
+              EGP {(remainingDue === 0 ? totalPrice : remainingDue).toLocaleString()}
+            </Text>
           </View>
 
           <TouchableOpacity
@@ -430,17 +527,24 @@ export default function CheckoutScreen() {
             activeOpacity={0.9}
           >
             <LinearGradient
-              colors={['#2563EB', '#1D4ED8']}
+              colors={remainingDue === 0 ? ['#059669', '#047857'] : ['#2563EB', '#1D4ED8']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.payGradient}
             >
               {submitting ? (
                 <ActivityIndicator color="white" size="small" />
+              ) : remainingDue === 0 ? (
+                <>
+                  <CheckCircle2 color="white" size={18} />
+                  <Text style={styles.payButtonText}>1-Tap Wallet Pay 🛍️</Text>
+                </>
               ) : (
                 <>
                   <Lock color="white" size={18} />
-                  <Text style={styles.payButtonText}>Pay with Escrow Protection</Text>
+                  <Text style={styles.payButtonText}>
+                    {walletDeduction > 0 ? `Pay EGP ${remainingDue.toLocaleString()}` : 'Proceed to Payment'}
+                  </Text>
                 </>
               )}
             </LinearGradient>
@@ -455,6 +559,60 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   loadingText: { marginTop: 12, color: '#64748B', fontSize: 14, fontWeight: '600' },
+
+  // Spendable Funds & Split Payment Styles
+  walletSplitCard: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
+    marginBottom: 16,
+  },
+  walletSplitTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  walletSplitIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  walletSplitTitle: { fontSize: 14, fontWeight: '800', color: '#065F46' },
+  walletSplitSub: { fontSize: 11, color: '#047857', marginTop: 1 },
+  togglePill: {
+    width: 46,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#CBD5E1',
+    padding: 3,
+    justifyContent: 'center',
+  },
+  togglePillActive: { backgroundColor: '#10B981' },
+  toggleCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'white',
+  },
+  toggleCircleActive: { alignSelf: 'flex-end' },
+  walletSplitBreakdown: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#D1FAE5',
+    gap: 4,
+  },
+  walletSplitBreakdownText: { fontSize: 12, color: '#065F46', fontWeight: '600' },
 
   topHeader: {
     flexDirection: 'row',

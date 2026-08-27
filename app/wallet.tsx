@@ -87,6 +87,9 @@ export default function WalletScreen() {
   const [nationalIdNum, setNationalIdNum] = useState('');
   const [upgradingTier, setUpgradingTier] = useState(false);
 
+  // eBay Transaction Category Filter
+  const [txFilter, setTxFilter] = useState<'all' | 'escrow' | 'payout' | 'top_up' | 'boost'>('all');
+
   const loadWalletData = useCallback(async () => {
     if (!user) return;
     try {
@@ -109,7 +112,16 @@ export default function WalletScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user]);
+  }, [user, selectedMethod]);
+
+  const filteredTransactions = transactions.filter((tx) => {
+    if (txFilter === 'all') return true;
+    if (txFilter === 'escrow') return tx.type === 'escrow_hold' || tx.type === 'escrow_release';
+    if (txFilter === 'payout') return tx.type === 'payout';
+    if (txFilter === 'top_up') return tx.type === 'top_up' || tx.type === 'deposit';
+    if (txFilter === 'boost') return tx.type === 'fee_deduction';
+    return true;
+  });
 
   useEffect(() => {
     loadWalletData();
@@ -366,24 +378,76 @@ export default function WalletScreen() {
 
           {/* Transaction History Section */}
           <View style={styles.txSectionHeader}>
-            <Text style={styles.txSectionTitle}>Transaction Activity</Text>
+            <Text style={styles.txSectionTitle}>Financial Activity & Ledger</Text>
             <TouchableOpacity onPress={loadWalletData} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <RefreshCw color="#64748B" size={13} />
               <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>Refresh</Text>
             </TouchableOpacity>
           </View>
 
-          {transactions.length === 0 ? (
+          {/* Transaction Category Filter Tabs */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScroll}
+          >
+            <TouchableOpacity
+              style={[styles.filterChip, txFilter === 'all' && styles.filterChipActive]}
+              onPress={() => setTxFilter('all')}
+            >
+              <Text style={[styles.filterChipText, txFilter === 'all' && styles.filterChipTextActive]}>
+                All ({transactions.length})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.filterChip, txFilter === 'escrow' && styles.filterChipActive]}
+              onPress={() => setTxFilter('escrow')}
+            >
+              <Text style={[styles.filterChipText, txFilter === 'escrow' && styles.filterChipTextActive]}>
+                🟢 Sales (Escrow)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.filterChip, txFilter === 'payout' && styles.filterChipActive]}
+              onPress={() => setTxFilter('payout')}
+            >
+              <Text style={[styles.filterChipText, txFilter === 'payout' && styles.filterChipTextActive]}>
+                🔴 Payouts
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.filterChip, txFilter === 'top_up' && styles.filterChipActive]}
+              onPress={() => setTxFilter('top_up')}
+            >
+              <Text style={[styles.filterChipText, txFilter === 'top_up' && styles.filterChipTextActive]}>
+                ➕ Deposits
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.filterChip, txFilter === 'boost' && styles.filterChipActive]}
+              onPress={() => setTxFilter('boost')}
+            >
+              <Text style={[styles.filterChipText, txFilter === 'boost' && styles.filterChipTextActive]}>
+                ⚡ Ad Boosts
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          {filteredTransactions.length === 0 ? (
             <View style={styles.emptyCard}>
               <Clock color="#94A3B8" size={32} />
-              <Text style={styles.emptyTitle}>No Transactions Yet</Text>
+              <Text style={styles.emptyTitle}>No Transactions in this Filter</Text>
               <Text style={styles.emptySub}>
-                When you sell an item or receive an escrow payment, it will appear in your ledger here.
+                When transactions in this category occur, they will appear in your ledger here.
               </Text>
             </View>
           ) : (
             <View style={styles.txList}>
-              {transactions.map((tx) => {
+              {filteredTransactions.map((tx) => {
                 const isPositive = tx.type === 'escrow_release' || tx.type === 'deposit';
                 const isPending = tx.type === 'escrow_hold';
                 return (
@@ -886,9 +950,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   txSectionTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+
+  filterScroll: { flexDirection: 'row', gap: 6, marginBottom: 12, paddingVertical: 2 },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  filterChipActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#2563EB',
+  },
+  filterChipText: { fontSize: 11, fontWeight: '700', color: '#64748B' },
+  filterChipTextActive: { color: '#2563EB', fontWeight: '800' },
 
   emptyCard: {
     backgroundColor: 'white',
