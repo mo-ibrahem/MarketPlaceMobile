@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,7 +17,6 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import EgbayLogo from '../assets/images/egbay.svg';
 import { auth } from '../src/services/lib/supabase';
 
 export default function LoginScreen() {
@@ -92,7 +92,10 @@ export default function LoginScreen() {
             style={[styles.hero, { paddingTop: insets.top + 32 }]}
           >
             <View style={styles.logoWrap}>
-              <EgbayLogo width={160} height={60} />
+              <Image
+                source={require('../assets/images/egbay.png')}
+                style={{ width: 160, height: 60, resizeMode: 'contain' }}
+              />
             </View>
             <Text style={styles.heroTagline}>Egypt's #1 Marketplace 🇪🇬</Text>
             <Text style={styles.heroSub}>Buy & sell anything, anywhere in Egypt</Text>

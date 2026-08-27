@@ -39,6 +39,7 @@
     "i18next": "^26.3.6",
     "lucide-react-native": "^0.544.0",
     "nativewind": "^4.2.1",
+    "puppeteer-core": "^25.9.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-i18next": "^17.0.9",
