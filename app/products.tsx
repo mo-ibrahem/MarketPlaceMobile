@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Heart, Search, X } from 'lucide-react-native';
+import { Heart, MapPin, Search, Star, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -11,6 +11,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,11 +28,29 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'price_desc', label: 'Price ↓' },
 ];
 
+const CATEGORY_OPTIONS = ['Electronics', 'Fashion', 'Home', 'Toys', 'Sports', 'Books', 'Beauty', 'Automotive'];
+
+const EGYPTIAN_GOVERNORATES = [
+  'Cairo', 'Giza', 'Alexandria', 'Luxor', 'Aswan', 'Asyut',
+  'Beheira', 'Beni Suef', 'Dakahlia', 'Damietta', 'Fayoum',
+  'Gharbia', 'Ismailia', 'Kafr El Sheikh', 'Matruh', 'Minya',
+  'Monufia', 'New Valley', 'North Sinai', 'Port Said', 'Qalyubia',
+  'Qena', 'Red Sea', 'Sharqia', 'Sohag', 'South Sinai', 'Suez',
+];
+
+function formatEGP(price: number | string): string {
+  const n = Math.round(Number(price));
+  return `EGP ${n.toLocaleString('en-EG')}`;
+}
+
 // ─── Products Screen ──────────────────────────────────────────────────────────
 
 export default function ProductsScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const { category, search } = useLocalSearchParams<{ category?: string; search?: string }>();
+
+  const numColumns = width >= 900 ? 4 : width >= 600 ? 3 : 2;
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +61,10 @@ export default function ProductsScreen() {
   const [sortBy, setSortBy] = useState<SortKey>('newest');
   const [conditions, setConditions] = useState<Set<ConditionFilter>>(new Set());
   const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
+  const [selectedCategory, setSelectedCategory] = useState(category ?? '');
+  const [selectedLocation, setSelectedLocation] = useState('');
+  const [catOpen, setCatOpen] = useState(false);
+  const [locOpen, setLocOpen] = useState(false);
   // Price range
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
@@ -91,6 +114,16 @@ export default function ProductsScreen() {
       list = list.filter(p => conditions.has(p.condition as ConditionFilter));
     }
 
+    // Category filter (client-side, respects the chip selection)
+    if (selectedCategory && selectedCategory !== 'All Categories') {
+      list = list.filter(p => p.category.toLowerCase() === selectedCategory.toLowerCase());
+    }
+
+    // Location filter
+    if (selectedLocation) {
+      list = list.filter(p => (p as any).location === selectedLocation);
+    }
+
     // Price range
     if (appliedMin !== '') list = list.filter(p => Number(p.price) >= Number(appliedMin));
     if (appliedMax !== '') list = list.filter(p => Number(p.price) <= Number(appliedMax));
@@ -99,13 +132,15 @@ export default function ProductsScreen() {
     if (sortBy === 'price_desc') list.sort((a, b) => Number(b.price) - Number(a.price));
 
     return list;
-  }, [products, searchText, conditions, sortBy, appliedMin, appliedMax]);
+  }, [products, searchText, conditions, sortBy, appliedMin, appliedMax, selectedCategory, selectedLocation]);
 
   const hasFilters =
     conditions.size > 0 ||
     sortBy !== 'newest' ||
     appliedMin !== '' ||
     appliedMax !== '' ||
+    selectedCategory !== (category ?? '') ||
+    selectedLocation !== '' ||
     searchText !== (search ?? '');
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -127,6 +162,10 @@ export default function ProductsScreen() {
     setAppliedMin('');
     setAppliedMax('');
     setPriceOpen(false);
+    setSelectedCategory(category ?? '');
+    setSelectedLocation('');
+    setCatOpen(false);
+    setLocOpen(false);
   };
 
   const toggleWishlist = async (product: Product) => {
@@ -159,10 +198,9 @@ export default function ProductsScreen() {
 
       {/*
        * ── FIXED HEADER (search + filters + count) ──────────────────────────
-       * Wrapped in a plain View with no flex so it always takes its natural
-       * height and is never squeezed by the list below.
+       * Wrapped in a View with maxWidth: 960 and alignSelf: 'center'
        */}
-      <View>
+      <View style={{ width: '100%', maxWidth: 960, alignSelf: 'center' }}>
         {/* Search bar */}
         <View style={styles.searchSection}>
           <View style={styles.searchBar}>
@@ -218,14 +256,34 @@ export default function ProductsScreen() {
             </TouchableOpacity>
           ))}
 
+          {/* Category filter chip */}
+          <TouchableOpacity
+            style={[styles.chip, (catOpen || selectedCategory) ? styles.chipActive : undefined]}
+            onPress={() => { setCatOpen(v => !v); setLocOpen(false); }}
+          >
+            <Text style={[styles.chipText, (catOpen || selectedCategory) ? styles.chipTextActive : undefined]}>
+              {selectedCategory || 'Category'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Location filter chip */}
+          <TouchableOpacity
+            style={[styles.chip, (locOpen || selectedLocation) ? styles.chipActive : undefined]}
+            onPress={() => { setLocOpen(v => !v); setCatOpen(false); }}
+          >
+            <Text style={[styles.chipText, (locOpen || selectedLocation) ? styles.chipTextActive : undefined]}>
+              {selectedLocation ? `📍 ${selectedLocation}` : 'Location'}
+            </Text>
+          </TouchableOpacity>
+
           {/* Price filter chip */}
           <TouchableOpacity
             style={[styles.chip, (priceOpen || appliedMin || appliedMax) ? styles.chipActive : undefined]}
-            onPress={() => setPriceOpen(v => !v)}
+            onPress={() => { setPriceOpen(v => !v); setCatOpen(false); setLocOpen(false); }}
           >
             <Text style={[styles.chipText, (priceOpen || appliedMin || appliedMax) ? styles.chipTextActive : undefined]}>
               {appliedMin || appliedMax
-                ? `$${appliedMin || '0'} – $${appliedMax || '∞'}`
+                ? `EGP ${appliedMin || '0'} – ${appliedMax || '∞'}`
                 : 'Price'}
             </Text>
           </TouchableOpacity>
@@ -239,12 +297,70 @@ export default function ProductsScreen() {
           )}
         </ScrollView>
 
+        {/* Active Filter Chips (Removable) */}
+        {hasFilters && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.activeFilterRow}
+          >
+            {selectedCategory ? (
+              <TouchableOpacity style={styles.activePill} onPress={() => setSelectedCategory('')}>
+                <Text style={styles.activePillText}>{selectedCategory}</Text>
+                <X size={12} color="#2563EB" />
+              </TouchableOpacity>
+            ) : null}
+            {selectedLocation ? (
+              <TouchableOpacity style={styles.activePill} onPress={() => setSelectedLocation('')}>
+                <Text style={styles.activePillText}>📍 {selectedLocation}</Text>
+                <X size={12} color="#2563EB" />
+              </TouchableOpacity>
+            ) : null}
+            {appliedMin || appliedMax ? (
+              <TouchableOpacity style={styles.activePill} onPress={() => { setAppliedMin(''); setAppliedMax(''); setMinPrice(''); setMaxPrice(''); }}>
+                <Text style={styles.activePillText}>EGP {appliedMin || '0'} - {appliedMax || '∞'}</Text>
+                <X size={12} color="#2563EB" />
+              </TouchableOpacity>
+            ) : null}
+            {Array.from(conditions).map(c => (
+              <TouchableOpacity key={c} style={styles.activePill} onPress={() => toggleCondition(c)}>
+                <Text style={styles.activePillText}>{c}</Text>
+                <X size={12} color="#2563EB" />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
         {/* Price range panel */}
         {priceOpen && (
           <View style={styles.pricePanel}>
+            {/* Quick preset chips */}
+            <View style={styles.pricePresetsRow}>
+              {[
+                { label: '< 500', min: '', max: '500' },
+                { label: '500 - 2K', min: '500', max: '2000' },
+                { label: '2K - 5K', min: '2000', max: '5000' },
+                { label: '5K+', min: '5000', max: '' },
+              ].map(preset => (
+                <TouchableOpacity
+                  key={preset.label}
+                  style={styles.pricePresetChip}
+                  onPress={() => {
+                    setMinPrice(preset.min);
+                    setMaxPrice(preset.max);
+                    setAppliedMin(preset.min);
+                    setAppliedMax(preset.max);
+                    setPriceOpen(false);
+                  }}
+                >
+                  <Text style={styles.pricePresetText}>{preset.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             <View style={styles.priceInputRow}>
               <View style={styles.priceInputWrap}>
-                <Text style={styles.priceInputLabel}>Min $</Text>
+                <Text style={styles.priceInputLabel}>Min EGP</Text>
                 <TextInput
                   style={styles.priceInput}
                   placeholder="0"
@@ -256,7 +372,7 @@ export default function ProductsScreen() {
               </View>
               <View style={styles.priceDash} />
               <View style={styles.priceInputWrap}>
-                <Text style={styles.priceInputLabel}>Max $</Text>
+                <Text style={styles.priceInputLabel}>Max EGP</Text>
                 <TextInput
                   style={styles.priceInput}
                   placeholder="Any"
@@ -276,6 +392,52 @@ export default function ProductsScreen() {
           </View>
         )}
 
+        {/* Category dropdown panel */}
+        {catOpen && (
+          <View style={styles.pricePanel}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+              <TouchableOpacity
+                style={[styles.chip, selectedCategory === '' && styles.chipActive]}
+                onPress={() => { setSelectedCategory(''); setCatOpen(false); }}
+              >
+                <Text style={[styles.chipText, selectedCategory === '' && styles.chipTextActive]}>All</Text>
+              </TouchableOpacity>
+              {CATEGORY_OPTIONS.map(cat => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.chip, selectedCategory === cat && styles.chipActive]}
+                  onPress={() => { setSelectedCategory(cat); setCatOpen(false); }}
+                >
+                  <Text style={[styles.chipText, selectedCategory === cat && styles.chipTextActive]}>{cat}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Location dropdown panel */}
+        {locOpen && (
+          <View style={styles.pricePanel}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+              <TouchableOpacity
+                style={[styles.chip, selectedLocation === '' && styles.chipActive]}
+                onPress={() => { setSelectedLocation(''); setLocOpen(false); }}
+              >
+                <Text style={[styles.chipText, selectedLocation === '' && styles.chipTextActive]}>All</Text>
+              </TouchableOpacity>
+              {EGYPTIAN_GOVERNORATES.map(gov => (
+                <TouchableOpacity
+                  key={gov}
+                  style={[styles.chip, selectedLocation === gov && styles.chipActive]}
+                  onPress={() => { setSelectedLocation(gov); setLocOpen(false); }}
+                >
+                  <Text style={[styles.chipText, selectedLocation === gov && styles.chipTextActive]}>{gov}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Result count */}
         {!loading && (
           <Text style={styles.resultCount}>
@@ -288,17 +450,17 @@ export default function ProductsScreen() {
       {/*
        * ── LIST AREA ──────────────────────────────────────────────────────────
        * flex: 1 ensures this takes ALL remaining height after the header View
-       * above. Without this, FlatList tries to size itself to its full content
-       * which can push the header off screen on Android.
+       * above.
        */}
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, width: '100%', maxWidth: 960, alignSelf: 'center' }}>
         {loading ? (
           <SkeletonGrid />
         ) : (
           <FlatList
+            key={`grid-${numColumns}`}
             data={filteredProducts}
             keyExtractor={item => item.id}
-            numColumns={2}
+            numColumns={numColumns}
             contentContainerStyle={styles.listContent}
             columnWrapperStyle={styles.columnWrapper}
             refreshControl={
@@ -343,14 +505,12 @@ function ProductCard({
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
       <View style={styles.cardImgWrapper}>
         <Image
-          source={{
-            uri: item.images?.[0] || 'https://placehold.co/400x300/F1F5F9/64748B?text=Item',
-          }}
+          source={{ uri: item.images?.[0] || 'https://placehold.co/400x300/F1F5F9/64748B?text=Item' }}
           style={styles.cardImg}
         />
 
         <View style={styles.cardPricePill}>
-          <Text style={styles.cardPriceText}>${Number(item.price).toFixed(2)}</Text>
+          <Text style={styles.cardPriceText}>{formatEGP(item.price)}</Text>
         </View>
 
         <TouchableOpacity style={styles.cardHeart} onPress={onToggleWishlist}>
@@ -370,6 +530,16 @@ function ProductCard({
 
       <View style={styles.cardBody}>
         <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+        
+        {/* Rating and Condition */}
+        <View style={styles.cardRatingRow}>
+          <View style={styles.ratingPill}>
+            <Star color="#F59E0B" fill="#F59E0B" size={10} />
+            <Text style={styles.ratingText}>4.9</Text>
+          </View>
+          <Text style={styles.conditionTag}>{item.condition || 'Used'}</Text>
+        </View>
+
         <View style={styles.sellerRow}>
           <View style={styles.sellerAvatar}>
             <Text style={styles.sellerInitial}>
@@ -380,6 +550,12 @@ function ProductCard({
             {item.seller?.full_name ?? 'Seller'}
           </Text>
         </View>
+
+        {item.location ? (
+          <Text style={styles.cardLocation} numberOfLines={1}>
+            <MapPin size={10} color="#64748B" /> {item.location}
+          </Text>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -581,7 +757,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     minHeight: 36,
   },
-  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   sellerAvatar: {
     width: 20,
     height: 20,
@@ -592,6 +768,24 @@ const styles = StyleSheet.create({
   },
   sellerInitial: { fontSize: 10, fontWeight: '800', color: '#6366F1' },
   sellerName: { fontSize: 11, color: '#94A3B8', fontWeight: '500', flex: 1 },
+  cardRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 4,
+  },
+  ratingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  ratingText: { fontSize: 10, fontWeight: '800', color: '#92400E' },
+  conditionTag: { fontSize: 10, fontWeight: '600', color: '#64748B' },
+  cardLocation: { fontSize: 10, color: '#64748B', fontWeight: '600', marginTop: 3 },
 
   // Empty state
   emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
@@ -620,6 +814,30 @@ const styles = StyleSheet.create({
   },
   clearBtnText: { color: '#2563EB', fontSize: 15, fontWeight: '800' },
 
+  // Active filter pills
+  activeFilterRow: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 8,
+    alignItems: 'center',
+  },
+  activePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  activePillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+
   // Price range panel
   pricePanel: {
     backgroundColor: 'white',
@@ -634,6 +852,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
+  },
+  pricePresetsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  pricePresetChip: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    paddingVertical: 7,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  pricePresetText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
   },
   priceInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   priceInputWrap: { flex: 1 },

@@ -7,10 +7,9 @@ import {
   ArrowRight,
   Camera,
   CheckCircle,
-  ChevronDown,
-  DollarSign,
   FileText,
   ImagePlus,
+  MapPin,
   Tag,
   X,
 } from "lucide-react-native";
@@ -57,10 +56,18 @@ const CONDITIONS = [
   { value: "Used", labelKey: "sell.conditions.used", desc: "Pre-owned, in good shape",    color: "#F59E0B", bg: "#FEF3C7" },
 ];
 
+const EGYPTIAN_GOVERNORATES = [
+  'Cairo', 'Giza', 'Alexandria', 'Luxor', 'Aswan', 'Asyut',
+  'Beheira', 'Beni Suef', 'Dakahlia', 'Damietta', 'Fayoum',
+  'Gharbia', 'Ismailia', 'Kafr El Sheikh', 'Matruh', 'Minya',
+  'Monufia', 'New Valley', 'North Sinai', 'Port Said', 'Qalyubia',
+  'Qena', 'Red Sea', 'Sharqia', 'Sohag', 'South Sinai', 'Suez',
+];
+
 const STEPS = [
   { id: 1, label: "Photos",  icon: Camera    },
   { id: 2, label: "Details", icon: FileText  },
-  { id: 3, label: "Pricing", icon: DollarSign },
+  { id: 3, label: "Pricing", icon: Tag },
 ];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -80,6 +87,7 @@ export default function SellScreen() {
   const [price,     setPrice]     = useState("");
   const [category,  setCategory]  = useState("Electronics");
   const [condition, setCondition] = useState("New");
+  const [location,  setLocation]  = useState("");
   const [loading,   setLoading]   = useState(false);
   const [done,      setDone]      = useState(false);
 
@@ -109,6 +117,7 @@ export default function SellScreen() {
       setPrice('');
       setCategory('Electronics');
       setCondition('New');
+      setLocation('');
       setLoading(false);
       setDone(false);
     }, [])
@@ -193,6 +202,7 @@ export default function SellScreen() {
         price: parseFloat(price),
         category,
         condition,
+        location: location || undefined,
         images: imageUrls,
       });
       setDone(true);
@@ -208,6 +218,7 @@ export default function SellScreen() {
         setPrice('');
         setCategory('Electronics');
         setCondition('New');
+        setLocation('');
       }, 2400);
     } catch (err: any) {
       Toast.show({ type: "error", text1: t("common.error"), text2: err.message || t("sell.errorMessage") });
@@ -233,34 +244,35 @@ export default function SellScreen() {
 
   // ── Wizard ──────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        {step > 1 ? (
-          <TouchableOpacity style={styles.backBtn} onPress={goBack}>
-            <ArrowLeft color="#1E293B" size={22} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.backBtn} />
-        )}
-        <Text style={styles.headerTitle}>{t("sell.screenTitle")}</Text>
-        <Text style={styles.stepLabel}>{step} / {STEPS.length}</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
+      <View style={{ flex: 1, width: '100%', maxWidth: 680, alignSelf: 'center' }}>
+        {/* ── Header ── */}
+        <View style={styles.header}>
+          {step > 1 ? (
+            <TouchableOpacity onPress={goBack} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <ArrowLeft size={22} color="#1E293B" />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 32 }} />
+          )}
+          <Text style={styles.headerTitle}>{t("sell.screenTitle")}</Text>
+          <Text style={styles.stepLabel}>{step} / 3</Text>
+        </View>
 
-      {/* ── Progress bar ── */}
-      <View style={styles.progressTrack}>
-        <Animated.View
-          style={[
-            styles.progressFill,
-            {
-              width: progressAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: ["2%", "100%"],
-              }),
-            },
-          ]}
-        />
-      </View>
+        {/* ── Progress bar ── */}
+        <View style={styles.progressTrack}>
+          <Animated.View
+            style={[
+              styles.progressFill,
+              {
+                width: progressAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["2%", "100%"],
+                }),
+              },
+            ]}
+          />
+        </View>
 
       {/* ── Step pills ── */}
       <View style={styles.stepsRow}>
@@ -385,6 +397,28 @@ export default function SellScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Location / Governorate */}
+            <FormField icon={<MapPin color="#6366F1" size={18} />} label={t("sell.productLocation")}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.govRow}
+              >
+                {EGYPTIAN_GOVERNORATES.map(gov => (
+                  <TouchableOpacity
+                    key={gov}
+                    style={[styles.govChip, location === gov && styles.govChipActive]}
+                    onPress={() => setLocation(prev => prev === gov ? '' : gov)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.govChipText, location === gov && styles.govChipTextActive]}>
+                      {gov}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </FormField>
           </View>
         )}
 
@@ -396,12 +430,12 @@ export default function SellScreen() {
 
             {/* Price input */}
             <View style={styles.priceInputWrapper}>
-              <LinearGradient colors={["#EFF6FF", "#DBEAFE"]} style={styles.priceIconBox}>
-                <DollarSign color="#2563EB" size={24} />
-              </LinearGradient>
+              <View style={styles.priceIconBox}>
+                <Text style={styles.priceIconText}>EGP</Text>
+              </View>
               <TextInput
                 style={styles.priceInput}
-                placeholder="0.00"
+                placeholder="0"
                 placeholderTextColor="#CBD5E1"
                 value={price}
                 onChangeText={setPrice}
@@ -409,6 +443,16 @@ export default function SellScreen() {
                 autoFocus
               />
             </View>
+
+            {/* Live EGP formatted badge */}
+            {parseFloat(price) > 0 && (
+              <View style={styles.livePriceTag}>
+                <Text style={styles.livePriceLabel}>Buyer sees:</Text>
+                <Text style={styles.livePriceValue}>
+                  EGP {Math.round(parseFloat(price)).toLocaleString('en-EG')}
+                </Text>
+              </View>
+            )}
 
             {/* Condition */}
             <Text style={[styles.fieldLabel, { marginTop: 28 }]}>
@@ -442,7 +486,7 @@ export default function SellScreen() {
             {/* Listing summary card */}
             {(title || price) && (
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryCardTitle}>Listing Preview</Text>
+                <Text style={styles.summaryCardTitle}>LISTING PREVIEW</Text>
                 <View style={styles.summaryRow}>
                   {images[0] && (
                     <Image source={{ uri: images[0].uri }} style={styles.summaryThumb} />
@@ -450,13 +494,18 @@ export default function SellScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.summaryItemTitle} numberOfLines={2}>{title || "—"}</Text>
                     <Text style={styles.summaryItemPrice}>
-                      {price ? `$${parseFloat(price || "0").toFixed(2)}` : "—"}
+                      {price ? `EGP ${Math.round(parseFloat(price || '0')).toLocaleString('en-EG')}` : "—"}
                     </Text>
                     <View style={styles.summaryTags}>
                       <View style={styles.summaryTag}><Text style={styles.summaryTagText}>{category}</Text></View>
                       <View style={[styles.summaryTag, { backgroundColor: condition === "New" ? "#D1FAE5" : "#FEF3C7" }]}>
                         <Text style={[styles.summaryTagText, { color: condition === "New" ? "#065F46" : "#92400E" }]}>{condition}</Text>
                       </View>
+                      {location ? (
+                        <View style={[styles.summaryTag, { backgroundColor: '#F0FDF4' }]}>
+                          <Text style={[styles.summaryTagText, { color: '#166534' }]}>📍 {location}</Text>
+                        </View>
+                      ) : null}
                     </View>
                   </View>
                 </View>
@@ -516,6 +565,7 @@ export default function SellScreen() {
             </TouchableOpacity>
           </Animated.View>
         )}
+      </View>
       </View>
     </SafeAreaView>
   );
@@ -729,7 +779,19 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
   },
-  priceIconBox: { padding: 20 },
+  priceIconBox: {
+    padding: 18,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 70,
+  },
+  priceIconText: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#2563EB',
+    letterSpacing: 0.5,
+  },
   priceInput: {
     flex: 1,
     fontSize: 36,
@@ -738,6 +800,19 @@ const styles = StyleSheet.create({
     paddingRight: 20,
     letterSpacing: -0.5,
   },
+  livePriceTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  livePriceLabel: { fontSize: 11, color: '#64748B', fontWeight: '500' },
+  livePriceValue: { fontSize: 12, color: '#2563EB', fontWeight: '800' },
 
   // Condition cards
   conditionRow: { flexDirection: "row", gap: 12 },
@@ -790,10 +865,24 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
   summaryThumb: { width: 70, height: 70, borderRadius: 12 },
   summaryItemTitle: { fontSize: 14, fontWeight: "700", color: "#1E293B", marginBottom: 4, lineHeight: 20 },
-  summaryItemPrice: { fontSize: 20, fontWeight: "800", color: "#2563EB", marginBottom: 8 },
-  summaryTags: { flexDirection: "row", gap: 8 },
+  summaryItemPrice: { fontSize: 18, fontWeight: "800", color: "#2563EB", marginBottom: 8 },
+  summaryTags: { flexDirection: "row", gap: 6, flexWrap: 'wrap' },
   summaryTag: { backgroundColor: "#EEF2FF", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
   summaryTagText: { fontSize: 11, fontWeight: "700", color: "#6366F1" },
+
+  // Governorate picker
+  govRow: { gap: 8, paddingBottom: 4 },
+  govChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  govChipActive: { backgroundColor: '#EEF2FF', borderColor: '#6366F1' },
+  govChipText: { fontSize: 13, fontWeight: '600', color: '#475569' },
+  govChipTextActive: { color: '#6366F1', fontWeight: '700' },
 
   // Bottom bar
   bottomBar: {

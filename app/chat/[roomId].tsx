@@ -1,138 +1,491 @@
-import { useLocalSearchParams } from 'expo-router';
-import { Send } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft, MessageCircle, Send, ShieldCheck, Tag } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
-import { getMessages, sendMessage } from '../../src/services/lib/chatService';
-import { supabase } from '../../src/services/lib/supabase';
+import {
+  getChatRoomDetails,
+  getMessages,
+  sendMessage,
+  subscribeToMessages,
+  type ChatMessage,
+  type ChatRoomDetails,
+} from '../../src/services/lib/chatService';
 
-export default function ChatScreen() {
+function formatMessageTime(isoString: string): string {
+  try {
+    const d = new Date(isoString);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
+
+export default function ChatRoomScreen() {
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
   const { user } = useAuth();
-  const [messages, setMessages] = useState<any[]>([]);
+  const router = useRouter();
+  const { t } = useTranslation();
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [roomInfo, setRoomInfo] = useState<ChatRoomDetails | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const flatListRef = useRef<FlatList>(null);
 
+  const quickReplies = [
+    t('chat.quickReplies.available'),
+    t('chat.quickReplies.bestPrice'),
+    t('chat.quickReplies.location'),
+    t('chat.quickReplies.shipping'),
+  ];
+
+  // ── Fetch Details & Initial Messages ──────────────────────────────────────
   useEffect(() => {
-    // Fetch initial messages
-    const fetchMessages = async () => {
-      if (!roomId) return;
-      setLoading(true);
-      const data = await getMessages(roomId);
-      setMessages(data || []);
-      setLoading(false);
-    };
+    if (!roomId) return;
+    let isMounted = true;
 
-    fetchMessages();
-
-    // Set up Realtime subscription
-    const channel = supabase
-      .channel(`chat-room-${roomId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` },
-        (payload) => {
-          setMessages((prevMessages) => [...prevMessages, payload.new]);
+    async function loadData() {
+      try {
+        setLoading(true);
+        const [msgs, info] = await Promise.all([
+          getMessages(roomId!),
+          getChatRoomDetails(roomId!),
+        ]);
+        if (isMounted) {
+          setMessages(msgs);
+          setRoomInfo(info);
         }
-      )
-      .subscribe();
+      } catch (err: any) {
+        console.error('[Chat] Load error:', err);
+        Toast.show({ type: 'error', text1: t('chat.loadError') });
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
 
-    // Cleanup subscription on unmount
+    loadData();
+
+    // Subscribe to realtime messages
+    const channel = subscribeToMessages(roomId, (newMsg) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === newMsg.id)) return prev;
+        return [...prev, newMsg];
+      });
+    });
+
     return () => {
-      supabase.removeChannel(channel);
+      isMounted = false;
+      channel.unsubscribe();
     };
-  }, [roomId]);
-  
-  const handleSend = async () => {
-    if (newMessage.trim() === '' || !roomId) return;
-    const content = newMessage.trim();
+  }, [roomId, t]);
+
+  // ── Send Message ──────────────────────────────────────────────────────────
+  const handleSend = async (textToSend = newMessage) => {
+    const content = textToSend.trim();
+    if (!content || !roomId) return;
     setNewMessage('');
-    await sendMessage(roomId, content);
+    try {
+      await sendMessage(roomId, content);
+    } catch (err: any) {
+      console.error('[Chat] Send error:', err);
+      Toast.show({ type: 'error', text1: 'Failed to send message.' });
+    }
   };
 
   if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" /></View>;
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#6366F1" />
+        <Text style={{ marginTop: 12, color: '#94A3B8' }}>{t('common.loading')}</Text>
+      </View>
+    );
   }
 
+  const otherName = roomInfo?.other_user_name || 'Trader';
+  const otherInitial = otherName.charAt(0).toUpperCase();
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={[
-            styles.messageBubble,
-            item.sender_id === user?.id ? styles.myMessage : styles.theirMessage
-          ]}>
-            <Text style={item.sender_id === user?.id ? styles.myMessageText : styles.theirMessageText}>
-              {item.content}
-            </Text>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <View style={{ flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' }}>
+        
+        {/* ── Top Header ── */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <ArrowLeft color="#1E293B" size={22} />
+          </TouchableOpacity>
+
+          <View style={styles.headerProfile}>
+            <View style={styles.avatarWrap}>
+              {roomInfo?.other_user_avatar_url ? (
+                <Image source={{ uri: roomInfo.other_user_avatar_url }} style={styles.avatar} />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarInitial}>{otherInitial}</Text>
+                </View>
+              )}
+              <View style={styles.onlineDot} />
+            </View>
+            <View>
+              <Text style={styles.headerName} numberOfLines={1}>{otherName}</Text>
+              <Text style={styles.headerStatus}>🇪🇬 Active in Egypt</Text>
+            </View>
           </View>
-        )}
-        contentContainerStyle={styles.listContainer}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-      />
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={newMessage}
-          onChangeText={setNewMessage}
-          placeholder="Type a message..."
-          placeholderTextColor="#9CA3AF"
-        />
-        <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-          <Send color="white" size={20} />
-        </TouchableOpacity>
+
+          <View style={styles.verifiedBadge}>
+            <ShieldCheck size={18} color="#10B981" />
+          </View>
+        </View>
+
+        {/* ── Safety Notice Banner ── */}
+        <View style={styles.safetyBanner}>
+          <ShieldCheck size={14} color="#2563EB" />
+          <Text style={styles.safetyBannerText}>{t('chat.safetyReminder')}</Text>
+        </View>
+
+        {/* ── Message List ── */}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+        >
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContainer}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            renderItem={({ item }) => {
+              const isMe = item.sender_id === user?.id;
+              const isOffer = item.content.includes('[OFFER') || item.content.includes('عرض شراء');
+              const isAccepted = item.content.includes('OFFER ACCEPTED') || item.content.includes('تم قبول العرض');
+              const isDeclined = item.content.includes('OFFER DECLINED') || item.content.includes('تم رفض العرض');
+
+              return (
+                <View style={[styles.messageRow, isMe ? styles.myRow : styles.theirRow]}>
+                  <View
+                    style={[
+                      styles.messageBubble,
+                      isMe ? styles.myMessage : styles.theirMessage,
+                      isOffer && (isMe ? styles.myOfferBubble : styles.theirOfferBubble),
+                      isAccepted && styles.acceptedBubble,
+                      isDeclined && styles.declinedBubble,
+                    ]}
+                  >
+                    {isOffer && (
+                      <View style={styles.offerBadgeHeader}>
+                        <Tag size={13} color={isMe ? 'white' : '#7C3AED'} />
+                        <Text style={[styles.offerBadgeText, { color: isMe ? 'white' : '#7C3AED' }]}>
+                          PRICE OFFER / عرض شراء
+                        </Text>
+                      </View>
+                    )}
+                    <Text style={[styles.messageText, isMe ? styles.myMessageText : styles.theirMessageText]}>
+                      {item.content}
+                    </Text>
+
+                    {/* Interactive Offer Action Buttons (for recipient) */}
+                    {isOffer && !isMe && !isAccepted && !isDeclined && (
+                      <View style={styles.offerActionRow}>
+                        <TouchableOpacity
+                          style={styles.acceptOfferBtn}
+                          onPress={() => handleSend('✅ [OFFER ACCEPTED / تم قبول العرض] I accept your offer! Let’s arrange delivery or meetup.')}
+                        >
+                          <Text style={styles.acceptOfferText}>{t('chat.acceptOffer')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.declineOfferBtn}
+                          onPress={() => handleSend('❌ [OFFER DECLINED / تم رفض العرض] Thank you for your offer, but I cannot accept this price.')}
+                        >
+                          <Text style={styles.declineOfferText}>{t('chat.declineOffer')}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    <Text style={[styles.timeText, isMe ? styles.myTimeText : styles.theirTimeText]}>
+                      {formatMessageTime(item.created_at)}
+                    </Text>
+                  </View>
+                </View>
+              );
+            }}
+          />
+
+          {/* ── Quick Replies ── */}
+          <View style={styles.quickRepliesSection}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickRepliesRow}
+            >
+              {quickReplies.map((qr, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={styles.quickReplyChip}
+                  onPress={() => handleSend(qr)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.quickReplyText}>{qr}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* ── Input Bar ── */}
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              value={newMessage}
+              onChangeText={setNewMessage}
+              placeholder={t('chat.messagePlaceholder')}
+              placeholderTextColor="#9CA3AF"
+              multiline
+            />
+            <TouchableOpacity
+              style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
+              onPress={() => handleSend()}
+              disabled={!newMessage.trim()}
+            >
+              <Send color="white" size={18} />
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: 'white' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    listContainer: { padding: 10 },
-    messageBubble: {
-        padding: 12,
-        borderRadius: 18,
-        maxWidth: '75%',
-        marginBottom: 10,
-    },
-    myMessage: {
-        backgroundColor: '#2563EB',
-        alignSelf: 'flex-end',
-    },
-    theirMessage: {
-        backgroundColor: '#E5E7EB',
-        alignSelf: 'flex-start',
-    },
-    myMessageText: { color: 'white' },
-    theirMessageText: { color: '#1F2937' },
-    inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 10,
-        borderTopWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    input: {
-        flex: 1,
-        height: 40,
-        backgroundColor: '#F3F4F6',
-        borderRadius: 20,
-        paddingHorizontal: 15,
-        marginRight: 10,
-    },
-    sendButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#2563EB',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    gap: 12,
+  },
+  backBtn: {
+    padding: 4,
+  },
+  headerProfile: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  avatarWrap: { position: 'relative' },
+  avatar: { width: 38, height: 38, borderRadius: 19 },
+  avatarFallback: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitial: { fontSize: 15, fontWeight: '800', color: '#6366F1' },
+  onlineDot: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#10B981',
+    borderWidth: 1.5,
+    borderColor: 'white',
+  },
+  headerName: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+  headerStatus: { fontSize: 11, color: '#64748B', fontWeight: '500' },
+  verifiedBadge: { padding: 4 },
+
+  // Safety Banner
+  safetyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#DBEAFE',
+  },
+  safetyBannerText: { fontSize: 11, color: '#1E40AF', flex: 1, fontWeight: '500', lineHeight: 15 },
+
+  // Message list
+  listContainer: { paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
+  messageRow: { flexDirection: 'row', width: '100%' },
+  myRow: { justifyContent: 'flex-end' },
+  theirRow: { justifyContent: 'flex-start' },
+  messageBubble: {
+    maxWidth: '82%',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  myMessage: {
+    backgroundColor: '#2563EB',
+    borderBottomRightRadius: 4,
+  },
+  theirMessage: {
+    backgroundColor: 'white',
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  myOfferBubble: {
+    backgroundColor: '#7C3AED',
+    borderWidth: 1.5,
+    borderColor: '#6D28D9',
+  },
+  theirOfferBubble: {
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1.5,
+    borderColor: '#DDD6FE',
+  },
+  acceptedBubble: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
+  },
+  declinedBubble: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
+  },
+  offerBadgeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.2)',
+  },
+  offerBadgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  messageText: { fontSize: 14, lineHeight: 20 },
+  myMessageText: { color: 'white' },
+  theirMessageText: { color: '#1E293B' },
+  timeText: { fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
+  myTimeText: { color: 'rgba(255,255,255,0.75)' },
+  theirTimeText: { color: '#94A3B8' },
+
+  // Offer Action Buttons
+  offerActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  acceptOfferBtn: {
+    flex: 1,
+    backgroundColor: '#10B981',
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  acceptOfferText: { color: 'white', fontWeight: '800', fontSize: 12 },
+  declineOfferBtn: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  declineOfferText: { color: '#64748B', fontWeight: '700', fontSize: 12 },
+
+  // Quick replies
+  quickRepliesSection: {
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  quickRepliesRow: { paddingHorizontal: 16, gap: 8 },
+  quickReplyChip: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  quickReplyText: { fontSize: 12, fontWeight: '600', color: '#475569' },
+
+  // Input
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    gap: 10,
+  },
+  input: {
+    flex: 1,
+    minHeight: 42,
+    maxHeight: 100,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  sendButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#2563EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#CBD5E1',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
 });

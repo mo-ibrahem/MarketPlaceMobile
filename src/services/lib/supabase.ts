@@ -3,15 +3,35 @@ import { createClient } from '@supabase/supabase-js'
 import * as SecureStore from 'expo-secure-store'
 import 'react-native-url-polyfill/auto'
 
-// ADDED: This is the native storage adapter that replaces web cookies
+import { Platform } from 'react-native'
+
+// ADDED: Platform-aware storage adapter that uses SecureStore on Native and localStorage on Web
 const ExpoSecureStoreAdapter = {
   getItem: (key: string) => {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') {
+        return localStorage.getItem(key)
+      }
+      return null
+    }
     return SecureStore.getItemAsync(key)
   },
   setItem: (key: string, value: string) => {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, value)
+      }
+      return
+    }
     SecureStore.setItemAsync(key, value)
   },
   removeItem: (key: string) => {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(key)
+      }
+      return
+    }
     SecureStore.deleteItemAsync(key)
   },
 }

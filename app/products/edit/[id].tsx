@@ -1,13 +1,17 @@
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Save, Upload, X } from 'lucide-react-native';
+import { ArrowLeft, Camera, Check, MapPin, Save, Trash2, Upload, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,334 +20,480 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { useAuth } from '../../../hooks/useAuth';
 import { productService, type Product } from '../../../src/services/lib/products';
 import { supabase } from '../../../src/services/lib/supabase';
 
-const { width } = Dimensions.get('window');
-const SLIDE_WIDTH = width - 40; // The width of each slide (screen width minus container padding)
+const { width: SCREEN_W } = Dimensions.get('window');
+const SLIDE_WIDTH = SCREEN_W - 40;
+
+const CATEGORIES = [
+  'Electronics',
+  'Fashion',
+  'Home',
+  'Toys',
+  'Sports',
+  'Books',
+  'Beauty',
+  'Automotive',
+];
+
+const EGYPTIAN_GOVERNORATES = [
+  'Cairo', 'Giza', 'Alexandria', 'Luxor', 'Aswan', 'Asyut',
+  'Beheira', 'Beni Suef', 'Dakahlia', 'Damietta', 'Fayoum',
+  'Gharbia', 'Ismailia', 'Kafr El Sheikh', 'Matruh', 'Minya',
+  'Monufia', 'New Valley', 'North Sinai', 'Port Said', 'Qalyubia',
+  'Qena', 'Red Sea', 'Sharqia', 'Sohag', 'South Sinai', 'Suez',
+];
 
 export default function EditProductScreen() {
-    const { id } = useLocalSearchParams<{ id: string }>();
-    const router = useRouter();
-    const { user } = useAuth();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const { user } = useAuth();
+  const { t } = useTranslation();
 
-    const [product, setProduct] = useState<Partial<Product> | null>(null);
-    const [editableImages, setEditableImages] = useState<(string | ImagePicker.ImagePickerAsset)[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [activeIndex, setActiveIndex] = useState(0);
+  const [title,       setTitle]       = useState('');
+  const [description, setDescription] = useState('');
+  const [price,       setPrice]       = useState('');
+  const [category,    setCategory]    = useState('Electronics');
+  const [condition,   setCondition]   = useState('New');
+  const [location,    setLocation]    = useState('');
+  const [originalImages, setOriginalImages] = useState<string[]>([]);
+  const [editableImages, setEditableImages] = useState<(string | ImagePicker.ImagePickerAsset)[]>([]);
 
-    useEffect(() => {
-        if (id) {
-            loadProduct();
-        }
-    }, [id]);
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
 
-    const loadProduct = async () => {
-        try {
-            setLoading(true);
-            const productData = await productService.getProductById(id!);
-            setProduct(productData);
-            setEditableImages(productData?.images || []);
-        } catch (error) {
-            Alert.alert("Error", "Failed to load product details.");
-        } finally {
-            setLoading(false);
-        }
-    };
+  useEffect(() => {
+    if (id) loadProduct();
+  }, [id]);
 
-    const handleUpdate = (field: keyof Product, value: string | number) => {
-        if (product) {
-            setProduct({ ...product, [field]: value });
-        }
-    };
+  const loadProduct = async () => {
+    try {
+      setLoading(true);
+      const p = await productService.getProductById(id!);
+      if (p) {
+        setTitle(p.title || '');
+        setDescription(p.description || '');
+        setPrice(String(p.price || ''));
+        setCategory(p.category || 'Electronics');
+        setCondition(p.condition || 'New');
+        setLocation(p.location || '');
+        setOriginalImages(p.images || []);
+        setEditableImages(p.images || []);
+      }
+    } catch {
+      Toast.show({ type: 'error', text1: 'Failed to load product details.' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handlePickImage = async () => {
-        const pickerResult = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: 'images',
-            allowsMultipleSelection: true,
-            quality: 0.6,
-        });
-        if (!pickerResult.canceled) {
-            setEditableImages(prev => [...prev, ...pickerResult.assets]);
-        }
-    };
+  const handlePickImage = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images',
+      allowsMultipleSelection: true,
+      quality: 0.7,
+    });
+    if (!res.canceled) {
+      setEditableImages(prev => [...prev, ...res.assets]);
+    }
+  };
 
-    const handleRemoveImage = (indexToRemove: number) => {
-        setEditableImages(prev => prev.filter((_, index) => index !== indexToRemove));
-    };
+  const handleRemoveImage = (indexToRemove: number) => {
+    setEditableImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
 
-    const uploadImage = async (imageAsset: ImagePicker.ImagePickerAsset) => {
-        if (!imageAsset.uri) throw new Error("No image URI");
-        const arraybuffer = await fetch(imageAsset.uri).then(res => res.arrayBuffer());
-        const fileExt = imageAsset.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
-        const path = `${user!.id}/${Date.now()}.${fileExt}`;
-        const { error } = await supabase.storage.from('product-images').upload(path, arraybuffer, { contentType: `image/${fileExt}` });
-        if (error) throw error;
-        const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path);
-        return publicUrl;
-    };
+  const uploadImage = async (imageAsset: ImagePicker.ImagePickerAsset) => {
+    if (!imageAsset.uri) throw new Error("No image URI");
+    const arraybuffer = await fetch(imageAsset.uri).then(res => res.arrayBuffer());
+    const fileExt = imageAsset.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
+    const path = `${user!.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const { error } = await supabase.storage.from('product-images').upload(path, arraybuffer, { contentType: `image/${fileExt}` });
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path);
+    return publicUrl;
+  };
 
-    const handleSaveChanges = async () => {
-    if (!product || !id || !user) return;
+  const handleSaveChanges = async () => {
+    if (!id || !user) return;
+    if (!title.trim() || !price.trim()) {
+      Toast.show({ type: 'error', text1: 'Please fill in title and price.' });
+      return;
+    }
+
     setSaving(true);
     try {
-      // 1. FIGURE OUT WHAT CHANGED
-      const originalUrls = product.images || [];
       const keptUrls = editableImages.filter(img => typeof img === 'string') as string[];
-      const newImageAssets = editableImages.filter(img => typeof img !== 'string') as ImagePicker.ImagePickerAsset[];
+      const newAssets = editableImages.filter(img => typeof img !== 'string') as ImagePicker.ImagePickerAsset[];
       
-      // Find which of the original URLs are no longer in the new list
-      const urlsToDelete = originalUrls.filter(url => !keptUrls.includes(url));
-
-      // 2. CALL THE DISPOSAL CREW: Delete any images that were removed
+      const urlsToDelete = originalImages.filter(url => !keptUrls.includes(url));
       if (urlsToDelete.length > 0) {
         await productService.deleteProductImages(urlsToDelete);
       }
-      
-      // 3. UPLOAD ANY NEW IMAGES
-      const newImageUrls = await Promise.all(newImageAssets.map(asset => uploadImage(asset)));
-      
-      // 4. COMBINE AND SAVE THE FINAL LIST to the database
-      const finalImageUrls = [...keptUrls, ...newImageUrls];
+
+      const newUrls = await Promise.all(newAssets.map(asset => uploadImage(asset)));
+      const finalImageUrls = [...keptUrls, ...newUrls];
 
       await productService.updateProduct(id, {
-        title: product.title,
-        description: product.description,
-        price: Number(product.price),
+        title: title.trim(),
+        description: description.trim(),
+        price: Number(price),
+        category,
+        condition,
+        location: location || undefined,
         images: finalImageUrls,
       });
 
-      Alert.alert("Success", "Product updated successfully!");
+      Toast.show({ type: 'success', text1: 'Listing updated successfully!' });
       router.back();
-    } catch (error) {
-      console.error("Update failed:", error);
-      Alert.alert("Error", "Failed to update product.");
+    } catch (e: any) {
+      console.error('Update error:', e);
+      Toast.show({ type: 'error', text1: 'Failed to update product', text2: e.message });
     } finally {
       setSaving(false);
     }
   };
-    const handleScroll = (event: any) => {
-        const scrollPosition = event.nativeEvent.contentOffset.x;
-        const index = Math.round(scrollPosition / SLIDE_WIDTH);
-        setActiveIndex(index);
-    };
 
-    if (loading) {
-        return <View style={styles.center}><ActivityIndicator size="large" /></View>;
-    }
-
-    if (!product) {
-        return <View style={styles.center}><Text>Product not found.</Text></View>;
-    }
-
+  if (loading) {
     return (
-        <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
-            <ScrollView contentContainerStyle={styles.container}>
-                <Text style={styles.label}>Product Images</Text>
-                <View style={styles.sliderContainer}>
-                    <FlatList
-                        data={editableImages}
-                        horizontal
-                        pagingEnabled={false}
-                        decelerationRate="fast"
-                        snapToInterval={SLIDE_WIDTH}
-                        showsHorizontalScrollIndicator={false}
-                        keyExtractor={(_, index) => index.toString()}
-                        onMomentumScrollEnd={handleScroll}
-                        renderItem={({ item, index }) => (
-                            <View style={styles.slide}>
-                                <Image 
-                                    source={{ uri: typeof item === 'string' ? item : item.uri }} 
-                                    style={styles.mainImage} 
-                                />
-                                <TouchableOpacity style={styles.deleteIcon} onPress={() => handleRemoveImage(index)}>
-                                    <X size={18} color="white" />
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                        style={styles.slider}
-                        ListEmptyComponent={<View style={styles.emptySlide}><Text>No images yet</Text></View>}
-                    />
-                    {editableImages.length > 1 && (
-                        <View style={styles.slideCounter}>
-                            <Text style={styles.slideCounterText}>{activeIndex + 1} / {editableImages.length}</Text>
-                        </View>
-                    )}
-                    {editableImages.length > 1 && (
-                        <View style={styles.pagination}>
-                            {editableImages.map((_, index) => (
-                                <View
-                                    key={index}
-                                    style={[styles.dot, activeIndex === index ? styles.activeDot : {}]}
-                                />
-                            ))}
-                        </View>
-                    )}
-                </View>
-                <TouchableOpacity style={styles.imagePickerButton} onPress={handlePickImage}>
-                    <Upload color="#4B5563" size={20} />
-                    <Text style={styles.imagePickerText}>Add More Images</Text>
-                </TouchableOpacity>
-                
-                <Text style={styles.label}>Title</Text>
-                <TextInput
-                    style={styles.input}
-                    value={product.title}
-                    onChangeText={(text) => handleUpdate('title', text)}
-                />
-
-                <Text style={styles.label}>Description</Text>
-                <TextInput
-                    style={[styles.input, styles.textArea]}
-                    value={product.description}
-                    onChangeText={(text) => handleUpdate('description', text)}
-                    multiline
-                />
-
-                <Text style={styles.label}>Price ($)</Text>
-                <TextInput
-                    style={styles.input}
-                    value={String(product.price)}
-                    onChangeText={(text) => handleUpdate('price', text)}
-                    keyboardType="numeric"
-                />
-
-                <TouchableOpacity 
-                    style={styles.saveButton} 
-                    onPress={handleSaveChanges} 
-                    disabled={saving}
-                >
-                    {saving ? (
-                        <ActivityIndicator color="white" />
-                    ) : (
-                        <>
-                            <Save color="white" size={18} />
-                            <Text style={styles.saveButtonText}>Save Changes</Text>
-                        </>
-                    )}
-                </TouchableOpacity>
-            </ScrollView>
-        </SafeAreaView>
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#6366F1" />
+        <Text style={{ marginTop: 12, color: '#94A3B8' }}>Loading Listing…</Text>
+      </View>
     );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      {/* ── Top Header ── */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <ArrowLeft size={22} color="#1E293B" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Edit Listing</Text>
+        <View style={{ width: 32 }} />
+      </View>
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={{ alignItems: 'center' }} showsVerticalScrollIndicator={false}>
+          <View style={[styles.container, { width: '100%', maxWidth: 680, alignSelf: 'center' }]}>
+          {/* Images Section */}
+          <Text style={styles.sectionLabel}>Product Photos</Text>
+          <View style={styles.sliderContainer}>
+            <FlatList
+              data={editableImages}
+              horizontal
+              pagingEnabled={false}
+              decelerationRate="fast"
+              snapToInterval={SLIDE_WIDTH}
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(_, i) => String(i)}
+              onMomentumScrollEnd={e => {
+                setActiveIndex(Math.round(e.nativeEvent.contentOffset.x / SLIDE_WIDTH));
+              }}
+              renderItem={({ item, index }) => (
+                <View style={styles.slide}>
+                  <Image
+                    source={{ uri: typeof item === 'string' ? item : item.uri }}
+                    style={styles.mainImage}
+                  />
+                  <TouchableOpacity style={styles.deleteIcon} onPress={() => handleRemoveImage(index)}>
+                    <X size={16} color="white" />
+                  </TouchableOpacity>
+                </View>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptySlide}>
+                  <Camera size={32} color="#94A3B8" />
+                  <Text style={{ color: '#94A3B8', marginTop: 8 }}>No photos added</Text>
+                </View>
+              }
+            />
+            {editableImages.length > 1 && (
+              <View style={styles.slideCounter}>
+                <Text style={styles.slideCounterText}>{activeIndex + 1} / {editableImages.length}</Text>
+              </View>
+            )}
+          </View>
+
+          <TouchableOpacity style={styles.imagePickerBtn} onPress={handlePickImage} activeOpacity={0.8}>
+            <Upload color="#6366F1" size={18} />
+            <Text style={styles.imagePickerText}>Add / Upload More Photos</Text>
+          </TouchableOpacity>
+
+          {/* Title */}
+          <Text style={styles.sectionLabel}>Title</Text>
+          <TextInput
+            style={styles.input}
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Product title"
+            placeholderTextColor="#94A3B8"
+          />
+
+          {/* Price (EGP) */}
+          <Text style={styles.sectionLabel}>Price (EGP)</Text>
+          <View style={styles.priceWrap}>
+            <View style={styles.pricePrefix}>
+              <Text style={styles.pricePrefixText}>EGP</Text>
+            </View>
+            <TextInput
+              style={styles.priceInput}
+              value={price}
+              onChangeText={setPrice}
+              keyboardType="numeric"
+              placeholder="0"
+              placeholderTextColor="#94A3B8"
+            />
+          </View>
+
+          {/* Category */}
+          <Text style={styles.sectionLabel}>Category</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+            {CATEGORIES.map(cat => (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.chip, category === cat && styles.chipActive]}
+                onPress={() => setCategory(cat)}
+              >
+                <Text style={[styles.chipText, category === cat && styles.chipTextActive]}>{cat}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Condition */}
+          <Text style={styles.sectionLabel}>Condition</Text>
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+            {['New', 'Used'].map(cond => (
+              <TouchableOpacity
+                key={cond}
+                style={[styles.condChip, condition === cond && styles.condChipActive]}
+                onPress={() => setCondition(cond)}
+              >
+                <Text style={[styles.condChipText, condition === cond && styles.condChipTextActive]}>{cond}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Location / Governorate */}
+          <Text style={styles.sectionLabel}>Location in Egypt</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+            {EGYPTIAN_GOVERNORATES.map(gov => (
+              <TouchableOpacity
+                key={gov}
+                style={[styles.chip, location === gov && styles.chipActive]}
+                onPress={() => setLocation(prev => prev === gov ? '' : gov)}
+              >
+                <Text style={[styles.chipText, location === gov && styles.chipTextActive]}>
+                  {location === gov ? `📍 ${gov}` : gov}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Description */}
+          <Text style={styles.sectionLabel}>Description</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Describe the product details..."
+            placeholderTextColor="#94A3B8"
+            multiline
+          />
+
+          {/* Save Button */}
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={handleSaveChanges}
+            disabled={saving}
+            activeOpacity={0.88}
+          >
+            <LinearGradient
+              colors={['#1D4ED8', '#7C3AED']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.saveGradient}
+            >
+              {saving ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <Save color="white" size={18} />
+                  <Text style={styles.saveBtnText}>Save & Update Listing</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <View style={{ height: 40 }} />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#F9FAFB' },
-    container: { padding: 20 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    label: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 8,
-    },
-    input: {
-        backgroundColor: 'white',
-        padding: 14,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        fontSize: 16,
-        marginBottom: 20,
-    },
-    textArea: {
-        height: 120,
-        textAlignVertical: 'top',
-    },
-    saveButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#16A34A',
-        padding: 16,
-        borderRadius: 12,
-        marginTop: 20,
-    },
-    saveButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginLeft: 8,
-    },
-    sliderContainer: {
-        height: SLIDE_WIDTH,
-        marginBottom: 10,
-    },
-    slider: {
-        height: SLIDE_WIDTH,
-    },
-    slide: {
-        width: SLIDE_WIDTH,
-        height: SLIDE_WIDTH,
-        borderRadius: 12,
-        overflow: 'hidden',
-        backgroundColor: '#E5E7EB',
-    },
-    emptySlide: {
-        width: SLIDE_WIDTH,
-        height: SLIDE_WIDTH,
-        borderRadius: 12,
-        backgroundColor: '#F3F4F6',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    mainImage: {
-        width: '100%',
-        height: '100%',
-    },
-    deleteIcon: {
-        position: 'absolute',
-        top: 10,
-        right: 10,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        borderRadius: 15,
-        padding: 4,
-    },
-    imagePickerButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#F3F4F6',
-        padding: 14,
-        borderRadius: 12,
-        marginBottom: 20,
-    },
-    imagePickerText: {
-        fontSize: 16,
-        color: '#4B5563',
-        marginLeft: 8,
-    },
-    pagination: {
-        position: 'absolute',
-        bottom: 10,
-        width: '100%',
-        flexDirection: 'row',
-        justifyContent: 'center',
-    },
-    dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-        marginHorizontal: 4,
-    },
-    activeDot: {
-        backgroundColor: 'white',
-    },
-    slideCounter: {
-        position: 'absolute',
-        top: 10,
-        left: 10,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        borderRadius: 12,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-    },
-    slideCounterText: {
-        color: 'white',
-        fontSize: 12,
-        fontWeight: '600',
-    },
+  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  backBtn: { padding: 4 },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
+
+  container: { padding: 20 },
+
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#334155',
+    marginBottom: 8,
+    marginTop: 10,
+  },
+
+  sliderContainer: {
+    height: SLIDE_WIDTH * 0.7,
+    marginBottom: 12,
+    position: 'relative',
+  },
+  slide: {
+    width: SLIDE_WIDTH,
+    height: SLIDE_WIDTH * 0.7,
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: '#E2E8F0',
+  },
+  emptySlide: {
+    width: SLIDE_WIDTH,
+    height: SLIDE_WIDTH * 0.7,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
+  },
+  mainImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  deleteIcon: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  slideCounter: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  slideCounterText: { color: 'white', fontSize: 11, fontWeight: '700' },
+
+  imagePickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  imagePickerText: { fontSize: 13, fontWeight: '700', color: '#6366F1' },
+
+  input: {
+    backgroundColor: 'white',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#0F172A',
+    marginBottom: 14,
+  },
+  textArea: {
+    height: 110,
+    textAlignVertical: 'top',
+  },
+
+  priceWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#BFDBFE',
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  pricePrefix: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#EFF6FF',
+  },
+  pricePrefixText: { fontSize: 15, fontWeight: '900', color: '#2563EB' },
+  priceInput: { flex: 1, fontSize: 18, fontWeight: '800', color: '#0F172A', paddingHorizontal: 14 },
+
+  chipRow: { gap: 8, paddingBottom: 6, marginBottom: 14 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: 'white',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  chipActive: { backgroundColor: '#EEF2FF', borderColor: '#6366F1' },
+  chipText: { fontSize: 13, fontWeight: '600', color: '#475569' },
+  chipTextActive: { color: '#6366F1', fontWeight: '800' },
+
+  condChip: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: 'white',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+  },
+  condChipActive: { backgroundColor: '#EFF6FF', borderColor: '#2563EB' },
+  condChipText: { fontSize: 14, fontWeight: '700', color: '#64748B' },
+  condChipTextActive: { color: '#2563EB', fontWeight: '800' },
+
+  saveBtn: { borderRadius: 16, overflow: 'hidden', marginTop: 16 },
+  saveGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+  },
+  saveBtnText: { color: 'white', fontSize: 16, fontWeight: '800' },
 });

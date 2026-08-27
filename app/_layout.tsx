@@ -15,6 +15,7 @@ export default function RootLayout() {
         <Stack.Screen name="products/edit/[id]" options={{ title: 'Edit Product' }} />
         <Stack.Screen name="chat/[roomId]" options={{ title: 'Chat' }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="signup" options={{ headerShown: false }} />
         <Stack.Screen name="payment" options={{ title: 'Complete Payment' }} />
       </Stack>
       <Toast />

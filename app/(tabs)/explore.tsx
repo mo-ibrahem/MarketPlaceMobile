@@ -45,6 +45,24 @@ import {
 } from '../../src/services/lib/products';
 import { auth, supabase } from '../../src/services/lib/supabase';
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatEGP(price: number | string): string {
+  const n = Math.round(Number(price));
+  return `EGP ${n.toLocaleString('en-EG')}`;
+}
+
+function timeAgoShort(dateStr?: string): string {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.floor(hrs / 24)}d`;
+}
+
 // ─── Tab config ───────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -68,6 +86,7 @@ export default function ProfileScreen() {
   const [userProducts,     setUserProducts]     = useState<Product[]>([]);
   const [wishlistProducts, setWishlistProducts] = useState<Product[]>([]);
   const [chatRooms,        setChatRooms]        = useState<ChatRoomInfo[]>([]);
+  const [soldCount,        setSoldCount]        = useState(0);
   const [isLoading,        setIsLoading]        = useState(true);
   const [activeTab,        setActiveTab]        = useState<TabId>('products');
 
@@ -89,16 +108,18 @@ export default function ProfileScreen() {
     if (!user) return;
     try {
       setIsLoading(true);
-      const [profileData, products, wishlist, chats] = await Promise.all([
+      const [profileData, products, wishlist, chats, sold] = await Promise.all([
         profileService.getProfile(user.id),
         productService.getProductsBySeller(user.id),
         productService.getWishlist(),
         getChatRooms(),
+        productService.getSoldCountBySeller(user.id),
       ]);
       setProfile(profileData);
       setUserProducts(products);
       setWishlistProducts(wishlist);
       setChatRooms(chats || []);
+      setSoldCount(sold);
       setEditProfileData({
         full_name: profileData?.full_name || '',
         phone:     profileData?.phone     || '',
@@ -224,8 +245,7 @@ export default function ProfileScreen() {
   const initials    = displayName.slice(0, 2).toUpperCase();
 
   const renderProductList = (products: Product[], emptyMsg: string) => {
-    if (products.length === 0) {
-      return (
+    return products.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyEmoji}>{activeTab === 'wishlist' ? '❤️' : '📦'}</Text>
           <Text style={styles.emptyTitle}>{emptyMsg}</Text>
@@ -235,9 +255,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           )}
         </View>
-      );
-    }
-    return (
+    ) : (
       <View style={styles.listingGrid}>
         {products.map(product => (
           <TouchableOpacity
@@ -250,9 +268,9 @@ export default function ProfileScreen() {
               source={{ uri: product.images?.[0] || 'https://placehold.co/300x300/F1F5F9/64748B?text=Item' }}
               style={styles.listingImg}
             />
-            {/* Price pill */}
+            {/* EGP price pill */}
             <View style={styles.listingPricePill}>
-              <Text style={styles.listingPriceText}>${Number(product.price).toFixed(2)}</Text>
+              <Text style={styles.listingPriceText}>{formatEGP(product.price)}</Text>
             </View>
             {/* Actions (only on My Listings) */}
             {activeTab === 'products' && (
@@ -290,8 +308,8 @@ export default function ProfileScreen() {
       return (
         <View style={styles.emptyState}>
           <Text style={styles.emptyEmoji}>💬</Text>
-          <Text style={styles.emptyTitle}>No conversations yet</Text>
-          <Text style={styles.emptySubtitle}>Message a seller to get started</Text>
+          <Text style={styles.emptyTitle}>{t('chat.noConversations')}</Text>
+          <Text style={styles.emptySubtitle}>{t('chat.startConversation')}</Text>
         </View>
       );
     }
@@ -308,9 +326,15 @@ export default function ProfileScreen() {
         />
         <View style={styles.chatInfo}>
           <Text style={styles.chatName}>{chat.other_user_name}</Text>
-          <Text style={styles.chatPreview}>Tap to open conversation</Text>
+          <Text style={styles.chatPreview} numberOfLines={1}>
+            {chat.last_message ? chat.last_message : t('chat.startConversation')}
+          </Text>
         </View>
-        <ChevronRight color="#CBD5E1" size={20} />
+        {chat.last_message_time ? (
+          <Text style={styles.chatTime}>{timeAgoShort(chat.last_message_time)}</Text>
+        ) : (
+          <ChevronRight color="#CBD5E1" size={20} />
+        )}
       </TouchableOpacity>
     ));
   };
@@ -438,7 +462,8 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center' }}>
+        <View style={{ width: '100%', maxWidth: 840, alignSelf: 'center' }}>
 
         {/* ════════ HERO BANNER ════════ */}
         <LinearGradient
@@ -470,15 +495,23 @@ export default function ProfileScreen() {
         <View style={styles.statStrip}>
           <StatCard
             value={userProducts.length}
-            label="Listings"
+            label={t('profile.statListings')}
             icon={<ShoppingBag color="#6366F1" size={20} />}
             bg="#EEF2FF"
             onPress={() => setActiveTab('products')}
           />
           <View style={styles.statDivider} />
           <StatCard
+            value={soldCount}
+            label={t('profile.statSold')}
+            icon={<Package color="#10B981" size={20} />}
+            bg="#D1FAE5"
+            onPress={() => setActiveTab('products')}
+          />
+          <View style={styles.statDivider} />
+          <StatCard
             value={wishlistProducts.length}
-            label="Saved"
+            label={t('profile.statSaved')}
             icon={<Heart color="#EC4899" size={20} />}
             bg="#FCE7F3"
             onPress={() => setActiveTab('wishlist')}
@@ -486,7 +519,7 @@ export default function ProfileScreen() {
           <View style={styles.statDivider} />
           <StatCard
             value={chatRooms.length}
-            label="Chats"
+            label={t('profile.statChats')}
             icon={<MessageCircle color="#0EA5E9" size={20} />}
             bg="#E0F2FE"
             onPress={() => setActiveTab('chats')}
@@ -521,6 +554,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={{ height: 40 }} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -704,6 +738,7 @@ const styles = StyleSheet.create({
   chatInfo: { flex: 1 },
   chatName: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 3 },
   chatPreview: { fontSize: 13, color: '#94A3B8' },
+  chatTime: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginLeft: 6 },
 
   // Settings cards
   settingsCard: {
