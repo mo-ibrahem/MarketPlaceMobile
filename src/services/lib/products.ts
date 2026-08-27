@@ -41,6 +41,9 @@ export const productService = {
     condition: string
     location?: string
     images: string[]
+    is_promoted?: boolean
+    promoted_ad_rate?: number
+    is_promoted_on_sale?: boolean
   }) => {
     const {
       data: { user },

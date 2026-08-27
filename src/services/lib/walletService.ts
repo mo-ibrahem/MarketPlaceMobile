@@ -263,11 +263,13 @@ export async function upgradeSellerTier(userId: string, targetTier: 1 | 2 | 3): 
 export async function holdEscrowForSeller(
   sellerId: string,
   orderId: string,
-  totalAmount: number
+  totalAmount: number,
+  promotedAdRate: number = 0
 ): Promise<void> {
   const sellerTier = await getSellerTier(sellerId);
-  const feePercent = sellerTier.commissionFeePercent;
-  const feeAmount = Math.round(totalAmount * feePercent);
+  const baseFeePercent = sellerTier.commissionFeePercent;
+  const totalFeePercent = baseFeePercent + (promotedAdRate || 0);
+  const feeAmount = Math.round(totalAmount * totalFeePercent);
   const netAmount = totalAmount - feeAmount;
 
   // Pro merchants (Tier 3) get instant clearance upon order placement!
@@ -318,7 +320,7 @@ export async function holdEscrowForSeller(
     amount: netAmount,
     fee_amount: feeAmount,
     status: isInstantClearance ? 'completed' : 'pending',
-    description: `Escrow Hold for Order #${orderId.slice(-6)} (${(feePercent * 100).toFixed(1)}% Fee)`,
+    description: `Escrow Hold for Order #${orderId.slice(-6)} (${(totalFeePercent * 100).toFixed(1)}% Fee)`,
     created_at: new Date().toISOString(),
   });
 }

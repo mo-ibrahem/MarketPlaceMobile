@@ -90,6 +90,8 @@ export default function SellScreen() {
   const [category,  setCategory]  = useState("Electronics");
   const [condition, setCondition] = useState("New");
   const [location,  setLocation]  = useState("");
+  const [isPromotedOnSale, setIsPromotedOnSale] = useState(false);
+  const [promotedAdRate, setPromotedAdRate] = useState(0.08); // 8% default
   const [loading,   setLoading]   = useState(false);
   const [done,      setDone]      = useState(false);
 
@@ -206,6 +208,9 @@ export default function SellScreen() {
         condition,
         location: location || undefined,
         images: imageUrls,
+        is_promoted: isPromotedOnSale,
+        promoted_ad_rate: isPromotedOnSale ? promotedAdRate : 0,
+        is_promoted_on_sale: isPromotedOnSale,
       });
       setDone(true);
       // Reset the form after the success screen so the next visit starts fresh.
@@ -221,6 +226,8 @@ export default function SellScreen() {
         setCategory('Electronics');
         setCondition('New');
         setLocation('');
+        setIsPromotedOnSale(false);
+        setPromotedAdRate(0.08);
       }, 2400);
     } catch (err: any) {
       Toast.show({ type: "error", text1: t("common.error"), text2: err.message || t("sell.errorMessage") });
@@ -496,6 +503,64 @@ export default function SellScreen() {
                   )}
                 </TouchableOpacity>
               ))}
+            </View>
+
+            {/* ════════ EBAY SELL FASTER TOGGLE (0 EGP UPFRONT) ════════ */}
+            <View style={styles.sellFasterCard}>
+              <View style={styles.sellFasterTop}>
+                <View style={styles.sellFasterIconBox}>
+                  <Sparkles color="#2563EB" size={20} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sellFasterTitle}>Promote to Sell 50% Faster ⚡</Text>
+                  <Text style={styles.sellFasterSub}>0 EGP Upfront • Pay only if item sells</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.togglePill, isPromotedOnSale && styles.togglePillActive]}
+                  onPress={() => setIsPromotedOnSale(!isPromotedOnSale)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.toggleCircle, isPromotedOnSale && styles.toggleCircleActive]} />
+                </TouchableOpacity>
+              </View>
+
+              {isPromotedOnSale && (
+                <View style={styles.adRateSelectorWrap}>
+                  <Text style={styles.adRatePrompt}>Select your Ad Rate (Deducted upon sale):</Text>
+                  <View style={styles.adRatePillsRow}>
+                    {[
+                      { rate: 0.05, label: '5%', desc: 'Standard (2x views)' },
+                      { rate: 0.08, label: '8%', desc: 'Suggested (3x views)' },
+                      { rate: 0.12, label: '12%', desc: 'Turbo (5x views)' },
+                    ].map((item) => (
+                      <TouchableOpacity
+                        key={item.rate}
+                        style={[styles.adRateChip, promotedAdRate === item.rate && styles.adRateChipActive]}
+                        onPress={() => setPromotedAdRate(item.rate)}
+                      >
+                        <Text style={[styles.adRateChipLabel, promotedAdRate === item.rate && styles.adRateChipLabelActive]}>
+                          {item.label}
+                        </Text>
+                        <Text style={[styles.adRateChipDesc, promotedAdRate === item.rate && styles.adRateChipDescActive]}>
+                          {item.desc}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {parseFloat(price) > 0 && (
+                    <View style={styles.adRateCalcBox}>
+                      <Text style={styles.adRateCalcText}>
+                        If sold for EGP {Math.round(parseFloat(price)).toLocaleString()}, ad fee is{' '}
+                        <Text style={{ fontWeight: '800', color: '#2563EB' }}>
+                          EGP {Math.round(parseFloat(price) * promotedAdRate).toLocaleString()}
+                        </Text>{' '}
+                        (deducted only after delivery).
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
 
             {/* Listing summary card */}
@@ -878,6 +943,79 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
+  // Sell Faster Promoted Listings
+  sellFasterCard: {
+    marginTop: 24,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#BFDBFE',
+    padding: 16,
+  },
+  sellFasterTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  sellFasterIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sellFasterTitle: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
+  sellFasterSub: { fontSize: 11, color: '#2563EB', fontWeight: '600', marginTop: 1 },
+  togglePill: {
+    width: 46,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#CBD5E1',
+    padding: 3,
+    justifyContent: 'center',
+  },
+  togglePillActive: { backgroundColor: '#2563EB' },
+  toggleCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'white',
+  },
+  toggleCircleActive: { alignSelf: 'flex-end' },
+  adRateSelectorWrap: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#DBEAFE' },
+  adRatePrompt: { fontSize: 12, fontWeight: '700', color: '#1E293B', marginBottom: 10 },
+  adRatePillsRow: { flexDirection: 'row', gap: 8 },
+  adRateChip: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderWidth: 1.5,
+    borderColor: '#DBEAFE',
+    alignItems: 'center',
+  },
+  adRateChipActive: { borderColor: '#2563EB', backgroundColor: '#DBEAFE' },
+  adRateChipLabel: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
+  adRateChipLabelActive: { color: '#1D4ED8' },
+  adRateChipDesc: { fontSize: 9, color: '#64748B', marginTop: 2, textAlign: 'center' },
+  adRateChipDescActive: { color: '#1E40AF', fontWeight: '600' },
+  adRateCalcBox: {
+    marginTop: 10,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  adRateCalcText: { fontSize: 11, color: '#475569', lineHeight: 16 },
 
   // Summary card
   summaryCard: {

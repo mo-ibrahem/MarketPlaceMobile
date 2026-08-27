@@ -1,0 +1,2 @@
+ALTER TABLE products ADD COLUMN IF NOT EXISTS promoted_ad_rate NUMERIC(4,2) DEFAULT 0.00;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS is_promoted_on_sale BOOLEAN DEFAULT false;
