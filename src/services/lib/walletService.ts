@@ -142,7 +142,7 @@ export async function getUserWallet(userId: string): Promise<UserWallet> {
 export async function getSellerTier(userId: string): Promise<SellerTierConfig> {
   try {
     const { data, error } = await supabase
-      .from('profiles' as any)
+      .from('user_profiles' as any)
       .select('tier')
       .eq('id', userId)
       .maybeSingle();
@@ -165,8 +165,12 @@ export async function getSellerTier(userId: string): Promise<SellerTierConfig> {
 export async function upgradeSellerTier(userId: string, targetTier: 1 | 2 | 3): Promise<SellerTierConfig> {
   try {
     await supabase
-      .from('profiles' as any)
-      .update({ tier: targetTier, tier_verified_at: new Date().toISOString() } as any)
+      .from('user_profiles' as any)
+      .update({
+        tier: targetTier,
+        tier_verified_at: new Date().toISOString(),
+        is_verified_seller: targetTier >= 2,
+      } as any)
       .eq('id', userId);
   } catch (err) {
     console.warn('[WalletService] Error updating tier in Supabase:', err);
