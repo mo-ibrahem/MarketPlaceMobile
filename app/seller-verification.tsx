@@ -43,6 +43,7 @@ import {
   addPayoutMethod,
   getSellerTier,
   upgradeSellerTier,
+  validateEgyptianNationalId,
   type SellerTierConfig,
 } from '../src/services/lib/walletService';
 
@@ -250,7 +251,19 @@ export default function SellerVerificationScreen() {
                       keyboardType="number-pad"
                       maxLength={14}
                     />
-                    <Text style={styles.helperText}>Used exclusively to verify identity and prevent marketplace fraud.</Text>
+                    {validateEgyptianNationalId(nationalIdNum).isValid ? (
+                      <View style={styles.autoVerifyBadge}>
+                        <CheckCircle2 color="#059669" size={16} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.autoVerifyTitle}>Valid National ID (Auto-Verified) ✓</Text>
+                          <Text style={styles.autoVerifySub}>
+                            {validateEgyptianNationalId(nationalIdNum).governorate} • Born {validateEgyptianNationalId(nationalIdNum).birthDate} • {validateEgyptianNationalId(nationalIdNum).gender === 'male' ? 'Male' : 'Female'}
+                          </Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <Text style={styles.helperText}>Used exclusively to verify identity and prevent marketplace fraud.</Text>
+                    )}
                   </View>
 
                   {selectedTier === 3 && (
@@ -513,6 +526,19 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
   helperText: { fontSize: 11, color: '#94A3B8', marginTop: 4 },
+  autoVerifyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#ECFDF5',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    marginTop: 8,
+  },
+  autoVerifyTitle: { fontSize: 12, fontWeight: '800', color: '#065F46' },
+  autoVerifySub: { fontSize: 10, color: '#047857', marginTop: 1 },
 
   docUploadCard: {
     backgroundColor: 'white',

@@ -44,11 +44,88 @@ export interface SellerTierConfig {
   payoutSpeed: string;
 }
 
+export interface NationalIdInfo {
+  isValid: boolean;
+  birthDate?: string;
+  century?: number;
+  gender?: 'male' | 'female';
+  governorate?: string;
+  error?: string;
+}
+
+export const EGYPTIAN_GOVERNORATE_CODES: Record<string, string> = {
+  '01': 'Cairo (القاهرة)',
+  '02': 'Alexandria (الإسكندرية)',
+  '03': 'Port Said (بورسعيد)',
+  '04': 'Suez (السويس)',
+  '11': 'Damietta (دمياط)',
+  '12': 'Dakahlia (الدقهلية)',
+  '13': 'Ash Sharqia (الشرقية)',
+  '14': 'Kaliobeya (القليوبية)',
+  '15': 'Kafr El-Sheikh (كفر الشيخ)',
+  '16': 'Gharbia (الغربية)',
+  '17': 'Monufia (المنوفية)',
+  '18': 'El Beheira (البحيرة)',
+  '19': 'Ismailia (الإسماعيلية)',
+  '21': 'Giza (الجيزة)',
+  '22': 'Beni Suef (بني سويف)',
+  '23': 'Fayoum (الفيوم)',
+  '24': 'Minya (المنيا)',
+  '25': 'Asyut (أسيوط)',
+  '26': 'Sohag (سوهاج)',
+  '27': 'Qena (قنا)',
+  '28': 'Aswan (أسوان)',
+  '29': 'Luxor (الأقصر)',
+  '31': 'Red Sea (البحر الأحمر)',
+  '32': 'New Valley (الوادي الجديد)',
+  '33': 'Matrouh (مطروح)',
+  '34': 'North Sinai (شمال سيناء)',
+  '35': 'South Sinai (جنوب سيناء)',
+  '88': 'Born Abroad (خارج الجمهورية)',
+};
+
+/**
+ * Validates and decodes the 14-digit Egyptian National ID in real-time
+ */
+export function validateEgyptianNationalId(idNumber: string): NationalIdInfo {
+  if (!idNumber || idNumber.length !== 14 || !/^\d{14}$/.test(idNumber)) {
+    return { isValid: false, error: 'Must be exactly 14 digits' };
+  }
+
+  const centuryCode = parseInt(idNumber[0], 10);
+  if (centuryCode !== 2 && centuryCode !== 3) {
+    return { isValid: false, error: 'Invalid century code' };
+  }
+
+  const century = centuryCode === 2 ? 1900 : 2000;
+  const year = century + parseInt(idNumber.substring(1, 3), 10);
+  const month = parseInt(idNumber.substring(3, 5), 10);
+  const day = parseInt(idNumber.substring(5, 7), 10);
+
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return { isValid: false, error: 'Invalid birth date in National ID' };
+  }
+
+  const govCode = idNumber.substring(7, 9);
+  const governorate = EGYPTIAN_GOVERNORATE_CODES[govCode] || 'Other Governorates (أخرى)';
+
+  const genderDigit = parseInt(idNumber.substring(12, 13), 10);
+  const gender = genderDigit % 2 === 0 ? 'female' : 'male';
+
+  return {
+    isValid: true,
+    century,
+    birthDate: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+    gender,
+    governorate,
+  };
+}
+
 export const SELLER_TIERS: Record<1 | 2 | 3, SellerTierConfig> = {
   1: {
     tier: 1,
     name: 'Casual Trader',
-    badge: '�� Casual',
+    badge: '🟡 Casual',
     commissionFeePercent: 0.05, // 5% fee
     listingLimitCount: 5,
     listingLimitAmount: 25000,
