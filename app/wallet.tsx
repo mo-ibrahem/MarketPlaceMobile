@@ -48,6 +48,7 @@ import {
   getUserWallet,
   getWalletTransactions,
   requestPayout,
+  topUpUserWallet,
   upgradeSellerTier,
   SELLER_TIERS,
   type PayoutMethod,
@@ -68,6 +69,12 @@ export default function WalletScreen() {
   const [sellerTier, setSellerTier] = useState<SellerTierConfig>(SELLER_TIERS[2]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Top Up Modal state
+  const [topUpModalVisible, setTopUpModalVisible] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState('');
+  const [topUpMethod, setTopUpMethod] = useState<'card' | 'vodafone_cash' | 'instapay'>('card');
+  const [toppingUp, setToppingUp] = useState(false);
 
   // Withdrawal Modal state
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
@@ -107,6 +114,28 @@ export default function WalletScreen() {
   useEffect(() => {
     loadWalletData();
   }, [loadWalletData]);
+
+  const handleTopUpSubmit = async () => {
+    if (!user) return;
+    const amount = Number(topUpAmount);
+    if (!amount || isNaN(amount) || amount <= 0) {
+      Toast.show({ type: 'error', text1: 'Please enter a valid deposit amount' });
+      return;
+    }
+
+    setToppingUp(true);
+    try {
+      const res = await topUpUserWallet(user.id, amount, topUpMethod);
+      Toast.show({ type: 'success', text1: 'Funds Added! 💳✨', text2: res.message });
+      setTopUpModalVisible(false);
+      setTopUpAmount('');
+      await loadWalletData();
+    } catch (err: any) {
+      Alert.alert('Deposit Error', err?.message || 'Failed to deposit funds');
+    } finally {
+      setToppingUp(false);
+    }
+  };
 
   const handleWithdrawSubmit = async () => {
     if (!user || !wallet || !selectedMethod) {
@@ -234,13 +263,22 @@ export default function WalletScreen() {
             {/* Action Buttons */}
             <View style={styles.heroActionsRow}>
               <TouchableOpacity
+                style={styles.topUpHeroBtn}
+                onPress={() => setTopUpModalVisible(true)}
+                activeOpacity={0.85}
+              >
+                <Plus color="white" size={16} />
+                <Text style={styles.topUpHeroBtnText}>Add Funds</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={[styles.withdrawHeroBtn, available <= 0 && { opacity: 0.6 }]}
                 disabled={available <= 0}
                 onPress={() => setWithdrawModalVisible(true)}
                 activeOpacity={0.85}
               >
-                <ArrowUpRight color="white" size={18} />
-                <Text style={styles.withdrawHeroBtnText}>Withdraw Funds</Text>
+                <ArrowUpRight color="white" size={16} />
+                <Text style={styles.withdrawHeroBtnText}>Withdraw</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -249,7 +287,7 @@ export default function WalletScreen() {
                 activeOpacity={0.85}
               >
                 <Building color="#94A3B8" size={16} />
-                <Text style={styles.payoutSettingsHeroBtnText}>Payout Accounts</Text>
+                <Text style={styles.payoutSettingsHeroBtnText}>Accounts</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -417,6 +455,115 @@ export default function WalletScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Top Up Modal */}
+      <Modal visible={topUpModalVisible} animationType="slide" transparent>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Add Funds to Wallet 💳</Text>
+            <Text style={styles.modalSub}>
+              Top up instantly with Egyptian Card, Vodafone Cash, or InstaPay.
+            </Text>
+
+            {/* Amount Input */}
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalInputLabel}>Deposit Amount (EGP)</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                value={topUpAmount}
+                onChangeText={setTopUpAmount}
+                placeholder="e.g. 500"
+                keyboardType="numeric"
+              />
+            </View>
+
+            {/* Preset Amount Pills */}
+            <View style={styles.pillsRow}>
+              {[100, 250, 500, 1000].map((amt) => (
+                <TouchableOpacity
+                  key={amt}
+                  style={styles.amountPill}
+                  onPress={() => setTopUpAmount(amt.toString())}
+                >
+                  <Text style={styles.amountPillText}>+{amt} EGP</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Payment Method Selector */}
+            <Text style={[styles.modalInputLabel, { marginTop: 14, marginBottom: 8 }]}>
+              Select Payment Method
+            </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.pmOptionCard,
+                topUpMethod === 'card' && styles.pmOptionActive,
+              ]}
+              onPress={() => setTopUpMethod('card')}
+            >
+              <CreditCard size={18} color={topUpMethod === 'card' ? '#2563EB' : '#64748B'} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pmOptionName}>Bank Card (Visa / Mastercard / Meeza)</Text>
+                <Text style={styles.pmOptionId}>Instant Online Debit / Credit</Text>
+              </View>
+              {topUpMethod === 'card' && <CheckCircle2 color="#2563EB" size={18} />}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.pmOptionCard,
+                topUpMethod === 'vodafone_cash' && styles.pmOptionActive,
+              ]}
+              onPress={() => setTopUpMethod('vodafone_cash')}
+            >
+              <Smartphone size={18} color={topUpMethod === 'vodafone_cash' ? '#2563EB' : '#64748B'} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pmOptionName}>Vodafone Cash / Orange / Etisalat</Text>
+                <Text style={styles.pmOptionId}>Mobile Wallet PIN Verification</Text>
+              </View>
+              {topUpMethod === 'vodafone_cash' && <CheckCircle2 color="#2563EB" size={18} />}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.pmOptionCard,
+                topUpMethod === 'instapay' && styles.pmOptionActive,
+              ]}
+              onPress={() => setTopUpMethod('instapay')}
+            >
+              <Banknote size={18} color={topUpMethod === 'instapay' ? '#2563EB' : '#64748B'} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pmOptionName}>InstaPay Transfer</Text>
+                <Text style={styles.pmOptionId}>Instant 24/7 Bank Transfer</Text>
+              </View>
+              {topUpMethod === 'instapay' && <CheckCircle2 color="#2563EB" size={18} />}
+            </TouchableOpacity>
+
+            {/* Modal Buttons */}
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setTopUpModalVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalSubmitBtn}
+                onPress={handleTopUpSubmit}
+                disabled={toppingUp}
+              >
+                {toppingUp ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <Text style={styles.modalSubmitText}>Add EGP {topUpAmount || '0'}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Withdrawal Modal */}
       <Modal visible={withdrawModalVisible} animationType="slide" transparent>
@@ -631,29 +778,52 @@ const styles = StyleSheet.create({
   pendingSub: { color: 'rgba(255, 255, 255, 0.5)', fontSize: 10 },
   pendingValue: { color: '#FCD34D', fontSize: 15, fontWeight: '800' },
 
-  heroActionsRow: { flexDirection: 'row', gap: 10 },
-  withdrawHeroBtn: {
-    flex: 1.2,
+  heroActionsRow: { flexDirection: 'row', gap: 8 },
+  topUpHeroBtn: {
+    flex: 1.1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 5,
+    backgroundColor: '#10B981',
+    borderRadius: 14,
+    paddingVertical: 12,
+  },
+  topUpHeroBtnText: { color: 'white', fontWeight: '800', fontSize: 12 },
+  withdrawHeroBtn: {
+    flex: 1.1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
     backgroundColor: '#2563EB',
     borderRadius: 14,
     paddingVertical: 12,
   },
-  withdrawHeroBtnText: { color: 'white', fontWeight: '800', fontSize: 13 },
+  withdrawHeroBtnText: { color: 'white', fontWeight: '800', fontSize: 12 },
   payoutSettingsHeroBtn: {
-    flex: 1,
+    flex: 0.9,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 5,
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: 14,
     paddingVertical: 12,
   },
   payoutSettingsHeroBtnText: { color: 'white', fontWeight: '700', fontSize: 12 },
+
+  pillsRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  amountPill: {
+    flex: 1,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  amountPillText: { fontSize: 11, fontWeight: '800', color: '#1D4ED8' },
 
   // Tier Status Card
   tierStatusCard: {

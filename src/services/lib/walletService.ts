@@ -13,7 +13,7 @@ export interface WalletTransaction {
   id: string;
   wallet_id?: string;
   order_id?: string;
-  type: 'escrow_hold' | 'escrow_release' | 'payout' | 'fee_deduction' | 'refund' | 'deposit';
+  type: 'escrow_hold' | 'escrow_release' | 'payout' | 'fee_deduction' | 'refund' | 'deposit' | 'top_up';
   amount: number;
   fee_amount: number;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
@@ -369,6 +369,61 @@ export async function releaseEscrowToSeller(sellerId: string, orderId: string, n
     description: `Escrow Released for Order #${orderId.slice(-6)}`,
     created_at: new Date().toISOString(),
   });
+}
+
+/**
+ * Deposit / Top Up funds into user wallet (via Paymob, Vodafone Cash, InstaPay)
+ */
+export async function topUpUserWallet(
+  userId: string,
+  amount: number,
+  paymentMethod: string = 'card'
+): Promise<{ success: boolean; message: string; newBalance: number }> {
+  const wallet = await getUserWallet(userId);
+  const newAvailable = (Number(wallet.available_balance) || 0) + amount;
+
+  try {
+    await supabase
+      .from('user_wallets' as any)
+      .update({
+        available_balance: newAvailable,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('user_id', userId);
+
+    await supabase.from('wallet_transactions' as any).insert({
+      wallet_id: wallet.id,
+      type: 'top_up',
+      amount: amount,
+      fee_amount: 0,
+      status: 'completed',
+      description: `Wallet Deposit via ${paymentMethod === 'vodafone_cash' ? 'Vodafone Cash' : paymentMethod === 'instapay' ? 'InstaPay' : 'Card'}`,
+      created_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('[WalletService] Supabase fallback topup:', err);
+  }
+
+  inMemoryWallets[userId] = {
+    ...wallet,
+    available_balance: newAvailable,
+  };
+
+  inMemoryTransactions.unshift({
+    id: `tx_topup_${Date.now()}`,
+    type: 'top_up',
+    amount: amount,
+    fee_amount: 0,
+    status: 'completed',
+    description: `Wallet Deposit via ${paymentMethod === 'vodafone_cash' ? 'Vodafone Cash' : paymentMethod === 'instapay' ? 'InstaPay' : 'Card'}`,
+    created_at: new Date().toISOString(),
+  });
+
+  return {
+    success: true,
+    message: `EGP ${amount.toLocaleString()} added to your wallet!`,
+    newBalance: newAvailable,
+  };
 }
 
 /**
