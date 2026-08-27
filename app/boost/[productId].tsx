@@ -38,6 +38,7 @@ import {
   boostProduct,
   type BoostPackage,
 } from '../../src/services/lib/boostService';
+import { startPaymobCheckoutSession } from '../../src/services/lib/paymobService';
 import { productService, type Product } from '../../src/services/lib/products';
 import { getUserWallet, type UserWallet } from '../../src/services/lib/walletService';
 
@@ -81,28 +82,68 @@ export default function BoostProductScreen() {
   const handleApplyBoost = async () => {
     if (!product || !user) return;
 
-    if (paymentSource === 'wallet_balance' && !canPayWithWallet) {
-      Toast.show({
-        type: 'error',
-        text1: 'Insufficient Wallet Balance',
-        text2: `You need EGP ${selectedPkg.priceEGP} (Available: EGP ${walletBalance.toLocaleString()})`,
-      });
+    if (paymentSource === 'wallet_balance') {
+      if (!canPayWithWallet) {
+        Toast.show({
+          type: 'error',
+          text1: 'Insufficient Wallet Balance',
+          text2: `You need EGP ${selectedPkg.priceEGP} (Available: EGP ${walletBalance.toLocaleString()})`,
+        });
+        return;
+      }
+
+      setBoosting(true);
+      try {
+        const res = await boostProduct(product.id, user.id, selectedTier, 'wallet_balance');
+        Toast.show({
+          type: 'success',
+          text1: 'Boost Activated! ⚡🚀',
+          text2: res.message,
+        });
+        router.back();
+      } catch (err: any) {
+        Alert.alert('Boost Failed', err?.message || 'Could not apply boost');
+      } finally {
+        setBoosting(false);
+      }
       return;
     }
 
-    setBoosting(true);
-    try {
-      const res = await boostProduct(product.id, user.id, selectedTier, paymentSource);
-      Toast.show({
-        type: 'success',
-        text1: 'Boost Activated! ⚡🚀',
-        text2: res.message,
-      });
-      router.back();
-    } catch (err: any) {
-      Alert.alert('Boost Failed', err?.message || 'Could not apply boost');
-    } finally {
-      setBoosting(false);
+    // ── Paymob Online Gateway Payment ──
+    if (paymentSource === 'paymob') {
+      setBoosting(true);
+      try {
+        const session = await startPaymobCheckoutSession({
+          amountEgp: selectedPkg.priceEGP,
+          merchantOrderId: `boost_${product.id}_${selectedTier}_${Date.now()}`,
+          itemName: `EgyBay Boost: ${selectedPkg.title}`,
+          billingData: {
+            first_name: user?.user_metadata?.full_name?.split(' ')[0] || 'Seller',
+            last_name: user?.user_metadata?.full_name?.split(' ')[1] || 'Owner',
+            email: user?.email || 'seller@egbay.market',
+            phone_number: '+201000000000',
+            city: 'Cairo',
+            country: 'EG',
+          },
+        });
+
+        // Activate boost state
+        await boostProduct(product.id, user.id, selectedTier, 'paymob');
+
+        // Route to Paymob WebView screen
+        router.push({
+          pathname: '/payment',
+          params: {
+            iframeUrl: session.iframeUrl,
+            orderId: session.paymobOrderId.toString(),
+            totalAmount: selectedPkg.priceEGP.toString(),
+          },
+        } as any);
+      } catch (err: any) {
+        Alert.alert('Paymob Checkout Error', err?.message || 'Could not initiate online payment');
+      } finally {
+        setBoosting(false);
+      }
     }
   };
 
