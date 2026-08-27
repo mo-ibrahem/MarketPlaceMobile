@@ -32,10 +32,59 @@ export interface PayoutMethod {
   created_at: string;
 }
 
-// In-memory fallback state for smooth offline/sandbox execution
+export interface SellerTierConfig {
+  tier: 1 | 2 | 3;
+  name: string;
+  badge: string;
+  commissionFeePercent: number;
+  listingLimitCount: number;
+  listingLimitAmount: number;
+  fundReleaseTrigger: string;
+  kycRequirement: string;
+  payoutSpeed: string;
+}
+
+export const SELLER_TIERS: Record<1 | 2 | 3, SellerTierConfig> = {
+  1: {
+    tier: 1,
+    name: 'Casual Trader',
+    badge: '�� Casual',
+    commissionFeePercent: 0.05, // 5% fee
+    listingLimitCount: 5,
+    listingLimitAmount: 25000,
+    fundReleaseTrigger: 'Buyer PIN verification or Courier delivery + 24 hrs',
+    kycRequirement: 'Egyptian Mobile OTP (+20)',
+    payoutSpeed: 'Standard (On-demand after escrow release)',
+  },
+  2: {
+    tier: 2,
+    name: 'Verified Trader',
+    badge: '🛡️ Verified',
+    commissionFeePercent: 0.04, // 4% fee
+    listingLimitCount: 50,
+    listingLimitAmount: 150000,
+    fundReleaseTrigger: 'Instant QR / PIN scan or Courier delivery + 6 hrs',
+    kycRequirement: 'National ID (بطاقة الرقم القومي) Front & Back',
+    payoutSpeed: 'Fast (Instant to InstaPay & Mobile Wallets)',
+  },
+  3: {
+    tier: 3,
+    name: 'EgyBay Pro / Store',
+    badge: '⭐ Pro Merchant',
+    commissionFeePercent: 0.025, // 2.5% fee
+    listingLimitCount: 999999,
+    listingLimitAmount: 99999999,
+    fundReleaseTrigger: 'Instant release upon courier pickup scan',
+    kycRequirement: 'Commercial Registry (سجل تجاري) & Tax Card',
+    payoutSpeed: 'Automated Daily Bank Settlement',
+  },
+};
+
+// In-memory fallback state
 let inMemoryWallets: Record<string, UserWallet> = {};
 let inMemoryTransactions: WalletTransaction[] = [];
 let inMemoryPayoutMethods: Record<string, PayoutMethod[]> = {};
+let inMemorySellerTiers: Record<string, 1 | 2 | 3> = {};
 
 /**
  * Fetch or initialize a user's wallet
@@ -53,7 +102,6 @@ export async function getUserWallet(userId: string): Promise<UserWallet> {
     }
 
     if (!data) {
-      // Try to create initial wallet row
       const newWallet: Partial<UserWallet> = {
         user_id: userId,
         pending_balance: 0,
@@ -75,7 +123,6 @@ export async function getUserWallet(userId: string): Promise<UserWallet> {
     console.warn('[WalletService] Supabase fallback to memory:', err);
   }
 
-  // In-memory store fallback
   if (!inMemoryWallets[userId]) {
     inMemoryWallets[userId] = {
       id: `wallet_${userId}`,
@@ -90,50 +137,107 @@ export async function getUserWallet(userId: string): Promise<UserWallet> {
 }
 
 /**
- * Hold funds in Escrow for a seller upon successful payment
+ * Get the Seller's Trust Tier (Tier 1 Casual, Tier 2 Verified, Tier 3 Pro)
+ */
+export async function getSellerTier(userId: string): Promise<SellerTierConfig> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles' as any)
+      .select('tier')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (data && !error && data.tier) {
+      const t = (data.tier as 1 | 2 | 3) || 1;
+      return SELLER_TIERS[t] || SELLER_TIERS[1];
+    }
+  } catch (err) {
+    console.warn('[WalletService] getSellerTier fallback to memory:', err);
+  }
+
+  const tierNum = inMemorySellerTiers[userId] || 2; // Default to Tier 2 for preview
+  return SELLER_TIERS[tierNum];
+}
+
+/**
+ * Upgrade Seller Tier (e.g. Upload National ID for Tier 2 verification)
+ */
+export async function upgradeSellerTier(userId: string, targetTier: 1 | 2 | 3): Promise<SellerTierConfig> {
+  try {
+    await supabase
+      .from('profiles' as any)
+      .update({ tier: targetTier, tier_verified_at: new Date().toISOString() } as any)
+      .eq('id', userId);
+  } catch (err) {
+    console.warn('[WalletService] Error updating tier in Supabase:', err);
+  }
+
+  inMemorySellerTiers[userId] = targetTier;
+  return SELLER_TIERS[targetTier];
+}
+
+/**
+ * Hold funds in Escrow for a seller with Tier-specific commission rates
  */
 export async function holdEscrowForSeller(
   sellerId: string,
   orderId: string,
-  totalAmount: number,
-  feePercent: number = 0.05
+  totalAmount: number
 ): Promise<void> {
+  const sellerTier = await getSellerTier(sellerId);
+  const feePercent = sellerTier.commissionFeePercent;
   const feeAmount = Math.round(totalAmount * feePercent);
   const netAmount = totalAmount - feeAmount;
 
+  // Pro merchants (Tier 3) get instant clearance upon order placement!
+  const isInstantClearance = sellerTier.tier === 3;
+
   try {
     const wallet = await getUserWallet(sellerId);
-    const newPending = (Number(wallet.pending_balance) || 0) + netAmount;
+    const newPending = isInstantClearance
+      ? Number(wallet.pending_balance || 0)
+      : (Number(wallet.pending_balance) || 0) + netAmount;
+    const newAvailable = isInstantClearance
+      ? (Number(wallet.available_balance) || 0) + netAmount
+      : Number(wallet.available_balance || 0);
 
     await supabase
       .from('user_wallets' as any)
-      .update({ pending_balance: newPending, updated_at: new Date().toISOString() } as any)
+      .update({
+        pending_balance: newPending,
+        available_balance: newAvailable,
+        updated_at: new Date().toISOString(),
+      } as any)
       .eq('user_id', sellerId);
 
     await supabase.from('wallet_transactions' as any).insert({
       wallet_id: wallet.id,
       order_id: orderId,
-      type: 'escrow_hold',
+      type: isInstantClearance ? 'escrow_release' : 'escrow_hold',
       amount: netAmount,
       fee_amount: feeAmount,
-      status: 'pending',
+      status: isInstantClearance ? 'completed' : 'pending',
       created_at: new Date().toISOString(),
     } as any);
   } catch (err) {
     console.warn('[WalletService] Error holding escrow, updating in-memory:', err);
   }
 
-  // Update memory
   const w = await getUserWallet(sellerId);
-  w.pending_balance = (Number(w.pending_balance) || 0) + netAmount;
+  if (isInstantClearance) {
+    w.available_balance = (Number(w.available_balance) || 0) + netAmount;
+  } else {
+    w.pending_balance = (Number(w.pending_balance) || 0) + netAmount;
+  }
+
   inMemoryTransactions.unshift({
     id: `tx_${Date.now()}`,
     order_id: orderId,
-    type: 'escrow_hold',
+    type: isInstantClearance ? 'escrow_release' : 'escrow_hold',
     amount: netAmount,
     fee_amount: feeAmount,
-    status: 'pending',
-    description: `Escrow Hold for Order #${orderId.slice(-6)}`,
+    status: isInstantClearance ? 'completed' : 'pending',
+    description: `Escrow Hold for Order #${orderId.slice(-6)} (${(feePercent * 100).toFixed(1)}% Fee)`,
     created_at: new Date().toISOString(),
   });
 }
@@ -268,7 +372,7 @@ export async function getPayoutMethods(userId: string): Promise<PayoutMethod[]> 
 }
 
 /**
- * Add a new payout method (InstaPay, Vodafone Cash, Bank)
+ * Add a new payout method
  */
 export async function addPayoutMethod(
   userId: string,

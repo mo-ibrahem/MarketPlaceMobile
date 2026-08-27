@@ -4,18 +4,24 @@ import {
   ArrowDownLeft,
   ArrowLeft,
   ArrowUpRight,
+  Award,
   Banknote,
   Building,
   CheckCircle2,
   ChevronRight,
   Clock,
   CreditCard,
+  FileCheck,
   Lock,
   Plus,
   RefreshCw,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   Smartphone,
+  Sparkles,
+  Upload,
+  UserCheck,
   Wallet,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -38,10 +44,14 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from '../hooks/useAuth';
 import {
   getPayoutMethods,
+  getSellerTier,
   getUserWallet,
   getWalletTransactions,
   requestPayout,
+  upgradeSellerTier,
+  SELLER_TIERS,
   type PayoutMethod,
+  type SellerTierConfig,
   type UserWallet,
   type WalletTransaction,
 } from '../src/services/lib/walletService';
@@ -55,6 +65,7 @@ export default function WalletScreen() {
   const [wallet, setWallet] = useState<UserWallet | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [payoutMethods, setPayoutMethods] = useState<PayoutMethod[]>([]);
+  const [sellerTier, setSellerTier] = useState<SellerTierConfig>(SELLER_TIERS[2]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -64,17 +75,24 @@ export default function WalletScreen() {
   const [selectedMethod, setSelectedMethod] = useState<PayoutMethod | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
 
+  // KYC Upgrade Modal state
+  const [tierModalVisible, setTierModalVisible] = useState(false);
+  const [nationalIdNum, setNationalIdNum] = useState('');
+  const [upgradingTier, setUpgradingTier] = useState(false);
+
   const loadWalletData = useCallback(async () => {
     if (!user) return;
     try {
-      const [w, txs, pms] = await Promise.all([
+      const [w, txs, pms, tier] = await Promise.all([
         getUserWallet(user.id),
         getWalletTransactions(user.id),
         getPayoutMethods(user.id),
+        getSellerTier(user.id),
       ]);
       setWallet(w);
       setTransactions(txs);
       setPayoutMethods(pms);
+      setSellerTier(tier);
       if (pms.length > 0 && !selectedMethod) {
         setSelectedMethod(pms.find((p) => p.is_default) || pms[0]);
       }
@@ -118,6 +136,30 @@ export default function WalletScreen() {
       Alert.alert('Payout Error', err?.message || 'Failed to process payout');
     } finally {
       setWithdrawing(false);
+    }
+  };
+
+  const handleUpgradeTier = async () => {
+    if (!user) return;
+    if (nationalIdNum.length !== 14) {
+      Toast.show({ type: 'error', text1: 'Egyptian National ID must be 14 digits' });
+      return;
+    }
+
+    setUpgradingTier(true);
+    try {
+      const newTier = await upgradeSellerTier(user.id, 2);
+      setSellerTier(newTier);
+      Toast.show({
+        type: 'success',
+        text1: 'Verification Approved! 🛡️',
+        text2: 'You are now a Verified Trader (Tier 2) with 4% fee and higher limits.',
+      });
+      setTierModalVisible(false);
+    } catch (err: any) {
+      Alert.alert('Verification Failed', err?.message || 'Could not verify ID');
+    } finally {
+      setUpgradingTier(false);
     }
   };
 
@@ -211,6 +253,56 @@ export default function WalletScreen() {
               </TouchableOpacity>
             </View>
           </LinearGradient>
+
+          {/* ════════ SELLER TRUST TIER & ESCROW POLICY CARD (eBay Style) ════════ */}
+          <View style={styles.tierStatusCard}>
+            <View style={styles.tierStatusHeader}>
+              <View style={styles.tierBadgeBox}>
+                <ShieldCheck color="#2563EB" size={22} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.tierNameText}>{sellerTier.name}</Text>
+                  <View style={styles.tierTagPill}>
+                    <Text style={styles.tierTagPillText}>{sellerTier.badge}</Text>
+                  </View>
+                </View>
+                <Text style={styles.tierSubText}>{sellerTier.kycRequirement}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.upgradeBtn}
+                onPress={() => setTierModalVisible(true)}
+                activeOpacity={0.85}
+              >
+                <Sparkles size={13} color="#2563EB" />
+                <Text style={styles.upgradeBtnText}>Upgrade</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.tierDivider} />
+
+            {/* Tier Rules Grid */}
+            <View style={styles.tierGrid}>
+              <View style={styles.tierGridItem}>
+                <Text style={styles.tierGridLabel}>Commission Fee</Text>
+                <Text style={styles.tierGridValue}>{(sellerTier.commissionFeePercent * 100).toFixed(1)}%</Text>
+              </View>
+              <View style={styles.tierGridItem}>
+                <Text style={styles.tierGridLabel}>Monthly Limit</Text>
+                <Text style={styles.tierGridValue}>
+                  {sellerTier.listingLimitAmount > 1000000
+                    ? 'Unlimited'
+                    : `EGP ${(sellerTier.listingLimitAmount / 1000).toFixed(0)}K`}
+                </Text>
+              </View>
+              <View style={styles.tierGridItem}>
+                <Text style={styles.tierGridLabel}>Hold Release</Text>
+                <Text style={styles.tierGridValue} numberOfLines={1}>
+                  {sellerTier.tier === 3 ? 'Instant' : 'PIN / Delivery'}
+                </Text>
+              </View>
+            </View>
+          </View>
 
           {/* Quick Payout Method Card Preview */}
           <View style={styles.payoutBanner}>
@@ -404,6 +496,70 @@ export default function WalletScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* KYC Seller Tier Upgrade Modal */}
+      <Modal visible={tierModalVisible} animationType="slide" transparent>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <ShieldCheck color="#2563EB" size={24} />
+              <Text style={styles.modalTitle}>Seller Tier Verification</Text>
+            </View>
+            <Text style={styles.modalSub}>
+              Upgrade to <Text style={{ fontWeight: '800', color: '#0F172A' }}>Tier 2 (Verified Trader)</Text> to reduce commission to 4%, increase monthly selling limit to 150,000 EGP, and get the Verified Trader Badge 🛡️.
+            </Text>
+
+            {/* National ID Input */}
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalInputLabel}>Egyptian National ID Number (الرقم القومي - 14 رقم)</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                value={nationalIdNum}
+                onChangeText={setNationalIdNum}
+                placeholder="2980101XXXXXXX"
+                keyboardType="number-pad"
+                maxLength={14}
+              />
+            </View>
+
+            {/* Document Upload Buttons */}
+            <View style={styles.uploadRow}>
+              <View style={styles.uploadBox}>
+                <Upload size={18} color="#2563EB" />
+                <Text style={styles.uploadText}>ID Front (وجه البطاقة)</Text>
+                <Text style={styles.uploadSub}>Verified</Text>
+              </View>
+              <View style={styles.uploadBox}>
+                <Upload size={18} color="#2563EB" />
+                <Text style={styles.uploadText}>ID Back (ظهر البطاقة)</Text>
+                <Text style={styles.uploadSub}>Verified</Text>
+              </View>
+            </View>
+
+            {/* Modal Buttons */}
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setTierModalVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalSubmitBtn}
+                onPress={handleUpgradeTier}
+                disabled={upgradingTier}
+              >
+                {upgradingTier ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <Text style={styles.modalSubmitText}>Submit for Verification</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -432,7 +588,7 @@ const styles = StyleSheet.create({
   balanceHeroCard: {
     borderRadius: 24,
     padding: 20,
-    marginBottom: 16,
+    marginBottom: 14,
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
@@ -498,6 +654,39 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   payoutSettingsHeroBtnText: { color: 'white', fontWeight: '700', fontSize: 12 },
+
+  // Tier Status Card
+  tierStatusCard: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    marginBottom: 14,
+  },
+  tierStatusHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  tierBadgeBox: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
+  tierNameText: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
+  tierTagPill: { backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  tierTagPillText: { fontSize: 10, fontWeight: '800', color: '#059669' },
+  tierSubText: { fontSize: 11, color: '#64748B', marginTop: 1 },
+  upgradeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  upgradeBtnText: { fontSize: 11, fontWeight: '800', color: '#2563EB' },
+  tierDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 },
+  tierGrid: { flexDirection: 'row', justifyContent: 'space-between' },
+  tierGridItem: { alignItems: 'center', flex: 1 },
+  tierGridLabel: { fontSize: 10, color: '#94A3B8', fontWeight: '700', marginBottom: 2 },
+  tierGridValue: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
 
   payoutBanner: {
     flexDirection: 'row',
@@ -574,8 +763,8 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
-  modalSub: { fontSize: 13, color: '#64748B', marginBottom: 16 },
-  modalInputGroup: { marginBottom: 10 },
+  modalSub: { fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 18 },
+  modalInputGroup: { marginBottom: 12 },
   modalInputLabel: { fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 6 },
   modalTextInput: {
     height: 48,
@@ -612,7 +801,23 @@ const styles = StyleSheet.create({
   pmOptionName: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
   pmOptionId: { fontSize: 11, color: '#64748B' },
 
-  modalBtnRow: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  uploadRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  uploadBox: {
+    flex: 1,
+    height: 76,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#BFDBFE',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  uploadText: { fontSize: 11, fontWeight: '700', color: '#0F172A' },
+  uploadSub: { fontSize: 10, color: '#059669', fontWeight: '700' },
+
+  modalBtnRow: { flexDirection: 'row', gap: 12, marginTop: 14 },
   modalCancelBtn: {
     flex: 1,
     height: 48,
