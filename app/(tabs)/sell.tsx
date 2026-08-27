@@ -230,7 +230,7 @@ export default function SellScreen() {
   // ── Success screen ──────────────────────────────────────────────────────────
   if (done) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
         <View style={styles.successContainer}>
           <LinearGradient colors={["#D1FAE5", "#A7F3D0"]} style={styles.successIcon}>
             <CheckCircle color="#10B981" size={52} />
@@ -244,7 +244,7 @@ export default function SellScreen() {
 
   // ── Wizard ──────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={{ flex: 1, width: '100%', maxWidth: 680, alignSelf: 'center' }}>
         {/* ── Header ── */}
         <View style={styles.header}>

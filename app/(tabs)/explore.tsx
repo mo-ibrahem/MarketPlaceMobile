@@ -32,7 +32,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -78,6 +78,7 @@ type TabId = typeof TABS[number]['id'];
 
 export default function ProfileScreen() {
   const { user, loading: authLoading } = useAuth();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useTranslation();
   const { language, changeLanguage } = useLanguage();
@@ -470,7 +471,7 @@ export default function ProfileScreen() {
           colors={['#4F46E5', '#7C3AED']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.heroBanner}
+          style={[styles.heroBanner, { paddingTop: insets.top + 20 }]}
         >
           {/* Avatar */}
           <TouchableOpacity onPress={handleAvatarUpload} style={styles.heroAvatarWrap} activeOpacity={0.85}>
