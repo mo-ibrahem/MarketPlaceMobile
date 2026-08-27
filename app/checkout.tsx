@@ -39,6 +39,7 @@ import { createMarketplaceOrder } from '../src/services/lib/orderService';
 import { startPaymobCheckoutSession } from '../src/services/lib/paymobService';
 import { productService, type Product } from '../src/services/lib/products';
 import { deductWalletSpendableFunds, getUserWallet, type UserWallet } from '../src/services/lib/walletService';
+import EscrowTrustModal from '../src/components/EscrowTrustModal';
 
 const GOVERNORATES = ['Cairo', 'Giza', 'Alexandria', 'Dakahlia', 'Sharqia', 'Qalyubia', 'Gharbia', 'Red Sea'];
 
@@ -53,6 +54,7 @@ export default function CheckoutScreen() {
   const [product, setProduct] = useState<Product | null>(null);
   const [wallet, setWallet] = useState<UserWallet | null>(null);
   const [useWalletBalance, setUseWalletBalance] = useState(true);
+  const [trustModalVisible, setTrustModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -221,15 +223,22 @@ export default function CheckoutScreen() {
         >
           <View style={{ maxWidth: 680, width: '100%', alignSelf: 'center' }}>
             {/* Escrow Guarantee Banner */}
-            <View style={styles.escrowBanner}>
+            <TouchableOpacity
+              style={styles.escrowBanner}
+              onPress={() => setTrustModalVisible(true)}
+              activeOpacity={0.85}
+            >
               <ShieldCheck color="#2563EB" size={26} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.escrowTitle}>EgyBay Money Back Guarantee 🛡️</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <Text style={styles.escrowTitle}>ضمان إيجي باي لحماية أموالك 🛡️</Text>
+                  <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '800' }}>كيف نحميك؟ ←</Text>
+                </View>
                 <Text style={styles.escrowSub}>
-                  Your money is held safely in escrow. The seller gets paid only after you inspect and accept the item.
+                  البائع لا يستلم جنيهاً واحداً إلا بعد استلامك ومعاينتك للمنتج والتأكيد. استرجاع فوري 100%!
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
 
             {/* Product Summary Card */}
             {product && (
@@ -551,6 +560,9 @@ export default function CheckoutScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Escrow Trust Guarantee Modal */}
+      <EscrowTrustModal visible={trustModalVisible} onClose={() => setTrustModalVisible(false)} />
     </SafeAreaView>
   );
 }

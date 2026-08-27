@@ -46,6 +46,7 @@ import { getProductBoostInfo } from '../../src/services/lib/boostService';
 import { getOrCreateChatRoom, sendMessage } from '../../src/services/lib/chatService';
 import { productService, type Product } from '../../src/services/lib/products';
 import { supabase } from '../../src/services/lib/supabase';
+import EscrowTrustModal from '../../src/components/EscrowTrustModal';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,6 +92,7 @@ export default function ProductDetailScreen() {
 
   // Safety Guide Modal State
   const [safetyModalVisible, setSafetyModalVisible] = useState(false);
+  const [trustModalVisible, setTrustModalVisible] = useState(false);
 
   // Heart scale animation
   const heartScale = useRef(new Animated.Value(1)).current;
@@ -395,16 +397,25 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {/* ── eBay Money Back Guarantee Card ── */}
-          <View style={styles.guaranteeCard}>
+          {/* ── EgyBay Escrow & Money Back Guarantee Card ── */}
+          <TouchableOpacity
+            style={styles.guaranteeCard}
+            onPress={() => setTrustModalVisible(true)}
+            activeOpacity={0.85}
+          >
             <View style={styles.guaranteeIconWrap}>
-              <ShieldCheck color="#2563EB" size={22} />
+              <ShieldCheck color="#2563EB" size={24} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.guaranteeTitle}>{t('products.guaranteeTitle')}</Text>
-              <Text style={styles.guaranteeDesc}>{t('products.guaranteeDesc')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                <Text style={styles.guaranteeTitle}>ضمان إيجي باي لحماية أموالك 🛡️</Text>
+                <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '800' }}>كيف نحميك؟ ←</Text>
+              </View>
+              <Text style={styles.guaranteeDesc}>
+                أموالك في أمان تام ولا تُحوّل للبائع إلا بعد استلامك ومعاينتك للمنتج 100%.
+              </Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* ── Delivery & Handover Options Strip ── */}
           <View style={styles.deliverySection}>
@@ -646,6 +657,9 @@ export default function ProductDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Escrow Trust Guarantee Modal */}
+      <EscrowTrustModal visible={trustModalVisible} onClose={() => setTrustModalVisible(false)} />
 
       </View>
     </SafeAreaView>
