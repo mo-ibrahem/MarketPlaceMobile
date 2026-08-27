@@ -250,5 +250,18 @@
     "sohag": "Sohag",
     "southSinai": "South Sinai",
     "suez": "Suez"
+  },
+  "wallet": {
+    "title": "My Wallet & Earnings",
+    "available": "Available for Withdrawal",
+    "pending": "Pending in Escrow",
+    "withdraw": "Withdraw Funds",
+    "payoutAccounts": "Payout Accounts",
+    "transactions": "Transaction Activity"
+  },
+  "checkout": {
+    "title": "Secure Checkout",
+    "escrowProtected": "Escrow Protected",
+    "payWithEscrow": "Pay with Escrow Protection"
   }
 }

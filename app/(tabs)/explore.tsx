@@ -14,9 +14,12 @@ import {
   MessageCircle,
   Package,
   Save,
+  ShieldCheck,
   ShoppingBag,
   Trash2,
   User,
+  Wallet,
+  ArrowUpRight,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +40,7 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { getChatRooms, type ChatRoomInfo } from '../../src/services/lib/chatService';
+import { getUserWallet, type UserWallet } from '../../src/services/lib/walletService';
 import {
   productService,
   profileService,
@@ -90,6 +94,7 @@ export default function ProfileScreen() {
   const [soldCount,        setSoldCount]        = useState(0);
   const [isLoading,        setIsLoading]        = useState(true);
   const [activeTab,        setActiveTab]        = useState<TabId>('products');
+  const [wallet,           setWallet]           = useState<UserWallet | null>(null);
 
   const [editProfileData, setEditProfileData] = useState({ full_name: '', phone: '' });
   const [passwordData,    setPasswordData]    = useState({ newPassword: '', confirmPassword: '' });
@@ -109,18 +114,20 @@ export default function ProfileScreen() {
     if (!user) return;
     try {
       setIsLoading(true);
-      const [profileData, products, wishlist, chats, sold] = await Promise.all([
+      const [profileData, products, wishlist, chats, sold, userWallet] = await Promise.all([
         profileService.getProfile(user.id),
         productService.getProductsBySeller(user.id),
         productService.getWishlist(),
         getChatRooms(),
         productService.getSoldCountBySeller(user.id),
+        getUserWallet(user.id),
       ]);
       setProfile(profileData);
       setUserProducts(products);
       setWishlistProducts(wishlist);
       setChatRooms(chats || []);
       setSoldCount(sold);
+      setWallet(userWallet);
       setEditProfileData({
         full_name: profileData?.full_name || '',
         phone:     profileData?.phone     || '',
@@ -527,6 +534,48 @@ export default function ProfileScreen() {
           />
         </View>
 
+        {/* ════════ MY WALLET & ESCROW BALANCE WIDGET ════════ */}
+        <TouchableOpacity
+          style={styles.walletWidgetCard}
+          onPress={() => router.push('/wallet' as any)}
+          activeOpacity={0.88}
+        >
+          <View style={styles.walletWidgetHeader}>
+            <View style={styles.walletWidgetIconBox}>
+              <Wallet color="#2563EB" size={18} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.walletWidgetTitle}>EgyBay Wallet & Escrow</Text>
+              <Text style={styles.walletWidgetSub}>
+                Pending Escrow: <Text style={{ fontWeight: '700', color: '#D97706' }}>EGP {Number(wallet?.pending_balance || 0).toLocaleString()}</Text>
+              </Text>
+            </View>
+            <View style={styles.walletWidgetRight}>
+              <Text style={styles.walletWidgetAvailable}>EGP {Number(wallet?.available_balance || 0).toLocaleString()}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                <Text style={styles.walletWidgetCta}>Withdraw</Text>
+                <ArrowUpRight size={12} color="#2563EB" />
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* ════════ SELLER TRUST TIER CARD ════════ */}
+        <View style={styles.sellerTierCard}>
+          <View style={styles.tierIconWrap}>
+            <ShieldCheck color="#10B981" size={20} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={styles.tierRow}>
+              <Text style={styles.tierTitle}>Tier 2: Verified Trader</Text>
+              <View style={styles.tierBadge}>
+                <Text style={styles.tierBadgeText}>VERIFIED 🛡️</Text>
+              </View>
+            </View>
+            <Text style={styles.tierSub}>Egyptian National ID Verified • 100% Escrow Protection</Text>
+          </View>
+        </View>
+
         {/* ════════ TABS ════════ */}
         <View style={styles.tabBar}>
           {TABS.map(tab => {
@@ -630,6 +679,67 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 20, fontWeight: '800', color: '#1E293B' },
   statLabel: { fontSize: 12, color: '#94A3B8', fontWeight: '600' },
   statDivider: { width: 1, backgroundColor: '#F1F5F9', marginVertical: 4 },
+
+  // Wallet Widget
+  walletWidgetCard: {
+    backgroundColor: 'white',
+    marginHorizontal: 20,
+    marginTop: 14,
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#DBEAFE',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  walletWidgetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  walletWidgetIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  walletWidgetTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 2 },
+  walletWidgetSub: { fontSize: 11, color: '#64748B' },
+  walletWidgetRight: { alignItems: 'flex-end' },
+  walletWidgetAvailable: { fontSize: 15, fontWeight: '900', color: '#059669', marginBottom: 2 },
+  walletWidgetCta: { fontSize: 11, fontWeight: '700', color: '#2563EB' },
+
+  // Seller Tier Card
+  sellerTierCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F8FAFC',
+    marginHorizontal: 20,
+    marginTop: 10,
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  tierIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tierRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  tierTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
+  tierBadge: { backgroundColor: '#D1FAE5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  tierBadgeText: { fontSize: 9, fontWeight: '800', color: '#059669' },
+  tierSub: { fontSize: 11, color: '#64748B' },
 
   // Tabs
   tabBar: {

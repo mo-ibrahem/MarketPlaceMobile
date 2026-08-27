@@ -1,0 +1,635 @@
+import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  ArrowLeft,
+  Banknote,
+  Building,
+  CheckCircle2,
+  ChevronRight,
+  CreditCard,
+  Lock,
+  MapPin,
+  QrCode,
+  ShieldCheck,
+  Smartphone,
+  Truck,
+  User,
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
+import { useAuth } from '../hooks/useAuth';
+import { createMarketplaceOrder } from '../src/services/lib/orderService';
+import { startPaymobCheckoutSession } from '../src/services/lib/paymobService';
+import { productService, type Product } from '../src/services/lib/products';
+
+const GOVERNORATES = ['Cairo', 'Giza', 'Alexandria', 'Dakahlia', 'Sharqia', 'Qalyubia', 'Gharbia', 'Red Sea'];
+
+export default function CheckoutScreen() {
+  const { productId } = useLocalSearchParams<{ productId: string }>();
+  const router = useRouter();
+  const { user } = useAuth();
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Form State
+  const [deliveryMethod, setDeliveryMethod] = useState<'courier' | 'qr_meetup'>('courier');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'wallet' | 'instapay' | 'cod'>('card');
+  const [fullName, setFullName] = useState(user?.user_metadata?.full_name || 'Mohamed Ibrahim');
+  const [phoneNumber, setPhoneNumber] = useState('01012345678');
+  const [governorate, setGovernorate] = useState('Cairo');
+  const [city, setCity] = useState('New Cairo');
+  const [streetAddress, setStreetAddress] = useState('90th Street, Building 4');
+
+  useEffect(() => {
+    async function loadProduct() {
+      if (!productId) return;
+      try {
+        const data = await productService.getProductById(productId);
+        setProduct(data);
+      } catch (err) {
+        console.error('Error loading checkout product:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProduct();
+  }, [productId]);
+
+  const deliveryFee = deliveryMethod === 'courier' ? 65 : 0;
+  const itemPrice = Number(product?.price || 0);
+  const totalPrice = itemPrice + deliveryFee;
+
+  const handleProceedToPayment = async () => {
+    if (!product || !user) {
+      Toast.show({ type: 'error', text1: 'Please sign in to complete purchase' });
+      return;
+    }
+
+    if (deliveryMethod === 'courier' && (!phoneNumber || !streetAddress || !city)) {
+      Toast.show({ type: 'error', text1: 'Please complete shipping address' });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // 1. Create order in Escrow state
+      const order = await createMarketplaceOrder({
+        product_id: product.id,
+        buyer_id: user.id,
+        seller_id: product.seller_id,
+        amount: totalPrice,
+        handover_method: deliveryMethod,
+        shipping_address: {
+          full_name: fullName,
+          phone: phoneNumber,
+          governorate,
+          city,
+          street: streetAddress,
+        },
+        product_snapshot: {
+          id: product.id,
+          title: product.title,
+          price: product.price,
+          images: product.images,
+          condition: product.condition,
+          category: product.category,
+        },
+      });
+
+      // 2. If card / wallet selected, initiate Paymob payment session
+      if (paymentMethod === 'card' || paymentMethod === 'wallet') {
+        const session = await startPaymobCheckoutSession({
+          amountEgp: totalPrice,
+          merchantOrderId: order.id,
+          itemName: product.title,
+          billingData: {
+            first_name: fullName.split(' ')[0] || 'Buyer',
+            last_name: fullName.split(' ')[1] || 'Egbay',
+            email: user.email || 'customer@egbay.market',
+            phone_number: phoneNumber,
+            city,
+            state: governorate,
+            street: streetAddress,
+          },
+        });
+
+        // Navigate to WebView
+        router.push({
+          pathname: '/payment',
+          params: {
+            paymentToken: session.paymentToken,
+            orderId: order.id,
+            totalEgp: totalPrice.toString(),
+          },
+        } as any);
+      } else {
+        // COD or InstaPay reference instant order confirmation
+        Toast.show({ type: 'success', text1: 'Order Placed with Escrow Protection! 🎉' });
+        router.replace({
+          pathname: '/order/[orderId]',
+          params: { orderId: order.id },
+        } as any);
+      }
+    } catch (err: any) {
+      Alert.alert('Checkout Error', err?.message || 'Failed to process checkout');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text style={styles.loadingText}>Preparing secure checkout…</Text>
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Top Header */}
+        <View style={styles.topHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <ArrowLeft color="#0F172A" size={22} />
+          </TouchableOpacity>
+          <Text style={styles.topTitle}>Secure Checkout</Text>
+          <View style={styles.lockBadge}>
+            <Lock color="#10B981" size={13} />
+            <Text style={styles.lockBadgeText}>Escrow</Text>
+          </View>
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        >
+          <View style={{ maxWidth: 680, width: '100%', alignSelf: 'center' }}>
+            {/* Escrow Guarantee Banner */}
+            <View style={styles.escrowBanner}>
+              <ShieldCheck color="#2563EB" size={26} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.escrowTitle}>EgyBay Money Back Guarantee 🛡️</Text>
+                <Text style={styles.escrowSub}>
+                  Your money is held safely in escrow. The seller gets paid only after you inspect and accept the item.
+                </Text>
+              </View>
+            </View>
+
+            {/* Product Summary Card */}
+            {product && (
+              <View style={styles.productCard}>
+                <Image
+                  source={{ uri: product.images?.[0] || 'https://via.placeholder.com/150' }}
+                  style={styles.productThumb}
+                />
+                <View style={styles.productInfo}>
+                  <Text style={styles.productTitle} numberOfLines={2}>
+                    {product.title}
+                  </Text>
+                  <View style={styles.productMetaRow}>
+                    <View style={styles.conditionTag}>
+                      <Text style={styles.conditionTagText}>{product.condition}</Text>
+                    </View>
+                    <View style={styles.sellerTag}>
+                      <User size={11} color="#64748B" />
+                      <Text style={styles.sellerTagText}>Verified Seller ��️</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.productPrice}>EGP {Number(product.price).toLocaleString()}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Handover & Delivery Options */}
+            <Text style={styles.sectionHeading}>Delivery & Handover Method</Text>
+            <View style={styles.optionsGrid}>
+              <TouchableOpacity
+                style={[styles.methodCard, deliveryMethod === 'courier' && styles.methodCardActive]}
+                onPress={() => setDeliveryMethod('courier')}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.methodIconWrap, deliveryMethod === 'courier' && styles.methodIconWrapActive]}>
+                  <Truck color={deliveryMethod === 'courier' ? '#2563EB' : '#64748B'} size={20} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.methodHeaderRow}>
+                    <Text style={styles.methodTitle}>Bosta Courier Delivery</Text>
+                    <Text style={styles.methodPrice}>EGP 65</Text>
+                  </View>
+                  <Text style={styles.methodSub}>Doorstep delivery across all 27 Governorates in 24–48 hrs with tracking.</Text>
+                </View>
+                {deliveryMethod === 'courier' && <CheckCircle2 color="#2563EB" size={20} />}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.methodCard, deliveryMethod === 'qr_meetup' && styles.methodCardActive]}
+                onPress={() => setDeliveryMethod('qr_meetup')}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.methodIconWrap, deliveryMethod === 'qr_meetup' && styles.methodIconWrapActive]}>
+                  <QrCode color={deliveryMethod === 'qr_meetup' ? '#2563EB' : '#64748B'} size={20} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.methodHeaderRow}>
+                    <Text style={styles.methodTitle}>In-Person Meetup (QR Escrow)</Text>
+                    <Text style={[styles.methodPrice, { color: '#059669' }]}>FREE</Text>
+                  </View>
+                  <Text style={styles.methodSub}>Meet in a safe public spot. Scan QR code to release escrow on the spot.</Text>
+                </View>
+                {deliveryMethod === 'qr_meetup' && <CheckCircle2 color="#2563EB" size={20} />}
+              </TouchableOpacity>
+            </View>
+
+            {/* Address Form (if Courier) */}
+            {deliveryMethod === 'courier' && (
+              <View style={styles.formSection}>
+                <Text style={styles.sectionHeading}>Shipping Address</Text>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Full Name</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={fullName}
+                    onChangeText={setFullName}
+                    placeholder="Recipient Name"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Egyptian Mobile Number (+20)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    placeholder="010XXXXXXXX"
+                    keyboardType="phone-pad"
+                  />
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>Governorate</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={governorate}
+                      onChangeText={setGovernorate}
+                      placeholder="e.g. Cairo"
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>City / Area</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={city}
+                      onChangeText={setCity}
+                      placeholder="e.g. Maadi, Heliopolis"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Street Address & Building</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={streetAddress}
+                    onChangeText={setStreetAddress}
+                    placeholder="Street name, Building no., Apartment"
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Payment Method Selector */}
+            <Text style={styles.sectionHeading}>Select Payment Option</Text>
+            <View style={styles.paymentOptions}>
+              {/* Option 1: Card */}
+              <TouchableOpacity
+                style={[styles.payOptionCard, paymentMethod === 'card' && styles.payOptionActive]}
+                onPress={() => setPaymentMethod('card')}
+                activeOpacity={0.85}
+              >
+                <View style={styles.payIconBox}>
+                  <CreditCard size={18} color={paymentMethod === 'card' ? '#2563EB' : '#64748B'} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.payOptionTitle}>Credit / Debit Card</Text>
+                  <Text style={styles.payOptionSub}>Visa, Mastercard, Meeza via Paymob</Text>
+                </View>
+                <View style={styles.tagPill}>
+                  <Text style={styles.tagPillText}>Instant</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Option 2: Mobile Wallets */}
+              <TouchableOpacity
+                style={[styles.payOptionCard, paymentMethod === 'wallet' && styles.payOptionActive]}
+                onPress={() => setPaymentMethod('wallet')}
+                activeOpacity={0.85}
+              >
+                <View style={styles.payIconBox}>
+                  <Smartphone size={18} color={paymentMethod === 'wallet' ? '#2563EB' : '#64748B'} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.payOptionTitle}>Mobile Wallet (Vodafone / Orange / Etisalat)</Text>
+                  <Text style={styles.payOptionSub}>Pay with your Egyptian e-Wallet</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Option 3: InstaPay */}
+              <TouchableOpacity
+                style={[styles.payOptionCard, paymentMethod === 'instapay' && styles.payOptionActive]}
+                onPress={() => setPaymentMethod('instapay')}
+                activeOpacity={0.85}
+              >
+                <View style={styles.payIconBox}>
+                  <Building size={18} color={paymentMethod === 'instapay' ? '#2563EB' : '#64748B'} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.payOptionTitle}>InstaPay Transfer (IPN)</Text>
+                  <Text style={styles.payOptionSub}>Direct Escrow Reference to EgyBay IPA</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Option 4: COD */}
+              <TouchableOpacity
+                style={[styles.payOptionCard, paymentMethod === 'cod' && styles.payOptionActive]}
+                onPress={() => setPaymentMethod('cod')}
+                activeOpacity={0.85}
+              >
+                <View style={styles.payIconBox}>
+                  <Banknote size={18} color={paymentMethod === 'cod' ? '#2563EB' : '#64748B'} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.payOptionTitle}>Cash on Delivery (Courier Escrow)</Text>
+                  <Text style={styles.payOptionSub}>Inspect item at your door before paying cash</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Price Breakdown */}
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryTitle}>Price Breakdown</Text>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Item Price</Text>
+                <Text style={styles.summaryValue}>EGP {itemPrice.toLocaleString()}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Delivery</Text>
+                <Text style={styles.summaryValue}>{deliveryFee === 0 ? 'FREE' : `EGP ${deliveryFee}`}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Buyer Escrow Protection</Text>
+                <Text style={[styles.summaryValue, { color: '#059669', fontWeight: '700' }]}>FREE</Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total Amount</Text>
+                <Text style={styles.totalValue}>EGP {totalPrice.toLocaleString()}</Text>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Sticky Bottom Action Bar */}
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+          <View style={styles.bottomTotal}>
+            <Text style={styles.bottomTotalLabel}>Total to Pay</Text>
+            <Text style={styles.bottomTotalValue}>EGP {totalPrice.toLocaleString()}</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.payButton}
+            onPress={handleProceedToPayment}
+            disabled={submitting}
+            activeOpacity={0.9}
+          >
+            <LinearGradient
+              colors={['#2563EB', '#1D4ED8']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.payGradient}
+            >
+              {submitting ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <>
+                  <Lock color="white" size={18} />
+                  <Text style={styles.payButtonText}>Pay with Escrow Protection</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
+  loadingText: { marginTop: 12, color: '#64748B', fontSize: 14, fontWeight: '600' },
+
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  backBtn: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
+  topTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
+  lockBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  lockBadgeText: { fontSize: 11, fontWeight: '700', color: '#059669' },
+
+  scrollContent: { padding: 16 },
+
+  escrowBanner: {
+    flexDirection: 'row',
+    gap: 12,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    marginBottom: 16,
+  },
+  escrowTitle: { fontSize: 14, fontWeight: '800', color: '#1E40AF', marginBottom: 2 },
+  escrowSub: { fontSize: 12, color: '#3B82F6', lineHeight: 16 },
+
+  productCard: {
+    flexDirection: 'row',
+    gap: 12,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 20,
+  },
+  productThumb: { width: 72, height: 72, borderRadius: 12, backgroundColor: '#F1F5F9' },
+  productInfo: { flex: 1, justifyContent: 'center' },
+  productTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
+  productMetaRow: { flexDirection: 'row', gap: 6, marginBottom: 6 },
+  conditionTag: { backgroundColor: '#F1F5F9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  conditionTagText: { fontSize: 10, fontWeight: '700', color: '#475569' },
+  sellerTag: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  sellerTagText: { fontSize: 11, fontWeight: '600', color: '#64748B' },
+  productPrice: { fontSize: 16, fontWeight: '900', color: '#2563EB' },
+
+  sectionHeading: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginBottom: 10, marginTop: 6 },
+
+  optionsGrid: { gap: 10, marginBottom: 20 },
+  methodCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  methodCardActive: { borderColor: '#2563EB', backgroundColor: '#F8FAFF' },
+  methodIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  methodIconWrapActive: { backgroundColor: '#EFF6FF' },
+  methodHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  methodTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+  methodPrice: { fontSize: 12, fontWeight: '800', color: '#2563EB' },
+  methodSub: { fontSize: 11, color: '#64748B', lineHeight: 15 },
+
+  formSection: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 20,
+  },
+  inputGroup: { marginBottom: 12 },
+  inputRow: { flexDirection: 'row', gap: 10 },
+  inputLabel: { fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 6 },
+  textInput: {
+    height: 44,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+
+  paymentOptions: { gap: 8, marginBottom: 20 },
+  payOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'white',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  payOptionActive: { borderColor: '#2563EB', backgroundColor: '#F8FAFF' },
+  payIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  payOptionTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+  payOptionSub: { fontSize: 11, color: '#64748B' },
+  tagPill: { backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  tagPillText: { fontSize: 10, fontWeight: '800', color: '#059669' },
+
+  summaryBox: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+  },
+  summaryTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 12 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  summaryLabel: { fontSize: 13, color: '#64748B' },
+  summaryValue: { fontSize: 13, fontWeight: '600', color: '#0F172A' },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 8 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  totalLabel: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+  totalValue: { fontSize: 18, fontWeight: '900', color: '#2563EB' },
+
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  bottomTotal: { flex: 1 },
+  bottomTotalLabel: { fontSize: 11, color: '#64748B' },
+  bottomTotalValue: { fontSize: 17, fontWeight: '900', color: '#0F172A' },
+  payButton: { flex: 1.8, borderRadius: 14, overflow: 'hidden' },
+  payGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+  },
+  payButtonText: { color: 'white', fontSize: 14, fontWeight: '800' },
+});

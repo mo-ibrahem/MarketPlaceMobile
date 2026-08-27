@@ -119,25 +119,17 @@ export default function ProductDetailScreen() {
 
   // ── Actions ──────────────────────────────────────────────────────────────────
 
-  const handleBuyNow = async () => {
-    if (!user || !product) {
-      Toast.show({ type: 'error', text1: 'Please log in to purchase.' }); return;
+  const handleBuyNow = () => {
+    if (!user) { router.push('/login'); return; }
+    if (!product) return;
+    if (user.id === product.seller_id) {
+      Toast.show({ type: 'info', text1: 'This is your own listing.' });
+      return;
     }
-    setIsBuying(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-payment-key', {
-        body: {
-          product:     { id: product.id, title: product.title, description: product.description, price: product.price },
-          userProfile: { id: user.id, email: user.email, full_name: user.user_metadata?.full_name || 'N/A', phone: user.phone || '0123456789' },
-        },
-      });
-      if (error) throw error;
-      router.push(`/payment?paymentToken=${data.paymentToken}` as any);
-    } catch (e: any) {
-      Toast.show({ type: 'error', text1: 'Payment Error', text2: e.message });
-    } finally {
-      setIsBuying(false);
-    }
+    router.push({
+      pathname: '/checkout',
+      params: { productId: product.id },
+    } as any);
   };
 
   const handleWishlist = async () => {

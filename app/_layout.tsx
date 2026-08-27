@@ -16,7 +16,11 @@ export default function RootLayout() {
         <Stack.Screen name="chat/[roomId]" options={{ title: 'Chat' }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="signup" options={{ headerShown: false }} />
-        <Stack.Screen name="payment" options={{ title: 'Complete Payment' }} />
+        <Stack.Screen name="payment" options={{ headerShown: false, title: 'Complete Payment' }} />
+        <Stack.Screen name="checkout" options={{ headerShown: false, title: 'Checkout' }} />
+        <Stack.Screen name="wallet" options={{ headerShown: false, title: 'My Wallet' }} />
+        <Stack.Screen name="order/[orderId]" options={{ headerShown: false, title: 'Order Status' }} />
+        <Stack.Screen name="payout-settings" options={{ headerShown: false, title: 'Payout Settings' }} />
       </Stack>
       <Toast />
     </LanguageProvider>

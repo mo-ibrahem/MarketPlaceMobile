@@ -250,5 +250,18 @@
     "sohag": "سوهاج",
     "southSinai": "جنوب سيناء",
     "suez": "السويس"
+  },
+  "wallet": {
+    "title": "محفظتي والأرباح",
+    "available": "الرصيد المتاح للسحب",
+    "pending": "رصيد معلق في الضمان",
+    "withdraw": "سحب الأرباح",
+    "payoutAccounts": "حسابات تحويل الأرباح",
+    "transactions": "سجل المعاملات المالية"
+  },
+  "checkout": {
+    "title": "إتمام الشراء الآمن",
+    "escrowProtected": "محمي بحساب الضمان",
+    "payWithEscrow": "الدفع بحماية حساب الضمان"
   }
 }
