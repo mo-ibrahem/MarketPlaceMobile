@@ -458,11 +458,72 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Sign out */}
-      <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
-        <LogOut color="#EF4444" size={18} />
-        <Text style={styles.signOutText}>Sign Out</Text>
-      </TouchableOpacity>
+      {/* Legal & Compliance (Apple Mandated) */}
+      <View style={styles.settingsCard}>
+        <Text style={styles.settingsCardTitle}>📜  Legal & Policies • الشروط والسياسات</Text>
+        
+        <TouchableOpacity
+          style={styles.legalRow}
+          onPress={() => router.push('/terms' as any)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.legalText}>📄 Terms of Service • الشروط والأحكام</Text>
+          <ChevronRight size={16} color="#94A3B8" />
+        </TouchableOpacity>
+
+        <View style={styles.legalDivider} />
+
+        <TouchableOpacity
+          style={styles.legalRow}
+          onPress={() => router.push('/privacy' as any)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.legalText}>🛡️ Privacy Policy • سياسة الخصوصية</Text>
+          <ChevronRight size={16} color="#94A3B8" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Account Actions */}
+      <View style={{ gap: 10 }}>
+        {/* Sign out */}
+        <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
+          <LogOut color="#64748B" size={18} />
+          <Text style={styles.signOutText}>Sign Out • تسجيل الخروج</Text>
+        </TouchableOpacity>
+
+        {/* Apple Required Account Deletion */}
+        <TouchableOpacity
+          style={styles.deleteAccountBtn}
+          onPress={() => {
+            Alert.alert(
+              'Delete Account • حذف الحساب',
+              'Are you sure you want to permanently delete your EgyBay account? This action cannot be undone and will erase all your listings and profile data.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete Permanently',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      if (user) {
+                        await supabase.from('profiles').delete().eq('id', user.id);
+                      }
+                      await auth.signOut();
+                      Toast.show({ type: 'success', text1: 'Account Deleted Successfully' });
+                      router.replace('/login');
+                    } catch (err: any) {
+                      Alert.alert('Error', err?.message || 'Failed to delete account');
+                    }
+                  },
+                },
+              ]
+            );
+          }}
+        >
+          <Trash2 color="#EF4444" size={18} />
+          <Text style={styles.deleteAccountText}>Delete Account • حذف الحساب نهائياً</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -956,11 +1017,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  signOutText: { color: '#475569', fontSize: 14, fontWeight: '700' },
+
+  // Legal & Delete Account
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  legalText: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
+  legalDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 4 },
+
+  deleteAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
     backgroundColor: '#FEF2F2',
     borderRadius: 16,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderWidth: 1.5,
     borderColor: '#FECACA',
   },
-  signOutText: { color: '#EF4444', fontSize: 15, fontWeight: '800' },
+  deleteAccountText: { color: '#EF4444', fontSize: 13, fontWeight: '800' },
 });
