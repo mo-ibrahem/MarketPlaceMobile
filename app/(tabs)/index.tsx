@@ -42,6 +42,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import EgbayLogo from '../../assets/images/egbay.svg';
 import { useLanguage } from '../../hooks/useLanguage';
+import { getProductBoostInfo } from '../../src/services/lib/boostService';
 import { productService, type Product } from '../../src/services/lib/products';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -195,7 +196,15 @@ export default function HomeScreen() {
     [products]
   );
 
-  const recentlyAdded = products.slice(0, 12);
+  const recentlyAdded = useMemo(() => {
+    return [...products]
+      .sort((a, b) => {
+        const aBoost = (a as any).is_promoted ? 1 : 0;
+        const bBoost = (b as any).is_promoted ? 1 : 0;
+        return bBoost - aBoost;
+      })
+      .slice(0, 12);
+  }, [products]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -650,6 +659,19 @@ export default function HomeScreen() {
                         <Text style={styles.newBadgeText}>NEW</Text>
                       </View>
                     )}
+
+                    {/* Promoted / Urgent Ribbon Badge */}
+                    {(() => {
+                      const boost = getProductBoostInfo(item);
+                      if (boost.isPromoted && boost.pkg) {
+                        return (
+                          <View style={[styles.cardPromotedBadge, { backgroundColor: boost.pkg.id === 'urgent' ? '#F59E0B' : '#2563EB' }]}>
+                            <Text style={styles.cardPromotedBadgeText}>{boost.pkg.badgeEmoji} {boost.pkg.id.toUpperCase()}</Text>
+                          </View>
+                        );
+                      }
+                      return null;
+                    })()}
                   </View>
                   {/* Card body */}
                   <View style={styles.cardBody}>
@@ -1099,6 +1121,15 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   newBadgeText: { color: 'white', fontSize: 9, fontWeight: '900', letterSpacing: 0.6 },
+  cardPromotedBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  cardPromotedBadgeText: { color: 'white', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
   cardBody: { padding: 10 },
   cardTitle: { fontSize: 13, fontWeight: '700', color: '#1E293B', marginBottom: 4, lineHeight: 18 },
   cardRatingRow: {

@@ -42,6 +42,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
+import { getProductBoostInfo } from '../../src/services/lib/boostService';
 import { getOrCreateChatRoom, sendMessage } from '../../src/services/lib/chatService';
 import { productService, type Product } from '../../src/services/lib/products';
 import { supabase } from '../../src/services/lib/supabase';
@@ -292,6 +293,47 @@ export default function ProductDetailScreen() {
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
 
         <View style={styles.content}>
+          {/* Promoted Badge if active */}
+          {(() => {
+            const boost = getProductBoostInfo(product);
+            if (!boost.isPromoted || !boost.pkg) return null;
+            return (
+              <View style={[styles.promotedPill, { backgroundColor: boost.pkg.id === 'urgent' ? '#FEF3C7' : '#EFF6FF', borderColor: boost.pkg.id === 'urgent' ? '#F59E0B' : '#3B82F6' }]}>
+                <Text style={{ fontSize: 13 }}>{boost.pkg.badgeEmoji}</Text>
+                <Text style={[styles.promotedPillText, { color: boost.pkg.id === 'urgent' ? '#B45309' : '#1D4ED8' }]}>
+                  {boost.pkg.badgeText}
+                </Text>
+              </View>
+            );
+          })()}
+
+          {/* Owner Boost CTA Card */}
+          {user?.id === product.seller_id && (
+            <TouchableOpacity
+              style={styles.ownerBoostBanner}
+              onPress={() => router.push(`/boost/${product.id}` as any)}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={['#1E293B', '#0F172A']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.ownerBoostGradient}
+              >
+                <View style={styles.ownerBoostLeft}>
+                  <Sparkles size={20} color="#F59E0B" />
+                  <View>
+                    <Text style={styles.ownerBoostTitle}>Promote This Listing ⚡</Text>
+                    <Text style={styles.ownerBoostSub}>Get up to 10x more buyers across Egypt</Text>
+                  </View>
+                </View>
+                <View style={styles.ownerBoostBtn}>
+                  <Text style={styles.ownerBoostBtnText}>Boost →</Text>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
           {/* Title row + badges */}
           <View style={styles.badgeRow}>
             <View style={[styles.badge, product.condition === 'New' ? styles.badgeNew : styles.badgeUsed]}>
@@ -676,6 +718,42 @@ const styles = StyleSheet.create({
 
   // Content
   content: { padding: 20 },
+
+  // Boost & Promoted styles
+  promotedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    marginBottom: 10,
+  },
+  promotedPillText: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
+
+  ownerBoostBanner: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  ownerBoostGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+  },
+  ownerBoostLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  ownerBoostTitle: { color: 'white', fontSize: 13, fontWeight: '800' },
+  ownerBoostSub: { color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, marginTop: 1 },
+  ownerBoostBtn: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  ownerBoostBtnText: { color: '#0F172A', fontSize: 12, fontWeight: '800' },
 
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   badge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },

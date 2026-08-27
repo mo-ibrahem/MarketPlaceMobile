@@ -22,6 +22,7 @@ export default function RootLayout() {
         <Stack.Screen name="order/[orderId]" options={{ headerShown: false, title: 'Order Status' }} />
         <Stack.Screen name="payout-settings" options={{ headerShown: false, title: 'Payout Settings' }} />
         <Stack.Screen name="seller-verification" options={{ headerShown: false, title: 'Seller Verification' }} />
+        <Stack.Screen name="boost/[productId]" options={{ headerShown: false, title: 'Boost Listing' }} />
       </Stack>
       <Toast />
     </LanguageProvider>
