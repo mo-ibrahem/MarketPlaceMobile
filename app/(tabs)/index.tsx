@@ -133,6 +133,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { language, changeLanguage } = useLanguage();
+  const isArabic = language === 'ar';
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
@@ -144,6 +145,7 @@ export default function HomeScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -345,24 +347,66 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Row 3: Category Quick Rail */}
+            {/* Row 3: Single Unified Story-Style Category & Live Rail */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.categoryRail}
+              contentContainerStyle={styles.storyRailContainer}
             >
-              {CATEGORIES.map(cat => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={styles.categoryRailItem}
-                  onPress={() => handleCategory(cat)}
-                  activeOpacity={0.75}
+              {/* 🔴 Live Stream Story Circle */}
+              <TouchableOpacity
+                style={styles.storyItem}
+                onPress={() => router.push('/live' as any)}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#EF4444', '#DC2626', '#B91C1C']}
+                  style={styles.storyCircleLive}
                 >
-                  <Text style={styles.categoryRailText}>
-                    {cat.emoji} {t(cat.nameKey)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                  <View style={styles.storyInnerLive}>
+                    <Video color="#EF4444" size={20} />
+                  </View>
+                  <View style={styles.storyLiveBadge}>
+                    <Text style={styles.storyLiveBadgeText}>LIVE</Text>
+                  </View>
+                </LinearGradient>
+                <Text style={[styles.storyLabel, { color: '#EF4444', fontWeight: '800' }]} numberOfLines={1}>
+                  {isArabic ? 'بث مباشر' : 'Live'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Category Story Circles */}
+              {CATEGORIES.map(cat => {
+                const Icon = cat.icon;
+                const isSelected = selectedCategory === cat.id || (!selectedCategory && cat.id === 'all');
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={styles.storyItem}
+                    onPress={() => handleCategory(cat)}
+                    activeOpacity={0.8}
+                  >
+                    <View
+                      style={[
+                        styles.storyCircle,
+                        { backgroundColor: cat.bg, borderColor: isSelected ? '#2563EB' : cat.color + '30' },
+                        isSelected && styles.storyCircleSelected,
+                      ]}
+                    >
+                      <Icon color={isSelected ? '#2563EB' : cat.color} size={20} />
+                    </View>
+                    <Text
+                      style={[
+                        styles.storyLabel,
+                        isSelected && { color: '#2563EB', fontWeight: '800' },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {t(cat.nameKey)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
 
             {/* Quick search chips dropdown (while focused) */}
@@ -384,64 +428,25 @@ export default function HomeScreen() {
             )}
           </View>
 
-          {/* ════════════════ TRUST & ASSURANCE STRIP ════════════════ */}
-          <View style={styles.trustSection}>
-            <View style={styles.trustCard}>
-              <View style={[styles.trustIconWrap, { backgroundColor: '#EFF6FF' }]}>
-                <ShieldCheck color="#2563EB" size={20} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.trustTitle}>{t('home.trustPill1Title')}</Text>
-                <Text style={styles.trustSub}>{t('home.trustPill1Sub')}</Text>
-              </View>
+          {/* ════════════════ COMPACT 1-LINE TRUST TICKER ════════════════ */}
+          <View style={styles.microTrustTicker}>
+            <View style={styles.tickerItem}>
+              <ShieldCheck color="#2563EB" size={13} />
+              <Text style={styles.tickerText}>{isArabic ? 'ضمان مالي ١٠٠٪' : '100% Escrow'}</Text>
             </View>
-
-            <View style={styles.trustCard}>
-              <View style={[styles.trustIconWrap, { backgroundColor: '#ECFDF5' }]}>
-                <Truck color="#059669" size={20} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.trustTitle}>{t('home.trustPill2Title')}</Text>
-                <Text style={styles.trustSub}>{t('home.trustPill2Sub')}</Text>
-              </View>
+            <Text style={styles.tickerDot}>•</Text>
+            <View style={styles.tickerItem}>
+              <Truck color="#059669" size={13} />
+              <Text style={styles.tickerText}>{isArabic ? 'توصيل بوسطة لكافة المحافظات' : 'Bosta Egypt Delivery'}</Text>
             </View>
-
-            <View style={styles.trustCard}>
-              <View style={[styles.trustIconWrap, { backgroundColor: '#FEF3C7' }]}>
-                <Tag color="#D97706" size={20} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.trustTitle}>{t('home.trustPill3Title')}</Text>
-                <Text style={styles.trustSub}>{t('home.trustPill3Sub')}</Text>
-              </View>
+            <Text style={styles.tickerDot}>•</Text>
+            <View style={styles.tickerItem}>
+              <Zap color="#D97706" size={13} />
+              <Text style={styles.tickerText}>{isArabic ? 'تحويل فوري إنستاباي' : 'InstaPay Payouts'}</Text>
             </View>
           </View>
 
-          {/* ════════════════ FLASH DEALS LIVE STRIP ════════════════ */}
-          <TouchableOpacity
-            style={styles.flashStrip}
-            activeOpacity={0.9}
-            onPress={() => router.push('/products' as any)}
-          >
-            <LinearGradient
-              colors={['#DC2626', '#EA580C']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.flashGradient}
-            >
-              <View style={styles.flashLeft}>
-                <Text style={styles.flashBadgeText}>{t('home.flashDeals')}</Text>
-              </View>
-              <View style={styles.flashRight}>
-                <Clock color="white" size={14} />
-                <Text style={styles.flashTimerText}>
-                  {t('home.endsIn')} <Text style={styles.flashTimerDigits}>{countdown}</Text>
-                </Text>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* ════════════════ DEAL BANNER CAROUSEL ════════════════ */}
+          {/* ════════════════ SINGLE HERO DEAL & LIVE CAROUSEL ════════════════ */}
           <View style={styles.bannerSection}>
             <ScrollView
               ref={bannerRef}
@@ -501,70 +506,6 @@ export default function HomeScreen() {
               ))}
             </View>
           </View>
-
-          {/* ════════════════ CATEGORIES ════════════════ */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('home.shopByCategory')}</Text>
-            <TouchableOpacity onPress={() => router.push('/products' as any)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.seeAll}>{t('common.seeAll')}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.catGrid}>
-            {CATEGORIES.map(cat => {
-              const Icon = cat.icon;
-              return (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.catGridCard,
-                    {
-                      backgroundColor: cat.bg,
-                      borderColor: cat.color + '30',
-                      flexBasis: width < 480 ? '22%' : width < 768 ? '23%' : '11%',
-                    },
-                  ]}
-                  onPress={() => handleCategory(cat)}
-                  activeOpacity={0.75}
-                >
-                  <View style={[styles.catGridIconWrap, { backgroundColor: cat.color + '20' }]}>
-                    <Icon color={cat.color} size={24} />
-                  </View>
-                  <Text style={[styles.catGridLabel, { color: cat.color }]} numberOfLines={1}>
-                    {t(cat.nameKey)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {/* ════════════════ EGYBAY LIVE STRIP ════════════════ */}
-          <TouchableOpacity
-            style={styles.liveStripCard}
-            activeOpacity={0.88}
-            onPress={() => router.push('/live' as any)}
-          >
-            <LinearGradient
-              colors={['#0F172A', '#1E1B4B', '#450A0A']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.liveStripGradient}
-            >
-              <View style={styles.liveStripLeft}>
-                <View style={styles.liveStripPill}>
-                  <View style={styles.liveStripDot} />
-                  <Text style={styles.liveStripPillText}>LIVE</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.liveStripTitle}>بث مباشر لتجار ومحلات مصر 🔴</Text>
-                  <Text style={styles.liveStripSub}>تسوق وشاهد المنتجات الحصرية مباشرة مع الضمان</Text>
-                </View>
-              </View>
-              <View style={styles.liveStripBtn}>
-                <Text style={styles.liveStripBtnText}>دخول البث ←</Text>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
 
           {/* ════════════════ TRENDING SEARCHES ════════════════ */}
           <View style={styles.sectionHeader}>
@@ -913,23 +854,71 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  categoryRail: {
-    gap: 8,
-    paddingRight: 8,
-    paddingVertical: 2,
+  // Single Unified Story-Style Category & Live Rail
+  storyRailContainer: {
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: 'center',
   },
-  categoryRailItem: {
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  storyItem: {
+    alignItems: 'center',
+    width: 60,
+    gap: 4,
   },
-  categoryRailText: {
-    fontSize: 12,
+  storyCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+  },
+  storyCircleSelected: {
+    borderWidth: 2.5,
+    borderColor: '#2563EB',
+    backgroundColor: '#EFF6FF',
+    transform: [{ scale: 1.05 }],
+  },
+  storyCircleLive: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    padding: 2.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  storyInnerLive: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+    backgroundColor: '#FEF2F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  storyLiveBadge: {
+    position: 'absolute',
+    bottom: -3,
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: 'white',
+  },
+  storyLiveBadgeText: {
+    color: 'white',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  storyLabel: {
+    fontSize: 10.5,
     fontWeight: '600',
-    color: '#334155',
+    color: '#475569',
+    textAlign: 'center',
+    marginTop: 2,
   },
   quickRow: { gap: 8, paddingVertical: 6 },
   quickChip: {
@@ -945,70 +934,36 @@ const styles = StyleSheet.create({
   },
   quickChipText: { color: '#2563EB', fontSize: 12, fontWeight: '600' },
 
-  // Trust Strip
-  trustSection: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginTop: 16,
-    gap: 10,
-  },
-  trustCard: {
-    flex: 1,
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 10,
+  // Micro Trust Ticker (Compact 1-liner)
+  microTrustTicker: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#F1F5F9',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
   },
-  trustIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  trustTitle: { fontSize: 11, fontWeight: '800', color: '#1E293B', marginBottom: 2 },
-  trustSub: { fontSize: 9, color: '#64748B', fontWeight: '500' },
-
-  // Flash Deals Strip
-  flashStrip: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#DC2626',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  flashGradient: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  flashLeft: { flexDirection: 'row', alignItems: 'center' },
-  flashBadgeText: { color: 'white', fontWeight: '900', fontSize: 13, letterSpacing: 0.5 },
-  flashRight: {
+  tickerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
+    gap: 4,
   },
-  flashTimerText: { color: 'white', fontSize: 11, fontWeight: '600' },
+  tickerText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  tickerDot: {
+    fontSize: 10,
+    color: '#94A3B8',
+  },
   flashTimerDigits: { fontWeight: '900', color: '#FEF08A' },
 
   // Deal banner
