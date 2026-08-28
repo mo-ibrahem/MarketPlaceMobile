@@ -29,6 +29,9 @@ export interface MarketplaceOrder {
   };
   tracking_number?: string;
   courier_name?: string;
+  tracking_url?: string;
+  inspection_deadline?: string; // ISO — 24h after delivery
+  dispute_reason?: string;
   product?: {
     id: string;
     title: string;
@@ -37,12 +40,24 @@ export interface MarketplaceOrder {
     condition: string;
     category: string;
   };
+  seller?: {
+    full_name?: string;
+    avatar_url?: string;
+  };
+  buyer?: {
+    full_name?: string;
+    avatar_url?: string;
+  };
   created_at: string;
   updated_at?: string;
 }
 
 // In-memory fallback orders
 let inMemoryOrders: Record<string, MarketplaceOrder> = {};
+
+// ──────────────────────────────────────────────────────────────
+// CREATE ORDER
+// ──────────────────────────────────────────────────────────────
 
 /**
  * Create a new Marketplace Order with Escrow
@@ -95,7 +110,6 @@ export async function createMarketplaceOrder(orderData: {
       .maybeSingle();
 
     if (data && !error) {
-      // Hold funds in seller's pending escrow balance
       await holdEscrowForSeller(orderData.seller_id, orderId, orderData.amount);
       inMemoryOrders[orderId] = newOrder;
       return newOrder;
@@ -104,10 +118,65 @@ export async function createMarketplaceOrder(orderData: {
     console.warn('[OrderService] Supabase insert fallback to memory:', err);
   }
 
-  // Hold funds in memory
   await holdEscrowForSeller(orderData.seller_id, orderId, orderData.amount);
   inMemoryOrders[orderId] = newOrder;
   return newOrder;
+}
+
+// ──────────────────────────────────────────────────────────────
+// FETCH ORDERS
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Fetch all orders for a user (as buyer OR seller)
+ */
+export async function getUserOrders(userId: string): Promise<MarketplaceOrder[]> {
+  try {
+    const { data, error } = await supabase
+      .from('orders' as any)
+      .select('*, products(*), buyer:buyer_id(full_name, avatar_url), seller:seller_id(full_name, avatar_url)')
+      .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
+      .order('created_at', { ascending: false });
+
+    if (data && !error) {
+      return (data as any[]).map(row => {
+        let notesData: any = {};
+        try {
+          notesData = typeof row.notes === 'string' ? JSON.parse(row.notes) : row.notes || {};
+        } catch {}
+        return {
+          id: row.id,
+          product_id: row.product_id,
+          buyer_id: row.buyer_id,
+          seller_id: row.seller_id,
+          amount: Number(notesData.amount || row.amount || 0),
+          currency: 'EGP',
+          status: row.status,
+          handover_method: notesData.handover_method || 'courier',
+          meetup_pin: notesData.meetup_pin,
+          shipping_address: row.shipping_address,
+          tracking_number: row.tracking_number,
+          courier_name: row.courier_name || 'Bosta',
+          tracking_url: row.tracking_number
+            ? `https://bosta.co/tracking-shipment/?trackNumber=${row.tracking_number}`
+            : undefined,
+          inspection_deadline: row.inspection_deadline,
+          product: row.products,
+          seller: row.seller,
+          buyer: row.buyer,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+        } as MarketplaceOrder;
+      });
+    }
+  } catch (err) {
+    console.warn('[OrderService] getUserOrders fallback:', err);
+  }
+
+  // Return in-memory orders for this user
+  return Object.values(inMemoryOrders).filter(
+    o => o.buyer_id === userId || o.seller_id === userId
+  );
 }
 
 /**
@@ -121,7 +190,7 @@ export async function getOrderById(orderId: string): Promise<MarketplaceOrder | 
   try {
     const { data, error } = await supabase
       .from('orders' as any)
-      .select('*, products(*)')
+      .select('*, products(*), buyer:buyer_id(full_name, avatar_url), seller:seller_id(full_name, avatar_url)')
       .eq('id', orderId)
       .maybeSingle();
 
@@ -143,7 +212,14 @@ export async function getOrderById(orderId: string): Promise<MarketplaceOrder | 
         meetup_pin: notesData.meetup_pin || '123456',
         shipping_address: data.shipping_address,
         tracking_number: data.tracking_number,
+        courier_name: data.courier_name || 'Bosta',
+        tracking_url: data.tracking_number
+          ? `https://bosta.co/tracking-shipment/?trackNumber=${data.tracking_number}`
+          : undefined,
+        inspection_deadline: data.inspection_deadline,
         product: data.products,
+        seller: data.seller,
+        buyer: data.buyer,
         created_at: data.created_at,
       };
     }
@@ -154,6 +230,117 @@ export async function getOrderById(orderId: string): Promise<MarketplaceOrder | 
   return inMemoryOrders[orderId] || null;
 }
 
+// ──────────────────────────────────────────────────────────────
+// SELLER ACTIONS
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Seller dispatches the item — adds AWB tracking number and updates status to 'shipped'
+ */
+export async function updateOrderTracking(
+  orderId: string,
+  params: { tracking_number: string; courier_name?: string }
+): Promise<void> {
+  const trackingUrl = `https://bosta.co/tracking-shipment/?trackNumber=${params.tracking_number}`;
+
+  if (inMemoryOrders[orderId]) {
+    inMemoryOrders[orderId].tracking_number = params.tracking_number;
+    inMemoryOrders[orderId].courier_name = params.courier_name || 'Bosta';
+    inMemoryOrders[orderId].tracking_url = trackingUrl;
+    inMemoryOrders[orderId].status = 'shipped';
+  }
+
+  try {
+    await supabase
+      .from('orders' as any)
+      .update({
+        tracking_number: params.tracking_number,
+        courier_name: params.courier_name || 'Bosta',
+        status: 'shipped',
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('id', orderId);
+  } catch (err) {
+    console.warn('[OrderService] updateOrderTracking error:', err);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// BUYER ACTIONS
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Buyer approves receipt within 24h inspection window — releases escrow to seller
+ */
+export async function approveOrderDelivery(orderId: string): Promise<{ success: boolean; message: string }> {
+  const order = await getOrderById(orderId);
+  if (!order) throw new Error('Order not found');
+
+  if (inMemoryOrders[orderId]) {
+    inMemoryOrders[orderId].status = 'completed';
+  }
+
+  try {
+    await supabase
+      .from('orders' as any)
+      .update({ status: 'completed', delivered_at: new Date().toISOString() } as any)
+      .eq('id', orderId);
+  } catch (err) {
+    console.warn('[OrderService] approveOrderDelivery update error:', err);
+  }
+
+  await releaseEscrowToSeller(order.seller_id, orderId, order.amount * 0.96);
+
+  return {
+    success: true,
+    message: `تم تأكيد الاستلام بنجاح. تم تحرير EGP ${(order.amount * 0.96).toLocaleString()} لحساب البائع.`,
+  };
+}
+
+/**
+ * Buyer opens a dispute before inspection deadline
+ */
+export async function fileOrderDispute(
+  orderId: string,
+  reason: string,
+  evidence?: string
+): Promise<{ success: boolean; message: string }> {
+  const order = await getOrderById(orderId);
+  if (!order) throw new Error('Order not found');
+
+  if (inMemoryOrders[orderId]) {
+    inMemoryOrders[orderId].status = 'disputed';
+    inMemoryOrders[orderId].dispute_reason = reason;
+  }
+
+  try {
+    await supabase
+      .from('orders' as any)
+      .update({
+        status: 'disputed',
+        updated_at: new Date().toISOString(),
+        notes: JSON.stringify({
+          dispute_reason: reason,
+          dispute_evidence: evidence,
+          disputed_at: new Date().toISOString(),
+        }),
+      } as any)
+      .eq('id', orderId);
+  } catch (err) {
+    console.warn('[OrderService] fileOrderDispute error:', err);
+  }
+
+  return {
+    success: true,
+    message:
+      'تم فتح النزاع بنجاح. أموالك محفوظة في الضمان. سيراجع فريقنا الأدلة خلال ٤٨ ساعة.',
+  };
+}
+
+// ──────────────────────────────────────────────────────────────
+// MEETUP PIN (existing — kept as-is)
+// ──────────────────────────────────────────────────────────────
+
 /**
  * Verify Handover PIN for in-person meetup and release escrow funds immediately
  */
@@ -162,9 +349,7 @@ export async function verifyMeetupPIN(
   enteredPin: string
 ): Promise<{ success: boolean; message: string }> {
   const order = await getOrderById(orderId);
-  if (!order) {
-    throw new Error('Order not found');
-  }
+  if (!order) throw new Error('Order not found');
 
   if (order.status === 'completed' || order.status === 'delivered') {
     return { success: true, message: 'Order is already delivered and settled' };
@@ -174,7 +359,6 @@ export async function verifyMeetupPIN(
     throw new Error('Invalid verification PIN. Please verify with the buyer');
   }
 
-  // Update order status to delivered
   order.status = 'delivered';
   inMemoryOrders[orderId] = order;
 
@@ -187,12 +371,11 @@ export async function verifyMeetupPIN(
     console.warn('[OrderService] Error updating order status in Supabase:', err);
   }
 
-  // Release escrow funds to seller
-  await releaseEscrowToSeller(order.seller_id, orderId, order.amount * 0.95);
+  await releaseEscrowToSeller(order.seller_id, orderId, order.amount * 0.96);
 
   return {
     success: true,
-    message: `PIN verified! EGP ${(order.amount * 0.95).toLocaleString()} has been released to the seller wallet`,
+    message: `تم التحقق! تم تحرير EGP ${(order.amount * 0.96).toLocaleString()} إلى محفظة البائع`,
   };
 }
 
@@ -200,27 +383,5 @@ export async function verifyMeetupPIN(
  * Confirm receipt by buyer (for courier delivery) and release escrow funds
  */
 export async function confirmBuyerReceipt(orderId: string): Promise<{ success: boolean; message: string }> {
-  const order = await getOrderById(orderId);
-  if (!order) {
-    throw new Error('Order not found');
-  }
-
-  order.status = 'delivered';
-  inMemoryOrders[orderId] = order;
-
-  try {
-    await supabase
-      .from('orders' as any)
-      .update({ status: 'delivered', delivered_at: new Date().toISOString() } as any)
-      .eq('id', orderId);
-  } catch (err) {
-    console.warn('[OrderService] Error updating order in Supabase:', err);
-  }
-
-  await releaseEscrowToSeller(order.seller_id, orderId, order.amount * 0.95);
-
-  return {
-    success: true,
-    message: `Receipt confirmed! EGP ${(order.amount * 0.95).toLocaleString()} released to seller`,
-  };
+  return approveOrderDelivery(orderId);
 }

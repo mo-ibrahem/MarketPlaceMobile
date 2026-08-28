@@ -1,0 +1,530 @@
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { WebView } from 'react-native-webview';
+import {
+  ArrowLeft,
+  ChevronDown,
+  Heart,
+  MessageSquare,
+  Send,
+  Share2,
+  ShoppingBag,
+  Users,
+  X,
+} from 'lucide-react-native';
+import { useAuth } from '../../hooks/useAuth';
+import {
+  getLiveSessionByChannel,
+  getRecentChatMessages,
+  joinLiveSession,
+  sendChatMessage,
+  type LiveChatMessage,
+  type LivePinnedProduct,
+  type LiveSession,
+} from '../../src/services/lib/liveService';
+import { supabase } from '../../src/services/lib/supabase';
+
+const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID ?? '';
+
+function buildViewerHTML(appId: string, token: string, channel: string, uid: number): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; width: 100vw; height: 100vh; }
+  #remote-video { width: 100vw; height: 100vh; object-fit: cover; }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-family: sans-serif; font-size: 14px; background: #0b0f19; }
+</style>
+</head>
+<body>
+<div id="loading">جاري الاتصال بالبث المباشر...</div>
+<div id="remote-video"></div>
+<script src="https://cdn.agora.io/sdk/release/AgoraRTC_N.js"></script>
+<script>
+const client = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
+const appId = '${appId}';
+const token = '${token}';
+const channel = '${channel}';
+const uid = ${uid};
+
+async function join() {
+  try {
+    await client.setClientRole('audience');
+    await client.join(appId, channel, token, uid);
+    document.getElementById('loading').style.display = 'none';
+
+    client.on('user-published', async (user, mediaType) => {
+      await client.subscribe(user, mediaType);
+      if (mediaType === 'video') {
+        const playerContainer = document.getElementById('remote-video');
+        user.videoTrack.play(playerContainer);
+      }
+      if (mediaType === 'audio') {
+        user.audioTrack.play();
+      }
+    });
+
+    client.on('user-unpublished', (user, mediaType) => {
+      if (mediaType === 'video') {
+        // host stopped video
+      }
+    });
+  } catch (e) {
+    document.getElementById('loading').textContent = 'تعذر الاتصال بالبث: ' + e.message;
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', error: e.message }));
+  }
+}
+join();
+</script>
+</body>
+</html>`;
+}
+
+export default function LiveViewerScreen() {
+  const { channelId } = useLocalSearchParams<{ channelId: string }>();
+  const { user } = useAuth();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  const [session, setSession] = useState<LiveSession | null>(null);
+  const [agoraToken, setAgoraToken] = useState<string | null>(null);
+  const [viewerUid, setViewerUid] = useState<number>(0);
+  const [viewerCount, setViewerCount] = useState(0);
+  const [messages, setMessages] = useState<LiveChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [showChat, setShowChat] = useState(true);
+  const [pinnedProduct, setPinnedProduct] = useState<LivePinnedProduct | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [reactions, setReactions] = useState<{ id: number; emoji: string; x: number }[]>([]);
+
+  const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    if (!channelId) return;
+
+    (async () => {
+      try {
+        const s = await getLiveSessionByChannel(channelId);
+        if (!s) {
+          router.replace('/live' as any);
+          return;
+        }
+        setSession(s);
+        setViewerCount(s.current_viewers || 0);
+
+        const msgs = await getRecentChatMessages(s.id);
+        setMessages(msgs);
+
+        const activePin = s.pinned_products?.find(p => !p.unpinned_at);
+        if (activePin) setPinnedProduct(activePin);
+
+        const uid = Math.floor(Math.random() * 1000000);
+        setViewerUid(uid);
+
+        const token = await joinLiveSession(channelId, uid);
+        setAgoraToken(token);
+      } catch (err) {
+        console.error('[LiveViewer]', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [channelId]);
+
+  // Realtime subscriptions
+  useEffect(() => {
+    if (!session?.id) return;
+
+    const sessionSub = supabase
+      .channel(`viewer_session_${session.id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'live_sessions', filter: `id=eq.${session.id}` }, payload => {
+        if (payload.new.status === 'ended') {
+          router.replace('/live' as any);
+          return;
+        }
+        setViewerCount(payload.new.current_viewers ?? 0);
+      })
+      .subscribe();
+
+    const chatSub = supabase
+      .channel(`viewer_chat_${session.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_chat_messages', filter: `session_id=eq.${session.id}` }, payload => {
+        setMessages(prev => [...prev.slice(-99), payload.new as LiveChatMessage]);
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+      })
+      .subscribe();
+
+    const pinsSub = supabase
+      .channel(`viewer_pins_${session.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_pinned_products', filter: `session_id=eq.${session.id}` }, payload => {
+        if (payload.eventType === 'INSERT') setPinnedProduct(payload.new as LivePinnedProduct);
+        if (payload.eventType === 'UPDATE' && payload.new.unpinned_at) setPinnedProduct(null);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(sessionSub);
+      supabase.removeChannel(chatSub);
+      supabase.removeChannel(pinsSub);
+    };
+  }, [session?.id]);
+
+  const handleSendChat = async () => {
+    if (!chatInput.trim() || !user || !session) return;
+    const msg = chatInput.trim();
+    setChatInput('');
+    await sendChatMessage({
+      sessionId: session.id,
+      userId: user.id,
+      username: user.user_metadata?.full_name || 'مشتري',
+      message: msg,
+    });
+  };
+
+  const sendReaction = (emoji: string) => {
+    const id = Date.now();
+    const x = Math.random() * 70 + 15;
+    setReactions(prev => [...prev, { id, emoji, x }]);
+    setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 2200);
+
+    if (user && session) {
+      sendChatMessage({
+        sessionId: session.id,
+        userId: user.id,
+        username: user.user_metadata?.full_name || 'مشتري',
+        message: emoji,
+        msgType: 'reaction',
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0B0F19', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+        <ActivityIndicator size="large" color="#EF4444" />
+        <Text style={{ color: '#94A3B8', fontSize: 13 }}>جاري الاتصال بالبث المباشر...</Text>
+      </View>
+    );
+  }
+
+  const viewerHTML = agoraToken && session?.agora_channel
+    ? buildViewerHTML(AGORA_APP_ID, agoraToken, session.agora_channel, viewerUid)
+    : null;
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top']}>
+      {/* Video View */}
+      <View style={{ flex: 1, position: 'relative' }}>
+        {viewerHTML ? (
+          <WebView
+            source={{ html: viewerHTML }}
+            style={{ flex: 1 }}
+            allowsInlineMediaPlayback
+            mediaPlaybackRequiresUserAction={false}
+          />
+        ) : (
+          <View style={{ flex: 1, backgroundColor: '#0B0F19', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: '#94A3B8', fontSize: 13 }}>البث غير متوفر حالياً</Text>
+          </View>
+        )}
+
+        {/* Floating Reactions */}
+        {reactions.map(r => (
+          <Text
+            key={r.id}
+            style={{
+              position: 'absolute',
+              bottom: 120,
+              left: `${r.x}%`,
+              fontSize: 28,
+            }}
+          >
+            {r.emoji}
+          </Text>
+        ))}
+
+        {/* Top Header Overlay */}
+        <View style={[styles.topOverlay, { paddingTop: 6 }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.iconCircle}>
+            <ArrowLeft color="white" size={18} />
+          </TouchableOpacity>
+
+          <View style={styles.sellerHeaderInfo}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{session?.seller?.full_name?.[0]?.toUpperCase() || 'S'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sellerName} numberOfLines={1}>{session?.seller?.full_name || 'البائع'}</Text>
+              <Text style={styles.streamTitle} numberOfLines={1}>{session?.title_ar || session?.title}</Text>
+            </View>
+          </View>
+
+          <View style={styles.liveTag}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>LIVE</Text>
+          </View>
+
+          <View style={styles.viewersTag}>
+            <Users color="#60A5FA" size={11} />
+            <Text style={styles.viewersNum}>{viewerCount}</Text>
+          </View>
+        </View>
+
+        {/* Pinned Product Card (Bottom left / overlay) */}
+        {pinnedProduct && (
+          <View style={[styles.pinnedCard, { bottom: showChat ? 220 : 70 }]}>
+            {pinnedProduct.product?.images?.[0] ? (
+              <Image source={{ uri: pinnedProduct.product.images[0] }} style={styles.pinnedImg} />
+            ) : (
+              <View style={[styles.pinnedImg, { backgroundColor: '#1E293B', alignItems: 'center', justifyContent: 'center' }]}>
+                <ShoppingBag color="#94A3B8" size={16} />
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pinnedTitle} numberOfLines={1}>{pinnedProduct.product?.title}</Text>
+              <Text style={styles.pinnedPrice}>
+                {(pinnedProduct.display_price || pinnedProduct.product?.price || 0).toLocaleString('ar-EG')} ج.م
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.buyBtn}
+              onPress={() => router.push(`/checkout?productId=${pinnedProduct.product_id}` as any)}
+            >
+              <ShoppingBag color="white" size={13} />
+              <Text style={styles.buyBtnText}>شراء بضمان</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Floating Quick Reactions */}
+        <View style={[styles.reactionBar, { bottom: showChat ? 170 : 20 }]}>
+          {['❤️', '🔥', '👏', '😮', '🎉'].map(emoji => (
+            <TouchableOpacity key={emoji} onPress={() => sendReaction(emoji)} style={styles.emojiBtn}>
+              <Text style={{ fontSize: 18 }}>{emoji}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity onPress={() => setShowChat(!showChat)} style={[styles.emojiBtn, { backgroundColor: '#3B82F6' }]}>
+            <MessageSquare color="white" size={16} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Chat Overlay Panel (Semi-transparent over bottom) */}
+      {showChat && (
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.chatSheet}>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={m => m.id}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 6, gap: 6 }}
+            renderItem={({ item: msg }) => (
+              <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start' }}>
+                <View style={[styles.chatAvatar, msg.is_host && { backgroundColor: '#EF4444' }]}>
+                  <Text style={styles.chatAvatarText}>{msg.username?.[0]?.toUpperCase()}</Text>
+                </View>
+                <View style={styles.chatBubble}>
+                  <Text style={[styles.chatAuthor, msg.is_host && { color: '#FCA5A5' }]}>
+                    {msg.is_host ? '🎙️ ' : ''}{msg.username}
+                  </Text>
+                  <Text style={styles.chatMsg}>{msg.message}</Text>
+                </View>
+              </View>
+            )}
+          />
+
+          {user ? (
+            <View style={styles.chatInputRow}>
+              <TextInput
+                value={chatInput}
+                onChangeText={setChatInput}
+                placeholder="اكتب رسالة في البث..."
+                placeholderTextColor="#9CA3AF"
+                style={styles.chatInput}
+                onSubmitEditing={handleSendChat}
+              />
+              <TouchableOpacity onPress={handleSendChat} style={styles.chatSendBtn}>
+                <Send color="white" size={15} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity onPress={() => router.push('/login' as any)} style={styles.loginToChatBtn}>
+              <Text style={styles.loginToChatText}>سجّل الدخول للمشاركة في الدردشة والشراء</Text>
+            </TouchableOpacity>
+          )}
+        </KeyboardAvoidingView>
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  topOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingBottom: 8,
+  },
+  iconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sellerHeaderInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: { fontSize: 11, fontWeight: '800', color: 'white' },
+  sellerName: { fontSize: 11, fontWeight: '700', color: 'white' },
+  streamTitle: { fontSize: 10, color: '#CBD5E1' },
+  liveTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'white' },
+  liveText: { fontSize: 9, fontWeight: '900', color: 'white' },
+  viewersTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  viewersNum: { fontSize: 10, color: 'white', fontWeight: '700' },
+
+  pinnedCard: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    borderRadius: 16,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  pinnedImg: { width: 44, height: 44, borderRadius: 10 },
+  pinnedTitle: { fontSize: 12, fontWeight: '700', color: 'white' },
+  pinnedPrice: { fontSize: 14, fontWeight: '900', color: '#60A5FA' },
+  buyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#2563EB',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  buyBtnText: { fontSize: 11, fontWeight: '800', color: 'white' },
+
+  reactionBar: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  emojiBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  chatSheet: {
+    height: 160,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  chatAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#374151',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  chatAvatarText: { fontSize: 9, color: 'white', fontWeight: '700' },
+  chatBubble: { flex: 1 },
+  chatAuthor: { fontSize: 10, fontWeight: '700', color: '#9CA3AF' },
+  chatMsg: { fontSize: 12, color: 'white', lineHeight: 16 },
+  chatInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  chatInput: {
+    flex: 1,
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    fontSize: 12,
+    color: 'white',
+  },
+  chatSendBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loginToChatBtn: {
+    padding: 10,
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+  },
+  loginToChatText: { fontSize: 11, color: '#60A5FA', fontWeight: '700' },
+});

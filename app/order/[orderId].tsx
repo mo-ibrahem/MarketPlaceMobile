@@ -1,9 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import {
   ArrowLeft,
   CheckCircle2,
   Clock,
+  ExternalLink,
   KeyRound,
   Lock,
   MapPin,
@@ -12,32 +14,109 @@ import {
   QrCode,
   ShieldAlert,
   ShieldCheck,
+  ThumbsUp,
   Truck,
   User,
+  Zap,
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import {
+  approveOrderDelivery,
   confirmBuyerReceipt,
+  fileOrderDispute,
   getOrderById,
+  updateOrderTracking,
   verifyMeetupPIN,
   type MarketplaceOrder,
 } from '../../src/services/lib/orderService';
+
+// ──────────────────────────────────────────────────────────────
+// Bosta Tracking Stepper
+// ──────────────────────────────────────────────────────────────
+
+const BOSTA_STEPS: { status: MarketplaceOrder['status'][]; label: string; label_ar: string; icon: any }[] = [
+  { status: ['escrow_secured'], label: 'Funds Secured', label_ar: 'أموال في الضمان', icon: ShieldCheck },
+  { status: ['shipped'], label: 'Dispatched to Bosta', label_ar: 'تم التسليم لبوسطة', icon: Truck },
+  { status: ['out_for_delivery'], label: 'Out for Delivery', label_ar: 'خرج للتوصيل', icon: MapPin },
+  { status: ['delivered', 'completed'], label: 'Delivered ✓', label_ar: 'تم التوصيل ✓', icon: CheckCircle2 },
+];
+
+const ORDER_STATUS_RANK: Record<MarketplaceOrder['status'], number> = {
+  pending_payment: 0,
+  escrow_secured: 1,
+  shipped: 2,
+  out_for_delivery: 3,
+  delivered: 4,
+  completed: 4,
+  disputed: 1,
+  cancelled: 0,
+};
+
+function BostaStepper({ status }: { status: MarketplaceOrder['status'] }) {
+  const currentRank = ORDER_STATUS_RANK[status] ?? 0;
+
+  return (
+    <View style={stepStyles.wrap}>
+      {BOSTA_STEPS.map((step, i) => {
+        const stepRank = i + 1;
+        const done = currentRank >= stepRank;
+        const current = currentRank === stepRank;
+        const Icon = step.icon;
+        const isLast = i === BOSTA_STEPS.length - 1;
+
+        return (
+          <View key={i} style={stepStyles.stepRow}>
+            <View style={stepStyles.leftCol}>
+              <View style={[stepStyles.iconCircle, done && stepStyles.iconCircleDone, current && stepStyles.iconCircleCurrent]}>
+                <Icon color={done ? 'white' : '#94A3B8'} size={14} />
+              </View>
+              {!isLast && <View style={[stepStyles.line, done && stepStyles.lineDone]} />}
+            </View>
+            <View style={stepStyles.stepContent}>
+              <Text style={[stepStyles.stepLabel, done && stepStyles.stepLabelDone]}>{step.label_ar}</Text>
+              <Text style={[stepStyles.stepSub, done && stepStyles.stepSubDone]}>{step.label}</Text>
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+const stepStyles = StyleSheet.create({
+  wrap: { paddingLeft: 4 },
+  stepRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  leftCol: { alignItems: 'center', width: 30 },
+  iconCircle: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E2E8F0' },
+  iconCircleDone: { backgroundColor: '#3B82F6', borderColor: '#3B82F6' },
+  iconCircleCurrent: { borderColor: '#3B82F6', backgroundColor: '#EFF6FF' },
+  line: { width: 2, height: 28, backgroundColor: '#E2E8F0', marginVertical: 2 },
+  lineDone: { backgroundColor: '#3B82F6' },
+  stepContent: { paddingVertical: 6 },
+  stepLabel: { fontSize: 13, fontWeight: '700', color: '#94A3B8' },
+  stepLabelDone: { color: '#0F172A' },
+  stepSub: { fontSize: 11, color: '#CBD5E1' },
+  stepSubDone: { color: '#64748B' },
+});
+
+// ──────────────────────────────────────────────────────────────
+// Main Screen
+// ──────────────────────────────────────────────────────────────
 
 export default function OrderDetailScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
@@ -47,67 +126,98 @@ export default function OrderDetailScreen() {
 
   const [order, setOrder] = useState<MarketplaceOrder | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Seller — AWB dispatch
+  const [awbInput, setAwbInput] = useState('');
+  const [dispatchingAwb, setDispatchingAwb] = useState(false);
+  const [showAwbModal, setShowAwbModal] = useState(false);
+
+  // Buyer — PIN
   const [enteredPin, setEnteredPin] = useState('');
   const [verifying, setVerifying] = useState(false);
 
-  const fetchOrder = async () => {
+  // Buyer — Dispute
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeReason, setDisputeReason] = useState('');
+  const [filingDispute, setFilingDispute] = useState(false);
+
+  // Buyer — Approve delivery
+  const [approving, setApproving] = useState(false);
+
+  const reload = async () => {
     if (!orderId) return;
     try {
       const data = await getOrderById(orderId);
       setOrder(data);
     } catch (err) {
-      console.error('Error fetching order:', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchOrder();
-  }, [orderId]);
+  useEffect(() => { reload(); }, [orderId]);
 
   const isBuyer = user?.id === order?.buyer_id;
   const isSeller = user?.id === order?.seller_id;
   const isDelivered = order?.status === 'delivered' || order?.status === 'completed';
 
+  // ── Seller: Dispatch AWB ──
+  const handleDispatchAwb = async () => {
+    if (!orderId || !awbInput.trim()) return;
+    setDispatchingAwb(true);
+    try {
+      await updateOrderTracking(orderId, { tracking_number: awbInput.trim() });
+      Toast.show({ type: 'success', text1: 'تم إضافة رقم التتبع', text2: `AWB: ${awbInput.trim()}` });
+      setShowAwbModal(false);
+      setAwbInput('');
+      await reload();
+    } catch (err: any) {
+      Toast.show({ type: 'error', text1: 'خطأ', text2: err.message });
+    } finally {
+      setDispatchingAwb(false);
+    }
+  };
+
+  // ── Seller: PIN Verify ──
   const handleVerifyPin = async () => {
-    if (!orderId || !enteredPin || enteredPin.length !== 6) {
-      Toast.show({ type: 'error', text1: 'Please enter a valid 6-digit PIN' });
+    if (!orderId || !enteredPin || enteredPin.length < 4) {
+      Toast.show({ type: 'error', text1: 'أدخل رمز التحقق الصحيح' });
       return;
     }
-
     setVerifying(true);
     try {
-      const res = await verifyMeetupPIN(orderId, enteredPin);
-      Toast.show({ type: 'success', text1: 'Escrow Released! 🎉', text2: res.message });
-      await fetchOrder();
+      const result = await verifyMeetupPIN(orderId, enteredPin);
+      Toast.show({ type: 'success', text1: 'تم التحقق!', text2: result.message });
+      await reload();
     } catch (err: any) {
-      Alert.alert('Verification Failed', err?.message || 'Invalid PIN');
+      Toast.show({ type: 'error', text1: 'رمز خاطئ', text2: err.message });
     } finally {
       setVerifying(false);
     }
   };
 
-  const handleConfirmReceipt = async () => {
-    if (!orderId) return;
+  // ── Buyer: Approve Delivery ──
+  const handleApprove = async () => {
     Alert.alert(
-      'Confirm Receipt & Release Escrow',
-      'Have you inspected the item and confirmed it matches the description? This will immediately release funds to the seller.',
+      'تأكيد استلام الطلب',
+      'بالضغط على تأكيد، تقر باستلامك للمنتج وفحصه. سيتم تحرير أموال الضمان للبائع فوراً.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'إلغاء', style: 'cancel' },
         {
-          text: 'Confirm & Release',
+          text: 'تأكيد الاستلام ✓',
           style: 'default',
           onPress: async () => {
-            setVerifying(true);
+            if (!orderId) return;
+            setApproving(true);
             try {
-              const res = await confirmBuyerReceipt(orderId);
-              Toast.show({ type: 'success', text1: 'Funds Released! 🎉', text2: res.message });
-              await fetchOrder();
+              const result = await approveOrderDelivery(orderId);
+              Toast.show({ type: 'success', text1: 'تم التأكيد!', text2: result.message });
+              await reload();
             } catch (err: any) {
-              Alert.alert('Error', err?.message || 'Failed to release escrow');
+              Toast.show({ type: 'error', text1: 'خطأ', text2: err.message });
             } finally {
-              setVerifying(false);
+              setApproving(false);
             }
           },
         },
@@ -115,383 +225,372 @@ export default function OrderDetailScreen() {
     );
   };
 
+  // ── Buyer: File Dispute ──
+  const handleFileDispute = async () => {
+    if (!orderId || !disputeReason.trim()) {
+      Toast.show({ type: 'error', text1: 'أدخل سبب النزاع' });
+      return;
+    }
+    setFilingDispute(true);
+    try {
+      const result = await fileOrderDispute(orderId, disputeReason);
+      Toast.show({ type: 'success', text1: 'تم فتح النزاع', text2: result.message });
+      setShowDisputeModal(false);
+      await reload();
+    } catch (err: any) {
+      Toast.show({ type: 'error', text1: 'خطأ', text2: err.message });
+    } finally {
+      setFilingDispute(false);
+    }
+  };
+
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={styles.loadingText}>Loading order details…</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC' }}>
+        <ActivityIndicator size="large" color="#3B82F6" />
       </View>
     );
   }
 
   if (!order) {
     return (
-      <SafeAreaView style={styles.center}>
-        <Text style={styles.errorText}>Order not found.</Text>
-        <TouchableOpacity style={styles.backHomeBtn} onPress={() => router.replace('/(tabs)')}>
-          <Text style={styles.backHomeBtnText}>Back to Home</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Package color="#94A3B8" size={48} />
+        <Text style={{ color: '#64748B', marginTop: 12 }}>الطلب غير موجود</Text>
+      </View>
     );
   }
 
+  const isDisputed = order.status === 'disputed';
+  const canApprove = isBuyer && (order.status === 'delivered');
+  const canDispute = isBuyer && (order.status === 'delivered' || order.status === 'shipped' || order.status === 'out_for_delivery');
+  const canDispatchAwb = isSeller && (order.status === 'escrow_secured') && order.handover_method === 'courier';
+  const canVerifyPin = isSeller && order.handover_method === 'qr_meetup' && !isDelivered;
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
-      {/* Top Header */}
-      <View style={styles.topHeader}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={styles.headerBack}>
-          <ArrowLeft color="#0F172A" size={22} />
+    <SafeAreaView style={s.safe} edges={['top']}>
+      {/* Header */}
+      <LinearGradient colors={['#0F172A', '#1E3A5F']} style={[s.header, { paddingTop: insets.top > 0 ? 0 : 12 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <ArrowLeft color="white" size={20} />
         </TouchableOpacity>
-        <Text style={styles.topTitle}>Order #{order.id.slice(-6).toUpperCase()}</Text>
-        <View style={[styles.statusPill, isDelivered ? styles.statusDelivered : styles.statusSecured]}>
-          <Text style={[styles.statusPillText, isDelivered ? styles.statusDeliveredText : styles.statusSecuredText]}>
-            {isDelivered ? 'COMPLETED' : 'ESCROW SECURED'}
+        <View style={{ flex: 1 }}>
+          <Text style={s.headerTitle}>تفاصيل الطلب</Text>
+          <Text style={s.headerSub}>#{order.id.slice(-8).toUpperCase()}</Text>
+        </View>
+        <View style={[s.statusBadgeHeader, { borderColor: isDisputed ? '#FCA5A5' : '#93C5FD' }]}>
+          <Text style={[s.statusBadgeText, { color: isDisputed ? '#EF4444' : '#60A5FA' }]}>
+            {isDisputed ? '⚠️ نزاع' : order.status === 'completed' ? '✓ مكتمل' : order.status === 'shipped' ? '🚚 شحن' : order.status === 'delivered' ? '📦 وصل' : '🔒 ضمان'}
           </Text>
         </View>
-      </View>
+      </LinearGradient>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
-      >
-        <View style={{ maxWidth: 680, width: '100%', alignSelf: 'center' }}>
-          {/* Status Hero Card */}
-          <LinearGradient
-            colors={isDelivered ? ['#059669', '#10B981'] : ['#2563EB', '#1D4ED8']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroCard}
-          >
-            <View style={styles.heroIconBox}>
-              {isDelivered ? <CheckCircle2 color="white" size={32} /> : <ShieldCheck color="white" size={32} />}
+      <ScrollView contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 80 }]} showsVerticalScrollIndicator={false}>
+
+        {/* Product Card */}
+        <View style={s.card}>
+          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+            {order.product?.images?.[0] ? (
+              <Image source={{ uri: order.product.images[0] }} style={s.productImg} />
+            ) : (
+              <View style={[s.productImg, { backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }]}>
+                <Package color="#94A3B8" size={28} />
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={s.productTitle} numberOfLines={2}>{order.product?.title || 'منتج'}</Text>
+              <Text style={s.productAmount}>{order.amount.toLocaleString('ar-EG')} ج.م</Text>
+              <Text style={s.productCondition}>
+                {isBuyer ? `البائع: ${order.seller?.full_name || 'بائع'}` : `المشتري: ${order.buyer?.full_name || 'مشتري'}`}
+              </Text>
             </View>
-            <Text style={styles.heroTitle}>
-              {isDelivered ? 'Order Delivered & Settled' : 'Payment Secured in Escrow 🛡️'}
-            </Text>
-            <Text style={styles.heroSub}>
-              {isDelivered
-                ? `EGP ${Number(order.amount).toLocaleString()} has been released to the seller's wallet.`
-                : `EGP ${Number(order.amount).toLocaleString()} is safely held. Funds are only released once the item is inspected.`}
-            </Text>
-          </LinearGradient>
+          </View>
+        </View>
 
-          {/* Verification Code Box (For In-Person Meetup) */}
-          {order.handover_method === 'qr_meetup' && !isDelivered && (
-            <View style={styles.verificationCard}>
-              <View style={styles.verifyHeaderRow}>
-                <QrCode color="#2563EB" size={24} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.verifyTitle}>In-Person Handover PIN</Text>
-                  <Text style={styles.verifySub}>
-                    {isBuyer
-                      ? 'Show this 6-digit PIN to the seller only AFTER inspecting the item.'
-                      : 'Ask the buyer for their 6-digit PIN to verify and unlock funds.'}
-                  </Text>
-                </View>
+        {/* Escrow Protection Banner */}
+        {!isDelivered && !isDisputed && (
+          <View style={s.escrowBanner}>
+            <ShieldCheck color="#10B981" size={18} />
+            <Text style={s.escrowText}>أموالك في الضمان الآمن — محمية حتى التسليم والفحص</Text>
+          </View>
+        )}
+
+        {/* Bosta Tracking Stepper — courier only */}
+        {order.handover_method === 'courier' && (
+          <View style={s.card}>
+            <View style={s.cardHeader}>
+              <Truck color="#3B82F6" size={16} />
+              <Text style={s.cardTitle}>تتبع الشحنة (بوسطة مصر)</Text>
+            </View>
+
+            <BostaStepper status={order.status} />
+
+            {order.tracking_number ? (
+              <TouchableOpacity
+                style={s.trackBtn}
+                onPress={() => Linking.openURL(`https://bosta.co/tracking-shipment/?trackNumber=${order.tracking_number}`)}
+              >
+                <ExternalLink color="#7C3AED" size={14} />
+                <Text style={s.trackBtnText}>فتح تتبع بوسطة: {order.tracking_number}</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={s.noTrackingWrap}>
+                <Clock color="#F59E0B" size={14} />
+                <Text style={s.noTrackingText}>في انتظار إرسال البائع رقم التتبع</Text>
               </View>
+            )}
+          </View>
+        )}
 
-              {/* PIN Display */}
-              <View style={styles.pinDisplayBox}>
-                <Text style={styles.pinLabel}>VERIFICATION PIN</Text>
-                <Text style={styles.pinCode}>{order.meetup_pin || '849201'}</Text>
-                <Text style={styles.pinHint}>6-Digit Instant Escrow Release Key</Text>
+        {/* QR Meetup Card */}
+        {order.handover_method === 'qr_meetup' && (
+          <View style={s.card}>
+            <View style={s.cardHeader}>
+              <QrCode color="#7C3AED" size={16} />
+              <Text style={s.cardTitle}>تسليم يدوي بكود التحقق</Text>
+            </View>
+            {isBuyer && (
+              <View style={s.pinDisplay}>
+                <Text style={s.pinLabel}>كود التحقق الخاص بك (أعطه للبائع بعد الفحص)</Text>
+                <Text style={s.pinCode}>{order.meetup_pin}</Text>
+                <Text style={s.pinSub}>لا تعطِ الكود إلا بعد الفحص والرضا الكامل</Text>
               </View>
-
-              {/* Seller Verification Input */}
-              <View style={styles.sellerInputSection}>
-                <Text style={styles.inputTitle}>Verify & Release Escrow Funds</Text>
-                <View style={styles.pinInputRow}>
+            )}
+            {isSeller && !isDelivered && (
+              <View>
+                <Text style={s.sellerPinNote}>اطلب من المشتري كود التحقق المكون من 6 أرقام بعد أن يفحص المنتج ويرضى عنه</Text>
+                <View style={s.pinRow}>
                   <TextInput
-                    style={styles.pinTextInput}
-                    placeholder="Enter 6-digit PIN"
                     value={enteredPin}
                     onChangeText={setEnteredPin}
-                    keyboardType="number-pad"
+                    placeholder="أدخل كود التحقق"
+                    keyboardType="numeric"
                     maxLength={6}
+                    style={s.pinInput}
                   />
                   <TouchableOpacity
-                    style={styles.verifyBtn}
                     onPress={handleVerifyPin}
                     disabled={verifying}
-                    activeOpacity={0.85}
+                    style={[s.pinVerifyBtn, verifying && { opacity: 0.6 }]}
                   >
-                    {verifying ? (
-                      <ActivityIndicator color="white" size="small" />
-                    ) : (
-                      <Text style={styles.verifyBtnText}>Verify & Settle</Text>
-                    )}
+                    {verifying ? <ActivityIndicator color="white" size="small" /> : <KeyRound color="white" size={16} />}
                   </TouchableOpacity>
                 </View>
               </View>
+            )}
+          </View>
+        )}
+
+        {/* Seller — Dispatch AWB Section */}
+        {canDispatchAwb && (
+          <View style={s.card}>
+            <View style={s.cardHeader}>
+              <Truck color="#F97316" size={16} />
+              <Text style={s.cardTitle}>إرسال رقم بوليصة الشحن</Text>
             </View>
-          )}
+            <Text style={s.noteText}>أرسل المنتج عبر بوسطة مصر وأدخل رقم AWB لتحديث المشتري</Text>
+            <TouchableOpacity style={s.dispatchBtn} onPress={() => setShowAwbModal(true)}>
+              <Truck color="white" size={16} />
+              <Text style={s.dispatchBtnText}>أدخل رقم التتبع (AWB)</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-          {/* Courier Delivery Confirmation Card */}
-          {order.handover_method === 'courier' && !isDelivered && (
-            <View style={styles.courierCard}>
-              <View style={styles.courierHeader}>
-                <Truck color="#2563EB" size={22} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.courierTitle}>Bosta Express Delivery</Text>
-                  <Text style={styles.courierSub}>Doorstep delivery with item inspection</Text>
-                </View>
-              </View>
-
-              <View style={styles.trackingBox}>
-                <Text style={styles.trackingLabel}>TRACKING NUMBER</Text>
-                <Text style={styles.trackingNumber}>{order.tracking_number || 'BST-89420-EG'}</Text>
-              </View>
-
-              {isBuyer && (
-                <TouchableOpacity
-                  style={styles.confirmReceiptBtn}
-                  onPress={handleConfirmReceipt}
-                  disabled={verifying}
-                  activeOpacity={0.9}
-                >
-                  <CheckCircle2 color="white" size={18} />
-                  <Text style={styles.confirmReceiptText}>I Received & Accepted the Item</Text>
-                </TouchableOpacity>
-              )}
+        {/* Buyer — Inspection Window */}
+        {canApprove && (
+          <View style={[s.card, { borderColor: '#A7F3D0', backgroundColor: '#F0FDF4' }]}>
+            <View style={s.cardHeader}>
+              <Clock color="#10B981" size={16} />
+              <Text style={[s.cardTitle, { color: '#065F46' }]}>نافذة الفحص والاستلام (٢٤ ساعة)</Text>
             </View>
-          )}
-
-          {/* Product & Order Details Card */}
-          <View style={styles.detailsCard}>
-            <Text style={styles.cardHeading}>Order Details</Text>
-            <View style={styles.productRow}>
-              <Image
-                source={{
-                  uri: order.product?.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e',
-                }}
-                style={styles.productThumb}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.productTitle}>{order.product?.title || 'Marketplace Item'}</Text>
-                <Text style={styles.productCondition}>{order.product?.condition || 'Good'} Condition</Text>
-                <Text style={styles.productPrice}>EGP {Number(order.amount).toLocaleString()}</Text>
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            {/* Shipping / Meetup Address */}
-            <View style={styles.infoRow}>
-              <MapPin size={16} color="#64748B" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.infoLabel}>Handover Location / Address</Text>
-                <Text style={styles.infoValue}>
-                  {order.handover_method === 'qr_meetup'
-                    ? 'In-Person Public Meetup (Cairo/Giza)'
-                    : `${order.shipping_address?.street || '90th St'}, ${order.shipping_address?.city || 'Cairo'}, ${order.shipping_address?.governorate || 'Cairo'}`}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Clock size={16} color="#64748B" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.infoLabel}>Order Date</Text>
-                <Text style={styles.infoValue}>{new Date(order.created_at).toLocaleString()}</Text>
-              </View>
+            <Text style={[s.noteText, { color: '#047857' }]}>
+              فحص المنتج جيداً. إذا كان كل شيء مطابقاً، اضغط تأكيد الاستلام لتحرير أموال البائع.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+              <TouchableOpacity
+                style={[s.approveBtn, approving && { opacity: 0.6 }]}
+                onPress={handleApprove}
+                disabled={approving}
+              >
+                {approving ? <ActivityIndicator color="white" size="small" /> : <ThumbsUp color="white" size={16} />}
+                <Text style={s.approveBtnText}>تأكيد الاستلام ✓</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.disputeBtn} onPress={() => setShowDisputeModal(true)}>
+                <ShieldAlert color="#EF4444" size={16} />
+                <Text style={s.disputeBtnText}>فتح نزاع</Text>
+              </TouchableOpacity>
             </View>
           </View>
+        )}
 
-          {/* Action Buttons */}
-          <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={styles.actionOutlineBtn}
-              onPress={() => router.push('/(tabs)')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.actionOutlineText}>Back to Marketplace</Text>
-            </TouchableOpacity>
+        {/* Dispute can be opened during delivery too */}
+        {canDispute && !canApprove && !isDisputed && (
+          <TouchableOpacity style={s.disputeOnlyBtn} onPress={() => setShowDisputeModal(true)}>
+            <ShieldAlert color="#EF4444" size={16} />
+            <Text style={s.disputeBtnText}>السلعة لا تطابق الوصف؟ فتح نزاع</Text>
+          </TouchableOpacity>
+        )}
 
-            <TouchableOpacity
-              style={styles.actionFilledBtn}
-              onPress={() => router.push('/wallet' as any)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.actionFilledText}>View My Wallet</Text>
-            </TouchableOpacity>
+        {/* Dispute opened banner */}
+        {isDisputed && (
+          <View style={[s.card, { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }]}>
+            <ShieldAlert color="#EF4444" size={20} />
+            <Text style={[s.cardTitle, { color: '#B91C1C', marginTop: 6 }]}>النزاع قيد المراجعة</Text>
+            <Text style={[s.noteText, { color: '#991B1B', marginTop: 4 }]}>
+              أموالك محمية في الضمان. سيراجع فريقنا الأدلة خلال ٤٨ ساعة ويتصل بك.
+            </Text>
+          </View>
+        )}
+
+        {/* Shipping Address */}
+        {order.shipping_address && (
+          <View style={s.card}>
+            <View style={s.cardHeader}>
+              <MapPin color="#64748B" size={16} />
+              <Text style={s.cardTitle}>عنوان التوصيل</Text>
+            </View>
+            <Text style={s.addressText}>
+              {order.shipping_address.full_name}{'\n'}
+              {order.shipping_address.street}{order.shipping_address.building ? ` - عمارة ${order.shipping_address.building}` : ''}{'\n'}
+              {order.shipping_address.city} — {order.shipping_address.governorate}{'\n'}
+              {order.shipping_address.phone}
+            </Text>
+          </View>
+        )}
+
+        {/* Chat Button */}
+        <TouchableOpacity
+          style={s.chatBtn}
+          onPress={() => router.push(`/chat/${isBuyer ? order.seller_id : order.buyer_id}` as any)}
+        >
+          <MessageCircle color="#3B82F6" size={18} />
+          <Text style={s.chatBtnText}>فتح المحادثة مع {isBuyer ? 'البائع' : 'المشتري'}</Text>
+        </TouchableOpacity>
+
+      </ScrollView>
+
+      {/* AWB Modal */}
+      <Modal visible={showAwbModal} transparent animationType="slide" onRequestClose={() => setShowAwbModal(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalSheet}>
+            <Text style={s.modalTitle}>أدخل رقم AWB من بوسطة</Text>
+            <Text style={s.modalSub}>ستجد رقم التتبع في تطبيق بوسطة أو على بوليصة الشحن</Text>
+            <TextInput
+              value={awbInput}
+              onChangeText={setAwbInput}
+              placeholder="BSTA-EG-XXXXXXXX"
+              style={s.modalInput}
+              autoCapitalize="characters"
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowAwbModal(false)}>
+                <Text style={s.modalCancelText}>إلغاء</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.modalConfirmBtn, dispatchingAwb && { opacity: 0.6 }]}
+                onPress={handleDispatchAwb}
+                disabled={dispatchingAwb}
+              >
+                {dispatchingAwb ? <ActivityIndicator color="white" size="small" /> : null}
+                <Text style={s.modalConfirmText}>تأكيد الشحن</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </ScrollView>
+      </Modal>
+
+      {/* Dispute Modal */}
+      <Modal visible={showDisputeModal} transparent animationType="slide" onRequestClose={() => setShowDisputeModal(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalSheet}>
+            <Text style={s.modalTitle}>فتح نزاع رسمي</Text>
+            <Text style={s.modalSub}>أخبرنا بمشكلة السلعة وسنراجع الأمر خلال ٤٨ ساعة. أموالك آمنة في الضمان.</Text>
+            <TextInput
+              value={disputeReason}
+              onChangeText={setDisputeReason}
+              placeholder="مثال: السلعة مختلفة عن الصور — الهاتف به كسر غير مذكور..."
+              multiline
+              numberOfLines={3}
+              style={[s.modalInput, { height: 80, textAlignVertical: 'top' }]}
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowDisputeModal(false)}>
+                <Text style={s.modalCancelText}>إلغاء</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.modalConfirmBtn, { backgroundColor: '#EF4444' }, filingDispute && { opacity: 0.6 }]}
+                onPress={handleFileDispute}
+                disabled={filingDispute}
+              >
+                {filingDispute ? <ActivityIndicator color="white" size="small" /> : null}
+                <Text style={s.modalConfirmText}>فتح النزاع</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  loadingText: { marginTop: 12, color: '#64748B', fontSize: 14, fontWeight: '600' },
-  errorText: { fontSize: 16, color: '#EF4444', fontWeight: '700', marginBottom: 16 },
-  backHomeBtn: { backgroundColor: '#2563EB', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
-  backHomeBtnText: { color: 'white', fontWeight: '700' },
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: 'white' },
+  headerSub: { fontSize: 11, color: '#94A3B8' },
+  statusBadgeHeader: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
+  statusBadgeText: { fontSize: 11, fontWeight: '700' },
+  content: { padding: 16, gap: 12 },
 
-  topHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  headerBack: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  topTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
-  statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusSecured: { backgroundColor: '#EFF6FF' },
-  statusSecuredText: { color: '#2563EB', fontSize: 10, fontWeight: '800' },
-  statusDelivered: { backgroundColor: '#ECFDF5' },
-  statusDeliveredText: { color: '#059669', fontSize: 10, fontWeight: '800' },
+  card: { backgroundColor: 'white', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  cardTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
 
-  scrollContent: { padding: 16 },
+  productImg: { width: 70, height: 70, borderRadius: 14, overflow: 'hidden' } as any,
+  productTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
+  productAmount: { fontSize: 18, fontWeight: '900', color: '#3B82F6', marginBottom: 2 },
+  productCondition: { fontSize: 11, color: '#64748B' },
 
-  heroCard: {
-    borderRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  heroIconBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  heroTitle: { fontSize: 18, fontWeight: '800', color: 'white', marginBottom: 6, textAlign: 'center' },
-  heroSub: { fontSize: 13, color: 'rgba(255, 255, 255, 0.85)', textAlign: 'center', lineHeight: 18 },
+  escrowBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#ECFDF5', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#A7F3D0' },
+  escrowText: { fontSize: 12, fontWeight: '600', color: '#065F46', flex: 1 },
 
-  verificationCard: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 16,
-  },
-  verifyHeaderRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  verifyTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginBottom: 2 },
-  verifySub: { fontSize: 12, color: '#64748B', lineHeight: 16 },
+  noteText: { fontSize: 12, color: '#64748B', lineHeight: 18 },
+  addressText: { fontSize: 12.5, color: '#334155', lineHeight: 20 },
 
-  pinDisplayBox: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#BFDBFE',
-    borderStyle: 'dashed',
-    marginBottom: 16,
-  },
-  pinLabel: { fontSize: 10, fontWeight: '800', color: '#64748B', letterSpacing: 1, marginBottom: 4 },
-  pinCode: { fontSize: 32, fontWeight: '900', color: '#2563EB', letterSpacing: 6, marginBottom: 4 },
-  pinHint: { fontSize: 11, color: '#94A3B8', fontWeight: '600' },
+  trackBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F5F3FF', borderRadius: 12, padding: 10, marginTop: 12, borderWidth: 1, borderColor: '#DDD6FE' },
+  trackBtnText: { fontSize: 12, fontWeight: '700', color: '#7C3AED', flex: 1 },
+  noTrackingWrap: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, backgroundColor: '#FFFBEB', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: '#FDE68A' },
+  noTrackingText: { fontSize: 12, color: '#92400E', fontWeight: '600' },
 
-  sellerInputSection: {
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 14,
-  },
-  inputTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
-  pinInputRow: { flexDirection: 'row', gap: 10 },
-  pinTextInput: {
-    flex: 1,
-    height: 46,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 12,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 2,
-    color: '#0F172A',
-  },
-  verifyBtn: {
-    backgroundColor: '#10B981',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  verifyBtnText: { color: 'white', fontWeight: '800', fontSize: 13 },
+  pinDisplay: { alignItems: 'center', backgroundColor: '#F5F3FF', borderRadius: 16, padding: 16, gap: 4 },
+  pinLabel: { fontSize: 11, color: '#7C3AED', textAlign: 'center' },
+  pinCode: { fontSize: 38, fontWeight: '900', color: '#5B21B6', letterSpacing: 8 },
+  pinSub: { fontSize: 10, color: '#A78BFA', textAlign: 'center' },
+  sellerPinNote: { fontSize: 12, color: '#64748B', marginBottom: 10 },
+  pinRow: { flexDirection: 'row', gap: 8 },
+  pinInput: { flex: 1, borderWidth: 2, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 18, fontWeight: '800', textAlign: 'center', letterSpacing: 4 },
+  pinVerifyBtn: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#3B82F6', alignItems: 'center', justifyContent: 'center' },
 
-  courierCard: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 16,
-  },
-  courierHeader: { flexDirection: 'row', gap: 12, marginBottom: 14 },
-  courierTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
-  courierSub: { fontSize: 12, color: '#64748B' },
-  trackingBox: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  trackingLabel: { fontSize: 10, fontWeight: '800', color: '#64748B', letterSpacing: 0.8, marginBottom: 2 },
-  trackingNumber: { fontSize: 14, fontWeight: '800', color: '#2563EB' },
-  confirmReceiptBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#10B981',
-    borderRadius: 14,
-    paddingVertical: 14,
-  },
-  confirmReceiptText: { color: 'white', fontWeight: '800', fontSize: 14 },
+  dispatchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#F97316', borderRadius: 14, padding: 13, marginTop: 10 },
+  dispatchBtnText: { fontSize: 14, fontWeight: '800', color: 'white' },
 
-  detailsCard: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 20,
-  },
-  cardHeading: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginBottom: 14 },
-  productRow: { flexDirection: 'row', gap: 12 },
-  productThumb: { width: 64, height: 64, borderRadius: 12, backgroundColor: '#F1F5F9' },
-  productTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 3 },
-  productCondition: { fontSize: 12, color: '#64748B', marginBottom: 4 },
-  productPrice: { fontSize: 16, fontWeight: '900', color: '#2563EB' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 14 },
-  infoRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-  infoLabel: { fontSize: 11, color: '#94A3B8', fontWeight: '600' },
-  infoValue: { fontSize: 13, color: '#0F172A', fontWeight: '600', marginTop: 1 },
+  approveBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#10B981', borderRadius: 14, padding: 13 },
+  approveBtnText: { fontSize: 13, fontWeight: '800', color: 'white' },
+  disputeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FEF2F2', borderRadius: 14, padding: 13, borderWidth: 1, borderColor: '#FECACA', paddingHorizontal: 16 },
+  disputeBtnText: { fontSize: 12, fontWeight: '700', color: '#EF4444' },
+  disputeOnlyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#FEF2F2', borderRadius: 14, padding: 13, borderWidth: 1, borderColor: '#FECACA' },
 
-  actionsRow: { flexDirection: 'row', gap: 12 },
-  actionOutlineBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#CBD5E1',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'white',
-  },
-  actionOutlineText: { fontSize: 13, fontWeight: '700', color: '#475569' },
-  actionFilledBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: '#2563EB',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionFilledText: { fontSize: 13, fontWeight: '800', color: 'white' },
+  chatBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#EFF6FF', borderRadius: 14, padding: 13, borderWidth: 1, borderColor: '#BFDBFE', marginTop: 4 },
+  chatBtnText: { fontSize: 13, fontWeight: '700', color: '#3B82F6' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
+  modalTitle: { fontSize: 17, fontWeight: '900', color: '#0F172A' },
+  modalSub: { fontSize: 12, color: '#64748B' },
+  modalInput: { borderWidth: 2, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14 },
+  modalCancelBtn: { flex: 1, backgroundColor: '#F1F5F9', borderRadius: 12, padding: 13, alignItems: 'center' },
+  modalCancelText: { fontSize: 14, fontWeight: '700', color: '#64748B' },
+  modalConfirmBtn: { flex: 2, backgroundColor: '#3B82F6', borderRadius: 12, padding: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  modalConfirmText: { fontSize: 14, fontWeight: '800', color: 'white' },
 });

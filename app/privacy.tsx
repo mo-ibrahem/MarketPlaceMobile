@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -7,12 +7,180 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Lock, ShieldCheck } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  Lock,
+  ShieldCheck,
+  Shield,
+  Eye,
+  Trash2,
+  FileText,
+  Building2,
+  Mail,
+  Globe,
+} from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 
 export default function PrivacyPolicyScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [lang, setLang] = useState<'ar' | 'en'>('ar');
+  const isRTL = lang === 'ar';
+
+  const arSections = [
+    {
+      id: 'scope',
+      title: '١. النطاق والإطار القانوني',
+      content: `أهلاً بك في منصة إيجي باي (EgyBay). نحن نلتزم بأعلى معايير حماية البيانات والخصوصية لجميع مستخدمينا في جمهورية مصر العربية.
+
+تتوافق هذه السياسة بشكل كامل مع:
+• قانون حماية البيانات الشخصية المصري رقم ١٥١ لسنة ٢٠٢٠.
+• قانون حماية المستهلك رقم ١٨١ لسنة ٢٠١٨ وقواعد التجارة الإلكترونية المصرية.
+• إرشادات متجر آبل (Apple App Store Guidelines Section 5.1).
+• سياسات حماية بيانات المستخدمين في Google Play.
+
+باستخدامك للتطبيق أو تسجيل حساب أو إتمام عمليات شراء وبيع، فإنك توافق على الممارسات الموضحة في هذه الوثيقة.`,
+    },
+    {
+      id: 'collection',
+      title: '٢. البيانات التي نقوم بجمعها',
+      content: `لضمان حماية أموالك بنظام الضمان المالي (Escrow) والتحقق من هوية البائعين وتوصيل الشحنات عبر بوسطة، نقوم بجمع:
+
+أ. البيانات الشخصية وبيانات الاتصال:
+• الاسم الكامل، البريد الإلكتروني، ورقم الهاتف المصري (فودافون، أورنج، اتصالات، وي).
+• عنوان الشحن والاستلام (المحافظة، المدينة، اسم الشارع، رقم العقار).
+
+ب. بيانات تسجيل الدخول والأمان:
+• بيانات الحساب المشفرة عبر Supabase Authentication بنظام حماية Row-Level Security.
+• عنوان البروتوكول (IP) ونوع الجهاز لضمان أمان الحساب ومنع الاختراق.
+
+ج. بيانات المعاملات ونظام الضمان المالي:
+• سجل الطلبات، حالة حجز المبالغ، وسجل تسليم كود الاستلام (PIN).
+• وجهات استلام الأرباح للبائعين: عنوان إنستاباي (InstaPay IPA)، رقم محفظة فودافون كاش، أو الآيبان البنكي (IBAN).
+• تنبيه: بيانات البطاقات البنكية يتم معالجتها مباشرة عبر بوابة دفع معتمدة من البنك المركزي المصري (Paymob) ولا يتم تخزين أي أرقام بطاقات أو رموز أمان على خوادمنا نهائياً.
+
+د. توثيق هوية البائع (KYC):
+• صورة بطاقة الرقم القومي المصري للبائعين الموثقين، تُحفظ في مساحات تخزين مشفرة لا يطلع عليها إلا مسؤولو الامتثال والرقابة.`,
+    },
+    {
+      id: 'usage',
+      title: '٣. كيف نستخدم بياناتك ونحميها',
+      content: `نستخدم بياناتك للأغراض المشروعة التالية فقط:
+• تنفيذ الضمان المالي: حجز أموال المشتري حتى فحص المنتج واستلامه، ثم تحويل الأرباح للبائع فور تأكيد كود PIN أو انقضاء مهلة الفحص.
+• الشحن والتوصيل: مشاركة بيانات العنوان ورقم الهاتف مع شركة الشحن المعتمدة (بوسطة Bosta) لتوصيل الطلب.
+• مكافحة الغش والاحتيال: فحص الإعلانات المخالفة ومنع الحسابات الوهمية والسلع المقلدة.
+• البث المباشر: إدارة غرف البث والدردشة التفاعلية بين البائع والمشاهدين.
+• الإشعارات الفورية: إرسال تحديثات حالة الطلب والرسائل عبر البريد الإلكتروني والرسائل النصية.`,
+    },
+    {
+      id: 'sharing',
+      title: '٤. مشاركة البيانات مع أطراف ثالثة',
+      content: `منصة إيجي باي لا تقوم نهائياً ببيع أو تأجير أو مشاركة بياناتك الشخصية مع شركات الإعلانات أو الوسطاء.
+
+تتم مشاركة الحد الأدنى من البيانات الضرورية مع الجهات المعتمدة التالية فقط:
+• شركات الشحن والخدمات اللوجستية (بوسطة مصر Bosta): لغرض تسليم الشحنة للعنوان المحدد.
+• بوابات الدفع الإلكتروني (Paymob): لمعالجة عمليات الدفع المتوافقة مع معايير PCI-DSS والبنك المركزي المصري.
+• البنية التحتية السحابية (خوادم Supabase / AWS المعتمدة): لحفظ قواعد البيانات بتشفير AES-256.
+• الجهات القضائية المصرية: فقط في حال وجود طلب رسمي وملزم قانوناً وفق التشريعات المصرية.`,
+    },
+    {
+      id: 'rights',
+      title: '٥. حقوقك وحذف الحساب نهائياً (Account Deletion)',
+      content: `وفقاً لقانون حماية البيانات الشخصية رقم ١٥١ وإرشادات آبل:
+
+• حق الوصول والتعديل: يمكنك تعديل بياناتك الشخصية وإعلاناتك في أي وقت عبر صفحة الملف الشخصي.
+• حق نقل البيانات: يمكنك طلب نسخة كاملة من سجل معاملاتك وبياناتك المسجلة.
+• حق الحذف النهائي للحساب والبيانات:
+  ١. عبر التطبيق: الملف الشخصي ← الإعدادات ← "حذف الحساب نهائياً".
+  ٢. عبر البريد الإلكتروني: مراسلتنا على info@egbay.shop من البريد المسجل.
+  يتم مسح جميع بياناتك الشخصية ووثائقك وصورك نهائياً خلال ٧٢ ساعة من تاريخ الطلب.`,
+    },
+    {
+      id: 'security',
+      title: '٦. معايير الأمان والتشفير',
+      content: `• يتم تشفير جميع الاتصالات عبر شهادات SSL/TLS 256-bit عالية الأمان.
+• المحادثات الخاصة بين المشترين والبائعين محمية بقواعد الأمان الصارمة على مستوى الصفوف (RLS).
+• مستندات إثبات الشخصية تخضع لمستويات حماية مشددة مع روابط مؤقتة ومنتهية الصلاحية.`,
+    },
+  ];
+
+  const enSections = [
+    {
+      id: 'scope',
+      title: '1. Scope & Legal Framework',
+      content: `Welcome to EgyBay. We are dedicated to maintaining the highest standards of data privacy and security for all users in Egypt.
+
+This Privacy Policy complies with:
+• Egyptian Personal Data Protection Law No. 151 of 2020 (قانون حماية البيانات الشخصية).
+• Egyptian Consumer Protection Law No. 181 of 2018.
+• Apple App Store Review Guidelines (Section 5.1 - Privacy and Data Security).
+• Google Play Developer Policy on User Data.`,
+    },
+    {
+      id: 'collection',
+      title: '2. Information We Collect',
+      content: `To provide safe marketplace transactions, escrow payment protection, and courier fulfillment across Egypt, we collect:
+
+A. Personal & Contact Information:
+• Full name, email address, Egyptian mobile number.
+• Delivery & shipping addresses (Governorate, City, Street address).
+
+B. Authentication & Security Data:
+• Passwords securely hashed via Supabase Auth with Row-Level Security (RLS).
+• Session tokens, device IP address for fraud prevention.
+
+C. Transaction & Escrow Ledger Data:
+• Purchase and sale orders, escrow holding status, and PIN release timestamps.
+• Verified seller payout destinations: InstaPay Address (IPA), Mobile Wallet, or Bank IBAN.
+• Note: Credit/debit card numbers are processed directly by our Central Bank of Egypt-compliant payment gateway (Paymob). We never store credit card numbers on our servers.
+
+D. Optional KYC Verification Data:
+• Egyptian National ID images for seller verification to safeguard buyers against fraud.`,
+    },
+    {
+      id: 'usage',
+      title: '3. Purpose & Legal Basis of Processing',
+      content: `We process personal data strictly for legitimate transactional purposes:
+• Executing Escrow Transactions: Holding buyer funds safely until doorstep inspection or PIN confirmation.
+• Logistics & Order Delivery: Sharing delivery addresses with Bosta Express.
+• Fraud Prevention: Detecting prohibited items and unauthorized accounts.
+• Live Selling: Managing live interactive streams and real-time chat.
+• Direct Communication: Sending transactional receipts and order updates.`,
+    },
+    {
+      id: 'sharing',
+      title: '4. Data Sharing & Third-Party Processors',
+      content: `EgyBay NEVER sells or rents your personal data to marketing brokers.
+
+Data is shared strictly with authorized partners necessary for platform operations:
+• Courier Logistics (Bosta Egypt): For parcel dispatch and doorstep delivery.
+• Payment Processing (Paymob): For card checkout and automated payouts.
+• Cloud Infrastructure (Supabase / AWS): Encrypted database storage.
+• Legal Authorities: Only when mandated by an official court warrant under Egyptian Law.`,
+    },
+    {
+      id: 'rights',
+      title: '5. Your Rights & Account Deletion',
+      content: `Under Law No. 151 of 2020 and Apple App Store guidelines:
+
+• Right to Access & Rectify: Edit your profile details at any time in Profile Settings.
+• Right to Data Portability: Request an export of your order history.
+• Right to Permanent Erasure (Account Deletion):
+  1. In-App: Profile → Settings → "Delete Account & Purge Data".
+  2. By Email: Send a deletion request to info@egbay.shop.
+  All personal identifiers are permanently purged within 72 hours.`,
+    },
+    {
+      id: 'security',
+      title: '6. Security Architecture & Encryption',
+      content: `• 256-bit TLS/SSL encryption for all data in transit.
+• Database Row-Level Security (RLS) guarantees chat and order privacy.
+• National ID documents stored in isolated private storage with expiring URLs.`,
+    },
+  ];
+
+  const sections = isRTL ? arSections : enSections;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
@@ -21,8 +189,17 @@ export default function PrivacyPolicyScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <ArrowLeft color="#0F172A" size={22} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>سياسة الخصوصية • Privacy Policy</Text>
-        <View style={{ width: 36 }} />
+        <Text style={styles.headerTitle}>
+          {isRTL ? 'سياسة الخصوصية وحماية البيانات' : 'Privacy Policy'}
+        </Text>
+        {/* Language Switcher */}
+        <TouchableOpacity
+          onPress={() => setLang(l => (l === 'ar' ? 'en' : 'ar'))}
+          style={styles.langBtn}
+        >
+          <Globe color="#059669" size={14} />
+          <Text style={styles.langBtnText}>{isRTL ? 'English' : 'عربي'}</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -31,52 +208,76 @@ export default function PrivacyPolicyScreen() {
       >
         <View style={styles.badgeWrap}>
           <ShieldCheck color="#059669" size={32} />
-          <Text style={styles.mainTitle}>سياسة الخصوصية وحماية البيانات</Text>
-          <Text style={styles.dateText}>آخر تحديث: أغسطس 2026 • Last updated: August 2026</Text>
-        </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>1. البيانات التي نجمعها (Data We Collect)</Text>
-          <Text style={styles.bodyText}>
-            لتقديم خدمات التجارة والشحن والضمان بكفاءة، نقوم بجمع البيانات التالية:{'\n'}
-            • بيانات الحساب: الاسم الكامل، البريد الإلكتروني، رقم الهاتف.{'\n'}
-            • بيانات الشحن والتوصيل: العنوان، المدينة، المحافظة (لتسليم الطرود عبر بوسطة).{'\n'}
-            • بيانات التوثيق (KYC): صورة بطاقة الرقم القومي المصرية (للبائعين الموثقين فقط لحماية المشترين من الاحتيال).{'\n'}
-            • بيانات المعاملات المالية: سجل المحفظة وأرقام المعاملات (لا نقوم بتخزين أرقام البطاقات البنكية السرية، حيث تتم المعالجة عبر بوابات Paymob المشفرة).
+          <Text style={styles.mainTitle}>
+            {isRTL
+              ? 'سياسة الخصوصية وحماية البيانات الشخصية'
+              : 'Privacy Policy & Data Protection'}
+          </Text>
+          <Text style={styles.dateText}>
+            {isRTL ? 'آخر تحديث: أغسطس ٢٠٢٦' : 'Last updated: August 2026'}
           </Text>
         </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>2. كيف نستخدم بياناتك (How We Use Data)</Text>
-          <Text style={styles.bodyText}>
-            • إنشاء الحسابات وإدارة تسجيل الدخول الآمن.{'\n'}
-            • معالجة طلبات البيع والشراء وإصدار بوالص الشحن الرسمية.{'\n'}
-            • إدارة حسابات الضمان والمحافظ وتحويل الأرباح للبائعين.{'\n'}
-            • منع الاحتيال وحماية أمان المجتمع.
-          </Text>
+        {/* Highlights Ribbon */}
+        <View style={styles.highlightRow}>
+          <View style={styles.highlightCard}>
+            <Building2 color="#059669" size={18} />
+            <Text style={styles.highlightTitle}>
+              {isRTL ? 'قانون ١٥١ لسنة ٢٠٢٠' : 'Law 151/2020'}
+            </Text>
+            <Text style={styles.highlightSub}>
+              {isRTL ? 'حماية البيانات' : 'Data Protection'}
+            </Text>
+          </View>
+          <View style={styles.highlightCard}>
+            <Lock color="#2563EB" size={18} />
+            <Text style={styles.highlightTitle}>
+              {isRTL ? 'معايير Apple 5.1' : 'Apple 5.1 Ready'}
+            </Text>
+            <Text style={styles.highlightSub}>
+              {isRTL ? 'حذف فوري للحساب' : 'Instant Deletion'}
+            </Text>
+          </View>
+          <View style={styles.highlightCard}>
+            <Shield color="#7C3AED" size={18} />
+            <Text style={styles.highlightTitle}>
+              {isRTL ? 'تشفير AES-256' : 'AES-256 TLS'}
+            </Text>
+            <Text style={styles.highlightSub}>
+              {isRTL ? 'أمان مصرفي' : 'Bank-Grade'}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>3. مشاركة البيانات مع أطراف ثالثة (Third-Party Sharing)</Text>
-          <Text style={styles.bodyText}>
-            نحن لا نبيع بياناتك الشخصية لأي جهة إعلانية أو تجارية. نشارك فقط البيانات الضرورية لتنفيذ الخدمة مع الشركاء المعتمدين:{'\n'}
-            • شركة بوسطة (Bosta): لعنوان ورقم هاتف التوصيل فقط.{'\n'}
-            • بوابة الدفع Paymob: لمعالجة عمليات الدفع الآمنة وفق معايير البنك المركزي المصري.
-          </Text>
-        </View>
+        {/* Main Content Sections */}
+        {sections.map(sec => (
+          <View key={sec.id} style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+              {sec.title}
+            </Text>
+            <Text style={[styles.bodyText, { textAlign: isRTL ? 'right' : 'left' }]}>
+              {sec.content}
+            </Text>
+          </View>
+        ))}
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>4. حقوق المستخدم وحذف الحساب (Account Deletion)</Text>
-          <Text style={styles.bodyText}>
-            وفقاً لإرشادات Apple وسياسات الخصوصية العالمية، لك كامل الحق في طلب حذف حسابك وبياناتك الشخصية بشكل نهائي في أي وقت من خلال خيار "حذف الحساب" في إعدادات الملف الشخصي داخل التطبيق أو بمراسلتنا على info@egbay.shop.
+        {/* Support Box */}
+        <View style={styles.supportCard}>
+          <Text style={[styles.supportTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+            {isRTL ? 'التواصل بخصوص الخصوصية والبيانات' : 'Privacy Inquiries & Data Requests'}
           </Text>
-        </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>5. أمان وتشفير البيانات (Security Standards)</Text>
-          <Text style={styles.bodyText}>
-            نستخدم أعلى معايير التشفير (SSL/TLS 256-bit) وتخزين مشفر وفقاً لمعايير ISO و GDPR لضمان حماية بياناتك وأموالك من أي وصول غير مصرح به.
+          <Text style={[styles.supportText, { textAlign: isRTL ? 'right' : 'left' }]}>
+            {isRTL
+              ? 'لممارسة حقوقك أو طلب حذف بياناتك أو لأي استفسار متعلق بالخصوصية، تواصل مع مسؤول حماية البيانات عبر:'
+              : 'To exercise your data rights or request account deletion, contact our Data Protection Officer at:'}
           </Text>
+          <TouchableOpacity
+            style={styles.mailBtn}
+            onPress={() => Linking.openURL('mailto:info@egbay.shop')}
+          >
+            <Mail color="white" size={14} />
+            <Text style={styles.mailBtnText}>info@egbay.shop</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -96,21 +297,70 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E2E8F0',
   },
   backBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
-  content: { padding: 16, maxWidth: 680, width: '100%', alignSelf: 'center' },
+  headerTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
+  langBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  langBtnText: { fontSize: 11, fontWeight: '800', color: '#059669' },
+  content: { padding: 14, maxWidth: 680, width: '100%', alignSelf: 'center' },
 
-  badgeWrap: { alignItems: 'center', marginVertical: 16 },
-  mainTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A', marginTop: 10, textAlign: 'center' },
+  badgeWrap: { alignItems: 'center', marginVertical: 14 },
+  mainTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginTop: 8, textAlign: 'center' },
   dateText: { fontSize: 11, color: '#64748B', marginTop: 4 },
+
+  highlightRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  highlightCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 14,
+    padding: 10,
+    alignItems: 'center',
+    gap: 3,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  highlightTitle: { fontSize: 11, fontWeight: '800', color: '#0F172A', textAlign: 'center' },
+  highlightSub: { fontSize: 9, color: '#64748B', textAlign: 'center' },
 
   sectionCard: {
     backgroundColor: 'white',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  sectionTitle: { fontSize: 14, fontWeight: '800', color: '#1E293B', marginBottom: 8 },
-  bodyText: { fontSize: 12.5, color: '#475569', lineHeight: 20 },
+  sectionTitle: { fontSize: 13, fontWeight: '800', color: '#1E293B', marginBottom: 6 },
+  bodyText: { fontSize: 12, color: '#475569', lineHeight: 19 },
+
+  supportCard: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    marginTop: 4,
+    gap: 8,
+  },
+  supportTitle: { fontSize: 14, fontWeight: '800', color: '#065F46' },
+  supportText: { fontSize: 12, color: '#047857', lineHeight: 18 },
+  mailBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#059669',
+    borderRadius: 12,
+    paddingVertical: 10,
+    marginTop: 4,
+  },
+  mailBtnText: { fontSize: 13, fontWeight: '800', color: 'white' },
 });
