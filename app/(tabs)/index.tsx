@@ -6,6 +6,7 @@ import {
   Car,
   Clock,
   Dumbbell,
+  Flame,
   Globe,
   Heart,
   Home,
@@ -21,9 +22,9 @@ import {
   Tag,
   TrendingUp,
   Truck,
+  Video,
   X,
   Zap,
-  Video,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -69,14 +70,8 @@ function getCountdownToMidnight(): string {
 const QUICK_SEARCHES = ['Electronics', 'iPhone 15', 'Jordan', 'PlayStation', 'Furniture', 'Toyota'];
 
 const TRENDING_SEARCHES = [
-  { label: 'iPhone 15', emoji: '🔥' },
-  { label: 'Laptop', emoji: '💻' },
-  { label: 'Jordan Sneakers', emoji: '👟' },
-  { label: 'PlayStation 5', emoji: '🎮' },
-  { label: 'Air Fryer', emoji: '🍳' },
-  { label: 'Camera DSLR', emoji: '📷' },
-  { label: 'Watch Rolex', emoji: '⌚' },
-  { label: 'Sofa Set', emoji: '🛋️' },
+  'iPhone 15 Pro', 'MacBook M3', 'Nike Air Jordan', 'PlayStation 5',
+  'Air Fryer', 'Sony WH-1000XM5', 'Toyota Corolla', 'Gaming PC'
 ];
 
 const DEAL_BANNERS = [
@@ -84,10 +79,10 @@ const DEAL_BANNERS = [
     key: 'b0',
     titleKey: 'home.dealBannerLiveTitle',
     subKey: 'home.dealBannerLiveSub',
-    titleFallback: 'EgyBay Live — بث مباشر 🔴',
+    titleFallback: 'EgyBay Live — بث مباشر',
     subFallback: 'تسوق مباشرة مع التجار عبر البث المباشر واشترِ بضمان مالي وشحن بوسطة',
     colors: ['#7F1D1D', '#B91C1C'] as [string, string],
-    emoji: '🔴',
+    icon: Video,
     category: '__live__',
   },
   {
@@ -95,7 +90,7 @@ const DEAL_BANNERS = [
     titleKey: 'home.dealBanner1Title',
     subKey: 'home.dealBanner1Sub',
     colors: ['#1D4ED8', '#7C3AED'] as [string, string],
-    emoji: '🔥',
+    icon: Zap,
     category: 'Electronics',
   },
   {
@@ -103,7 +98,7 @@ const DEAL_BANNERS = [
     titleKey: 'home.dealBanner2Title',
     subKey: 'home.dealBanner2Sub',
     colors: ['#0369A1', '#0EA5E9'] as [string, string],
-    emoji: '✨',
+    icon: Sparkles,
     category: undefined,
   },
   {
@@ -111,20 +106,20 @@ const DEAL_BANNERS = [
     titleKey: 'home.dealBanner3Title',
     subKey: 'home.dealBanner3Sub',
     colors: ['#065F46', '#10B981'] as [string, string],
-    emoji: '🛡️',
+    icon: ShieldCheck,
     category: undefined,
   },
 ];
 
 const CATEGORIES = [
-  { id: 'all',         nameKey: 'home.categories.allCategories', emoji: '✨', icon: LayoutGrid,  color: '#6366F1', bg: '#EEF2FF'  },
-  { id: 'Electronics', nameKey: 'home.categories.electronics',   emoji: '📱', icon: Smartphone,  color: '#0EA5E9', bg: '#E0F2FE'  },
-  { id: 'Fashion',     nameKey: 'home.categories.fashion',       emoji: '👗', icon: Shirt,        color: '#EC4899', bg: '#FCE7F3'  },
-  { id: 'Home',        nameKey: 'home.categories.home',          emoji: '🛋️', icon: Home,         color: '#10B981', bg: '#D1FAE5'  },
-  { id: 'Toys',        nameKey: 'home.categories.toys',          emoji: '🧸', icon: Baby,         color: '#F59E0B', bg: '#FEF3C7'  },
-  { id: 'Sports',      nameKey: 'home.categories.sports',        emoji: '⚽', icon: Dumbbell,     color: '#EF4444', bg: '#FEE2E2'  },
-  { id: 'Books',       nameKey: 'home.categories.books',         emoji: '📚', icon: BookOpen,     color: '#8B5CF6', bg: '#EDE9FE'  },
-  { id: 'Automotive',  nameKey: 'home.categories.automotive',    emoji: '🚗', icon: Car,          color: '#64748B', bg: '#F1F5F9'  },
+  { id: 'all',         nameKey: 'home.categories.allCategories', icon: LayoutGrid,  color: '#6366F1', bg: '#EEF2FF'  },
+  { id: 'Electronics', nameKey: 'home.categories.electronics',   icon: Smartphone,  color: '#0EA5E9', bg: '#E0F2FE'  },
+  { id: 'Fashion',     nameKey: 'home.categories.fashion',       icon: Shirt,        color: '#EC4899', bg: '#FCE7F3'  },
+  { id: 'Home',        nameKey: 'home.categories.home',          icon: Home,         color: '#10B981', bg: '#D1FAE5'  },
+  { id: 'Toys',        nameKey: 'home.categories.toys',          icon: Baby,         color: '#F59E0B', bg: '#FEF3C7'  },
+  { id: 'Sports',      nameKey: 'home.categories.sports',        icon: Dumbbell,     color: '#EF4444', bg: '#FEE2E2'  },
+  { id: 'Books',       nameKey: 'home.categories.books',         icon: BookOpen,     color: '#8B5CF6', bg: '#EDE9FE'  },
+  { id: 'Automotive',  nameKey: 'home.categories.automotive',    icon: Car,          color: '#64748B', bg: '#F1F5F9'  },
 ] as const;
 
 // ─── Home Screen ─────────────────────────────────────────────────────────────
@@ -483,7 +478,9 @@ export default function HomeScreen() {
                     end={{ x: 1, y: 0.8 }}
                     style={styles.bannerCard}
                   >
-                    <Text style={styles.bannerEmoji}>{banner.emoji}</Text>
+                    <View style={styles.bannerIconWrap}>
+                      <banner.icon size={22} color="#FFFFFF" />
+                    </View>
                     <View style={styles.bannerTextWrap}>
                       <Text style={styles.bannerTitle}>
                         {(banner as any).titleFallback ? (t(banner.titleKey) === banner.titleKey ? (banner as any).titleFallback : t(banner.titleKey)) : t(banner.titleKey)}
@@ -493,7 +490,7 @@ export default function HomeScreen() {
                       </Text>
                     </View>
                     <View style={[styles.bannerCta, banner.category === '__live__' && { backgroundColor: '#EF4444' }]}>
-                      <Text style={styles.bannerCtaText}>{banner.category === '__live__' ? 'Live 🔴' : 'Shop →'}</Text>
+                      <Text style={styles.bannerCtaText}>{banner.category === '__live__' ? (isArabic ? 'بث مباشر' : 'Live') : (isArabic ? 'تصفح' : 'Shop')}</Text>
                     </View>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -510,7 +507,7 @@ export default function HomeScreen() {
           {/* ════════════════ TRENDING SEARCHES ════════════════ */}
           <View style={styles.sectionHeader}>
             <View style={styles.titleRow}>
-              <Text style={{ fontSize: 18 }}>🔥</Text>
+              <Flame color="#F97316" size={18} />
               <Text style={[styles.sectionTitle, { marginLeft: 6 }]}>{t('home.trendingSearches')}</Text>
             </View>
           </View>
@@ -519,15 +516,15 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.trendingSearchRow}
           >
-            {TRENDING_SEARCHES.map(item => (
+            {TRENDING_SEARCHES.map(tag => (
               <TouchableOpacity
-                key={item.label}
+                key={tag}
                 style={styles.trendingSearchChip}
-                onPress={() => router.push({ pathname: '/products', params: { search: item.label } } as any)}
+                onPress={() => router.push({ pathname: '/products', params: { search: tag } } as any)}
                 activeOpacity={0.75}
               >
-                <Text style={styles.trendingSearchEmoji}>{item.emoji}</Text>
-                <Text style={styles.trendingSearchText}>{item.label}</Text>
+                <Search color="#64748B" size={11} style={{ marginRight: 4 }} />
+                <Text style={styles.trendingSearchText}>{tag}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -974,14 +971,23 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    gap: 14,
+    paddingHorizontal: 18,
+    gap: 12,
     overflow: 'hidden',
   },
-  bannerEmoji: { fontSize: 36 },
+  bannerIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
   bannerTextWrap: { flex: 1 },
-  bannerTitle: { fontSize: 15, fontWeight: '800', color: 'white', marginBottom: 4 },
-  bannerSub: { fontSize: 12, color: 'rgba(255,255,255,0.78)', lineHeight: 17 },
+  bannerTitle: { fontSize: 14.5, fontWeight: '800', color: 'white', marginBottom: 3 },
+  bannerSub: { fontSize: 11.5, color: 'rgba(255,255,255,0.85)', lineHeight: 16 },
   bannerCta: {
     backgroundColor: 'rgba(255,255,255,0.22)',
     borderRadius: 12,
@@ -990,7 +996,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.35)',
   },
-  bannerCtaText: { color: 'white', fontSize: 13, fontWeight: '700' },
+  bannerCtaText: { color: 'white', fontSize: 12.5, fontWeight: '700' },
   bannerDots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 10 },
   bannerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#CBD5E1' },
   bannerDotActive: { width: 18, backgroundColor: '#2563EB' },
