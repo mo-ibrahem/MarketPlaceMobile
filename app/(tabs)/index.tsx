@@ -23,6 +23,7 @@ import {
   Truck,
   X,
   Zap,
+  Video,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -79,6 +80,16 @@ const TRENDING_SEARCHES = [
 ];
 
 const DEAL_BANNERS = [
+  {
+    key: 'b0',
+    titleKey: 'home.dealBannerLiveTitle',
+    subKey: 'home.dealBannerLiveSub',
+    titleFallback: 'EgyBay Live — بث مباشر 🔴',
+    subFallback: 'تسوق مباشرة مع التجار عبر البث المباشر واشترِ بضمان مالي وشحن بوسطة',
+    colors: ['#7F1D1D', '#B91C1C'] as [string, string],
+    emoji: '🔴',
+    category: '__live__',
+  },
   {
     key: 'b1',
     titleKey: 'home.dealBanner1Title',
@@ -452,7 +463,9 @@ export default function HomeScreen() {
                   activeOpacity={0.9}
                   style={{ width: bannerWidth }}
                   onPress={() => {
-                    if (banner.category) {
+                    if (banner.category === '__live__') {
+                      router.push('/live' as any);
+                    } else if (banner.category) {
                       router.push({ pathname: '/products', params: { category: banner.category } } as any);
                     } else {
                       router.push('/products' as any);
@@ -467,11 +480,15 @@ export default function HomeScreen() {
                   >
                     <Text style={styles.bannerEmoji}>{banner.emoji}</Text>
                     <View style={styles.bannerTextWrap}>
-                      <Text style={styles.bannerTitle}>{t(banner.titleKey)}</Text>
-                      <Text style={styles.bannerSub}>{t(banner.subKey)}</Text>
+                      <Text style={styles.bannerTitle}>
+                        {(banner as any).titleFallback ? (t(banner.titleKey) === banner.titleKey ? (banner as any).titleFallback : t(banner.titleKey)) : t(banner.titleKey)}
+                      </Text>
+                      <Text style={styles.bannerSub}>
+                        {(banner as any).subFallback ? (t(banner.subKey) === banner.subKey ? (banner as any).subFallback : t(banner.subKey)) : t(banner.subKey)}
+                      </Text>
                     </View>
-                    <View style={styles.bannerCta}>
-                      <Text style={styles.bannerCtaText}>Shop →</Text>
+                    <View style={[styles.bannerCta, banner.category === '__live__' && { backgroundColor: '#EF4444' }]}>
+                      <Text style={styles.bannerCtaText}>{banner.category === '__live__' ? 'Live 🔴' : 'Shop →'}</Text>
                     </View>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -520,6 +537,34 @@ export default function HomeScreen() {
               );
             })}
           </View>
+
+          {/* ════════════════ EGYBAY LIVE STRIP ════════════════ */}
+          <TouchableOpacity
+            style={styles.liveStripCard}
+            activeOpacity={0.88}
+            onPress={() => router.push('/live' as any)}
+          >
+            <LinearGradient
+              colors={['#0F172A', '#1E1B4B', '#450A0A']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.liveStripGradient}
+            >
+              <View style={styles.liveStripLeft}>
+                <View style={styles.liveStripPill}>
+                  <View style={styles.liveStripDot} />
+                  <Text style={styles.liveStripPillText}>LIVE</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.liveStripTitle}>بث مباشر لتجار ومحلات مصر 🔴</Text>
+                  <Text style={styles.liveStripSub}>تسوق وشاهد المنتجات الحصرية مباشرة مع الضمان</Text>
+                </View>
+              </View>
+              <View style={styles.liveStripBtn}>
+                <Text style={styles.liveStripBtnText}>دخول البث ←</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
 
           {/* ════════════════ TRENDING SEARCHES ════════════════ */}
           <View style={styles.sectionHeader}>
@@ -1183,6 +1228,77 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  trendingSearchEmoji: { fontSize: 14 },
-  trendingSearchText: { fontSize: 13, fontWeight: '700', color: '#374151' },
+  trendingSearchEmoji: { fontSize: 13 },
+  trendingSearchText: { fontSize: 12, fontWeight: '700', color: '#1E293B' },
+
+  // Live Strip
+  liveStripCard: {
+    marginHorizontal: 16,
+    marginVertical: 10,
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  liveStripGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  liveStripLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  liveStripPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  liveStripDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'white',
+  },
+  liveStripPillText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: 'white',
+    letterSpacing: 0.5,
+  },
+  liveStripTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: 'white',
+  },
+  liveStripSub: {
+    fontSize: 10,
+    color: '#CBD5E1',
+    marginTop: 1,
+  },
+  liveStripBtn: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  liveStripBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: 'white',
+  },
 });
