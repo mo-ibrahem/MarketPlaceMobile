@@ -61,8 +61,9 @@ export default function SellerVerificationScreen() {
   const [idFrontUri, setIdFrontUri] = useState<string | null>(null);
   const [idBackUri, setIdBackUri] = useState<string | null>(null);
   const [commercialRegNum, setCommercialRegNum] = useState('');
-  const [payoutType, setPayoutType] = useState<'instapay_ipa' | 'vodafone_cash'>('instapay_ipa');
-  const [payoutIdentifier, setPayoutIdentifier] = useState('');
+  const [instapayIpa, setInstapayIpa] = useState('');
+  const [vodafoneCash, setVodafoneCash] = useState('');
+  const [bankIban, setBankIban] = useState('');
   const [storeName, setStoreName] = useState('Tech Deals Cairo');
   const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -99,8 +100,9 @@ export default function SellerVerificationScreen() {
 
   const handleSubmitVerification = async () => {
     if (!user) return;
-    if (!payoutIdentifier.trim()) {
-      Toast.show({ type: 'error', text1: 'Please enter your InstaPay / Wallet address' });
+    const hasAtLeastOne = instapayIpa.trim() || vodafoneCash.trim() || bankIban.trim();
+    if (!hasAtLeastOne) {
+      Toast.show({ type: 'error', text1: 'Please provide at least one payout destination' });
       return;
     }
 
@@ -109,15 +111,43 @@ export default function SellerVerificationScreen() {
       // 1. Upgrade seller tier
       await upgradeSellerTier(user.id, selectedTier);
 
-      // 2. Register payout method
-      await addPayoutMethod(user.id, {
-        user_id: user.id,
-        type: payoutType,
-        account_identifier: payoutIdentifier.trim(),
-        account_holder_name: fullName.trim(),
-        is_default: true,
-        is_verified: true,
-      });
+      // 2. Register payout methods (add each non-empty method)
+      let isFirst = true;
+
+      if (instapayIpa.trim()) {
+        await addPayoutMethod(user.id, {
+          user_id: user.id,
+          type: 'instapay_ipa',
+          account_identifier: instapayIpa.trim(),
+          account_holder_name: fullName.trim(),
+          is_default: isFirst,
+          is_verified: true,
+        });
+        isFirst = false;
+      }
+
+      if (vodafoneCash.trim()) {
+        await addPayoutMethod(user.id, {
+          user_id: user.id,
+          type: 'vodafone_cash',
+          account_identifier: vodafoneCash.trim(),
+          account_holder_name: fullName.trim(),
+          is_default: isFirst,
+          is_verified: true,
+        });
+        isFirst = false;
+      }
+
+      if (bankIban.trim()) {
+        await addPayoutMethod(user.id, {
+          user_id: user.id,
+          type: 'bank_account',
+          account_identifier: bankIban.trim(),
+          account_holder_name: fullName.trim(),
+          is_default: isFirst,
+          is_verified: true,
+        });
+      }
 
       Toast.show({
         type: 'success',
@@ -326,45 +356,57 @@ export default function SellerVerificationScreen() {
             {/* ════════ STEP 3: PAYOUT ACCOUNT & STORE SETUP ════════ */}
             {step === 3 && (
               <View>
-                <Text style={styles.sectionHeading}>Link Egyptian Payout Account</Text>
-                <Text style={styles.sectionSub}>Where your escrow funds will be transferred when buyers accept items.</Text>
-
-                <View style={styles.payoutSelectorRow}>
-                  <TouchableOpacity
-                    style={[styles.payoutOptionChip, payoutType === 'instapay_ipa' && styles.payoutOptionActive]}
-                    onPress={() => setPayoutType('instapay_ipa')}
-                  >
-                    <Building size={16} color={payoutType === 'instapay_ipa' ? '#2563EB' : '#64748B'} />
-                    <Text style={[styles.payoutOptionText, payoutType === 'instapay_ipa' && styles.payoutOptionTextActive]}>
-                      InstaPay (IPA)
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.payoutOptionChip, payoutType === 'vodafone_cash' && styles.payoutOptionActive]}
-                    onPress={() => setPayoutType('vodafone_cash')}
-                  >
-                    <Smartphone size={16} color={payoutType === 'vodafone_cash' ? '#2563EB' : '#64748B'} />
-                    <Text style={[styles.payoutOptionText, payoutType === 'vodafone_cash' && styles.payoutOptionTextActive]}>
-                      Vodafone Cash
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                <Text style={styles.sectionHeading}>Link Egyptian Payout Accounts</Text>
+                <Text style={styles.sectionSub}>Provide your payout destinations for escrow withdrawals. You can link all 3 (at least 1 required).</Text>
 
                 <View style={styles.formCard}>
+                  {/* 1. InstaPay IPA */}
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>
-                      {payoutType === 'instapay_ipa' ? 'InstaPay IPA Handle' : 'Vodafone Cash Mobile Number'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                      <Building size={16} color="#2563EB" />
+                      <Text style={styles.inputLabel}>1. InstaPay IPA Handle</Text>
+                    </View>
                     <TextInput
                       style={styles.textInput}
-                      value={payoutIdentifier}
-                      onChangeText={setPayoutIdentifier}
-                      placeholder={payoutType === 'instapay_ipa' ? 'e.g. mohamed@instapay' : '010XXXXXXXX'}
+                      value={instapayIpa}
+                      onChangeText={setInstapayIpa}
+                      placeholder="e.g. mohamed@instapay"
+                      autoCapitalize="none"
                     />
                   </View>
 
+                  {/* 2. Vodafone Cash */}
                   <View style={styles.inputGroup}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                      <Smartphone size={16} color="#E11D48" />
+                      <Text style={styles.inputLabel}>2. Vodafone Cash / Mobile Wallet</Text>
+                    </View>
+                    <TextInput
+                      style={styles.textInput}
+                      value={vodafoneCash}
+                      onChangeText={setVodafoneCash}
+                      placeholder="e.g. 010XXXXXXXX"
+                      keyboardType="phone-pad"
+                    />
+                  </View>
+
+                  {/* 3. Bank Account IBAN */}
+                  <View style={styles.inputGroup}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                      <CreditCard size={16} color="#059669" />
+                      <Text style={styles.inputLabel}>3. Bank Account IBAN</Text>
+                    </View>
+                    <TextInput
+                      style={styles.textInput}
+                      value={bankIban}
+                      onChangeText={setBankIban}
+                      placeholder="e.g. EG380002000100000000012345678"
+                      autoCapitalize="characters"
+                    />
+                  </View>
+
+                  {/* Store Name */}
+                  <View style={[styles.inputGroup, { marginTop: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 14 }]}>
                     <Text style={styles.inputLabel}>Storefront / Seller Brand Name</Text>
                     <TextInput
                       style={styles.textInput}

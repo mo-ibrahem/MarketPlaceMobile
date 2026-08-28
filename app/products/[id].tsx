@@ -42,6 +42,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Reanimated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import { getProductBoostInfo } from '../../src/services/lib/boostService';
@@ -339,88 +340,94 @@ export default function ProductDetailScreen() {
           )}
 
           {/* Title row + badges */}
-          <View style={styles.badgeRow}>
-            <View style={[styles.badge, product.condition === 'New' ? styles.badgeNew : styles.badgeUsed]}>
-              <Text style={[styles.badgeText, product.condition === 'New' ? styles.badgeTextNew : styles.badgeTextUsed]}>
-                {product.condition ?? 'Used'}
-              </Text>
+          <Reanimated.View entering={FadeInDown.duration(350).delay(50)}>
+            <View style={styles.badgeRow}>
+              <View style={[styles.badge, product.condition === 'New' ? styles.badgeNew : styles.badgeUsed]}>
+                <Text style={[styles.badgeText, product.condition === 'New' ? styles.badgeTextNew : styles.badgeTextUsed]}>
+                  {product.condition ?? 'Used'}
+                </Text>
+              </View>
+              {(product as any).created_at && (
+                <Text style={styles.listedDate}>🕐 Listed {timeAgo((product as any).created_at)}</Text>
+              )}
             </View>
-            {(product as any).created_at && (
-              <Text style={styles.listedDate}>🕐 Listed {timeAgo((product as any).created_at)}</Text>
-            )}
-          </View>
 
-          <Text style={styles.title}>{product.title}</Text>
+            <Text style={styles.title}>{product.title}</Text>
 
-          {/* Price */}
-          <Text style={styles.price}>{formatEGP(product.price)}</Text>
+            {/* Price */}
+            <Text style={styles.price}>{formatEGP(product.price)}</Text>
+          </Reanimated.View>
 
           {/* ── Seller card ── */}
-          <TouchableOpacity style={styles.sellerCard} activeOpacity={0.85}>
-            <View style={styles.sellerAvatarWrap}>
-              {product.seller?.avatar_url ? (
-                <Image source={{ uri: product.seller.avatar_url }} style={styles.sellerAvatar} />
-              ) : (
-                <View style={styles.sellerAvatarFallback}>
-                  <Text style={styles.sellerInitial}>{sellerInitial}</Text>
-                </View>
-              )}
-              <View style={styles.sellerOnlineDot} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.sellerName}>{sellerName}</Text>
-              <View style={styles.sellerMeta}>
-                <ShieldCheck size={12} color="#10B981" />
-                <Text style={styles.sellerMetaText}>Verified Seller</Text>
-                <Text style={styles.sellerDot}>·</Text>
-                <ShoppingBag size={12} color="#94A3B8" />
-                <Text style={styles.sellerMetaText}>Egypt</Text>
+          <Reanimated.View entering={FadeInDown.duration(350).delay(100)}>
+            <TouchableOpacity style={styles.sellerCard} activeOpacity={0.85}>
+              <View style={styles.sellerAvatarWrap}>
+                {product.seller?.avatar_url ? (
+                  <Image source={{ uri: product.seller.avatar_url }} style={styles.sellerAvatar} />
+                ) : (
+                  <View style={styles.sellerAvatarFallback}>
+                    <Text style={styles.sellerInitial}>{sellerInitial}</Text>
+                  </View>
+                )}
+                <View style={styles.sellerOnlineDot} />
               </View>
-              {/* Seller metrics */}
-              <View style={styles.sellerMetricsRow}>
-                <View style={styles.sellerMetricPill}>
-                  <Zap size={11} color="#059669" />
-                  <Text style={styles.sellerMetricText}>{t('products.fastResponder')}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.sellerName}>{sellerName}</Text>
+                <View style={styles.sellerMeta}>
+                  <ShieldCheck size={12} color="#10B981" />
+                  <Text style={styles.sellerMetaText}>Verified Seller</Text>
+                  <Text style={styles.sellerDot}>·</Text>
+                  <ShoppingBag size={12} color="#94A3B8" />
+                  <Text style={styles.sellerMetaText}>Egypt</Text>
                 </View>
-                <View style={styles.sellerMetricPill}>
-                  <Package size={11} color="#2563EB" />
-                  <Text style={styles.sellerMetricText}>18 {t('products.itemsSold')}</Text>
+                {/* Seller metrics */}
+                <View style={styles.sellerMetricsRow}>
+                  <View style={styles.sellerMetricPill}>
+                    <Zap size={11} color="#059669" />
+                    <Text style={styles.sellerMetricText}>{t('products.fastResponder')}</Text>
+                  </View>
+                  <View style={styles.sellerMetricPill}>
+                    <Package size={11} color="#2563EB" />
+                    <Text style={styles.sellerMetricText}>18 {t('products.itemsSold')}</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-            <ChevronRight color="#CBD5E1" size={18} />
-          </TouchableOpacity>
+              <ChevronRight color="#CBD5E1" size={18} />
+            </TouchableOpacity>
+          </Reanimated.View>
 
           {/* Location badge */}
           {(product as any).location && (
-            <View style={styles.locationBadge}>
+            <Reanimated.View entering={FadeInDown.duration(350).delay(140)} style={styles.locationBadge}>
               <MapPin size={14} color="#6366F1" />
               <Text style={styles.locationText}>{(product as any).location}, Egypt</Text>
-            </View>
+            </Reanimated.View>
           )}
 
           {/* ── EgyBay Escrow & Money Back Guarantee Card ── */}
-          <TouchableOpacity
-            style={styles.guaranteeCard}
-            onPress={() => setTrustModalVisible(true)}
-            activeOpacity={0.85}
-          >
-            <View style={styles.guaranteeIconWrap}>
-              <ShieldCheck color="#2563EB" size={24} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                <Text style={styles.guaranteeTitle}>ضمان إيجي باي لحماية أموالك 🛡️</Text>
-                <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '800' }}>كيف نحميك؟ ←</Text>
+          <Reanimated.View entering={FadeInDown.duration(350).delay(180)}>
+            <TouchableOpacity
+              style={styles.guaranteeCard}
+              onPress={() => setTrustModalVisible(true)}
+              activeOpacity={0.85}
+            >
+              <View style={styles.guaranteeIconWrap}>
+                <ShieldCheck color="#2563EB" size={24} />
               </View>
-              <Text style={styles.guaranteeDesc}>
-                أموالك في أمان تام ولا تُحوّل للبائع إلا بعد استلامك ومعاينتك للمنتج 100%.
-              </Text>
-            </View>
-          </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <Text style={styles.guaranteeTitle}>ضمان إيجي باي لحماية أموالك 🛡️</Text>
+                  <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '800' }}>كيف نحميك؟ ←</Text>
+                </View>
+                <Text style={styles.guaranteeDesc}>
+                  أموالك في أمان تام ولا تُحوّل للبائع إلا بعد استلامك ومعاينتك للمنتج 100%.
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </Reanimated.View>
 
           {/* ── Delivery & Handover Options Strip ── */}
-          <View style={styles.deliverySection}>
+          <Reanimated.View entering={FadeInDown.duration(350).delay(220)} style={styles.deliverySection}>
             <Text style={styles.deliveryHeaderTitle}>{t('products.deliveryOptions')}</Text>
             <View style={styles.deliveryOptionRow}>
               <View style={styles.deliveryOptionDot}>
@@ -440,13 +447,15 @@ export default function ProductDetailScreen() {
                 <Text style={styles.deliveryOptionSub}>Inspect item before paying cash</Text>
               </View>
             </View>
-          </View>
+          </Reanimated.View>
 
           {/* Description */}
-          <Text style={styles.sectionLabel}>{t('products.description')}</Text>
-          <Text style={styles.description}>
-            {product.description || 'No description provided.'}
-          </Text>
+          <Reanimated.View entering={FadeInDown.duration(350).delay(260)}>
+            <Text style={styles.sectionLabel}>{t('products.description')}</Text>
+            <Text style={styles.description}>
+              {product.description || 'No description provided.'}
+            </Text>
+          </Reanimated.View>
 
           {/* ── Similar Products Carousel (eBay style) ── */}
           {similarProducts.length > 0 && (
@@ -523,7 +532,7 @@ export default function ProductDetailScreen() {
       </ScrollView>
 
       {/* ── Sticky bottom CTA bar ── */}
-      <View style={styles.bottomBar}>
+      <Reanimated.View entering={FadeInUp.duration(350)} style={styles.bottomBar}>
         {isOwner ? (
           <TouchableOpacity
             style={[styles.ctaBtn, styles.ctaEdit]}
@@ -563,7 +572,7 @@ export default function ProductDetailScreen() {
             </TouchableOpacity>
           </View>
         )}
-      </View>
+      </Reanimated.View>
 
       {/* ════════════════ MAKE AN OFFER MODAL ════════════════ */}
       <Modal

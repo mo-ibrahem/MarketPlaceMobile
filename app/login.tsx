@@ -93,8 +93,8 @@ export default function LoginScreen() {
           >
             <View style={styles.logoWrap}>
               <Image
-                source={require('../assets/images/egbay.png')}
-                style={{ width: 160, height: 60, resizeMode: 'contain' }}
+                source={require('../assets/images/egbay_logo_header.png')}
+                style={{ width: 175, height: 60, resizeMode: 'contain' }}
               />
             </View>
             <Text style={styles.heroTagline}>Egypt's #1 Marketplace 🇪🇬</Text>

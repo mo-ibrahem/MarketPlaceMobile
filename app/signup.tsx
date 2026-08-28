@@ -94,8 +94,8 @@ export default function SignUpScreen() {
           >
             <View style={styles.logoWrap}>
               <Image
-                source={require('../assets/images/egbay.png')}
-                style={{ width: 160, height: 60, resizeMode: 'contain' }}
+                source={require('../assets/images/egbay_logo_header.png')}
+                style={{ width: 175, height: 60, resizeMode: 'contain' }}
               />
             </View>
             <Text style={styles.heroTagline}>Join EgyBay Today 🛍️</Text>

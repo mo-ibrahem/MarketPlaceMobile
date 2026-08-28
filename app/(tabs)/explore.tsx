@@ -211,28 +211,87 @@ export default function ProfileScreen() {
     setIsLoading(false);
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to sign out?');
+      if (confirmed) {
+        await auth.signOut();
+        router.replace('/login');
+      }
+      return;
+    }
+
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: async () => { await auth.signOut(); router.replace('/login'); } },
     ]);
   };
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
+    const doDelete = async () => {
+      try {
+        await productService.deleteProduct(productId);
+        Toast.show({ type: 'success', text1: 'Listing deleted.' });
+        loadUserData();
+      } catch {
+        Toast.show({ type: 'error', text1: 'Failed to delete listing.' });
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('This action cannot be undone. Delete listing?')) {
+        await doDelete();
+      }
+      return;
+    }
+
     Alert.alert('Delete Listing', 'This action cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Delete', style: 'destructive', onPress: async () => {
-          try {
-            await productService.deleteProduct(productId);
-            Toast.show({ type: 'success', text1: 'Listing deleted.' });
-            loadUserData();
-          } catch {
-            Toast.show({ type: 'error', text1: 'Failed to delete listing.' });
-          }
-        },
+        text: 'Delete',
+        style: 'destructive',
+        onPress: doDelete,
       },
     ]);
+  };
+
+  const handleDeleteAccount = async () => {
+    const doDelete = async () => {
+      try {
+        if (user) {
+          await supabase.from('profiles').delete().eq('id', user.id);
+        }
+        await auth.signOut();
+        Toast.show({ type: 'success', text1: 'Account Deleted Successfully' });
+        router.replace('/login');
+      } catch (err: any) {
+        if (Platform.OS === 'web') {
+          window.alert(err?.message || 'Failed to delete account');
+        } else {
+          Alert.alert('Error', err?.message || 'Failed to delete account');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to permanently delete your EgyBay account? This action cannot be undone.')) {
+        await doDelete();
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Delete Account • حذف الحساب',
+      'Are you sure you want to permanently delete your EgyBay account? This action cannot be undone and will erase all your listings and profile data.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: doDelete,
+        },
+      ]
+    );
   };
 
   // ── Loading / guard ──────────────────────────────────────────────────────────
@@ -494,31 +553,7 @@ export default function ProfileScreen() {
         {/* Apple Required Account Deletion */}
         <TouchableOpacity
           style={styles.deleteAccountBtn}
-          onPress={() => {
-            Alert.alert(
-              'Delete Account • حذف الحساب',
-              'Are you sure you want to permanently delete your EgyBay account? This action cannot be undone and will erase all your listings and profile data.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete Permanently',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      if (user) {
-                        await supabase.from('profiles').delete().eq('id', user.id);
-                      }
-                      await auth.signOut();
-                      Toast.show({ type: 'success', text1: 'Account Deleted Successfully' });
-                      router.replace('/login');
-                    } catch (err: any) {
-                      Alert.alert('Error', err?.message || 'Failed to delete account');
-                    }
-                  },
-                },
-              ]
-            );
-          }}
+          onPress={handleDeleteAccount}
         >
           <Trash2 color="#EF4444" size={18} />
           <Text style={styles.deleteAccountText}>Delete Account • حذف الحساب نهائياً</Text>

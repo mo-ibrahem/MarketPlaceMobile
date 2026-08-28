@@ -40,7 +40,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import EgbayLogo from '../../assets/images/egbay.svg';
+import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import { useLanguage } from '../../hooks/useLanguage';
 import { getProductBoostInfo } from '../../src/services/lib/boostService';
 import { productService, type Product } from '../../src/services/lib/products';
@@ -261,7 +261,10 @@ export default function HomeScreen() {
             {/* Row 1: Logo & Utility Controls */}
             <View style={styles.topHeaderRow}>
               <TouchableOpacity onPress={() => router.push('/(tabs)' as any)} activeOpacity={0.8}>
-                <EgbayLogo width={115} height={40} />
+                <Image
+                  source={require('../../assets/images/egbay_logo_header.png')}
+                  style={{ width: 125, height: 44, resizeMode: 'contain' }}
+                />
               </TouchableOpacity>
 
               <View style={styles.headerActions}>
@@ -629,75 +632,80 @@ export default function HomeScreen() {
               keyExtractor={item => 'recent-' + item.id}
               contentContainerStyle={styles.recentGrid}
               columnWrapperStyle={styles.recentRow}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.productCard}
-                  onPress={() => router.push(`/products/${item.id}` as any)}
-                  activeOpacity={0.88}
+              renderItem={({ item, index }) => (
+                <Reanimated.View
+                  entering={FadeInDown.duration(320).delay(Math.min(index, 8) * 60)}
+                  style={{ flex: 1 }}
                 >
-                  {/* Image + overlaid badges */}
-                  <View style={styles.imgWrapper}>
-                    <Image
-                      source={{ uri: item.images?.[0] || 'https://placehold.co/400x300/F1F5F9/64748B?text=Item' }}
-                      style={styles.productImg}
-                    />
-                    {/* EGP price pill */}
-                    <View style={styles.imgPricePill}>
-                      <Text style={styles.imgPriceText}>{formatEGP(item.price)}</Text>
-                    </View>
-                    {/* Heart */}
-                    <TouchableOpacity style={styles.imgHeart} onPress={() => toggleWishlist(item)}>
-                      <Heart
-                        size={14}
-                        color={wishlistIds.has(item.id) ? '#EF4444' : '#6B7280'}
-                        fill={wishlistIds.has(item.id) ? '#EF4444' : 'none'}
+                  <TouchableOpacity
+                    style={styles.productCard}
+                    onPress={() => router.push(`/products/${item.id}` as any)}
+                    activeOpacity={0.88}
+                  >
+                    {/* Image + overlaid badges */}
+                    <View style={styles.imgWrapper}>
+                      <Image
+                        source={{ uri: item.images?.[0] || 'https://placehold.co/400x300/F1F5F9/64748B?text=Item' }}
+                        style={styles.productImg}
                       />
-                    </TouchableOpacity>
-                    {/* "NEW" badge */}
-                    {item.condition === 'New' && (
-                      <View style={styles.newBadge}>
-                        <Text style={styles.newBadgeText}>NEW</Text>
+                      {/* EGP price pill */}
+                      <View style={styles.imgPricePill}>
+                        <Text style={styles.imgPriceText}>{formatEGP(item.price)}</Text>
                       </View>
-                    )}
+                      {/* Heart */}
+                      <TouchableOpacity style={styles.imgHeart} onPress={() => toggleWishlist(item)}>
+                        <Heart
+                          size={14}
+                          color={wishlistIds.has(item.id) ? '#EF4444' : '#6B7280'}
+                          fill={wishlistIds.has(item.id) ? '#EF4444' : 'none'}
+                        />
+                      </TouchableOpacity>
+                      {/* "NEW" badge */}
+                      {item.condition === 'New' && (
+                        <View style={styles.newBadge}>
+                          <Text style={styles.newBadgeText}>NEW</Text>
+                        </View>
+                      )}
 
-                    {/* Promoted / Urgent Ribbon Badge */}
-                    {(() => {
-                      const boost = getProductBoostInfo(item);
-                      if (boost.isPromoted && boost.pkg) {
-                        return (
-                          <View style={[styles.cardPromotedBadge, { backgroundColor: boost.pkg.id === 'urgent' ? '#F59E0B' : '#2563EB' }]}>
-                            <Text style={styles.cardPromotedBadgeText}>{boost.pkg.badgeEmoji} {boost.pkg.id.toUpperCase()}</Text>
-                          </View>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </View>
-                  {/* Card body */}
-                  <View style={styles.cardBody}>
-                    <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-                    
-                    {/* Rating & Condition Strip */}
-                    <View style={styles.cardRatingRow}>
-                      <View style={styles.ratingPill}>
-                        <Star color="#F59E0B" fill="#F59E0B" size={11} />
-                        <Text style={styles.ratingText}>4.9</Text>
-                      </View>
-                      <Text style={styles.conditionTag}>{item.condition || 'Used'}</Text>
+                      {/* Promoted / Urgent Ribbon Badge */}
+                      {(() => {
+                        const boost = getProductBoostInfo(item);
+                        if (boost.isPromoted && boost.pkg) {
+                          return (
+                            <View style={[styles.cardPromotedBadge, { backgroundColor: boost.pkg.id === 'urgent' ? '#F59E0B' : '#2563EB' }]}>
+                              <Text style={styles.cardPromotedBadgeText}>{boost.pkg.badgeEmoji} {boost.pkg.id.toUpperCase()}</Text>
+                            </View>
+                          );
+                        }
+                        return null;
+                      })()}
                     </View>
+                    {/* Card body */}
+                    <View style={styles.cardBody}>
+                      <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+                      
+                      {/* Rating & Condition Strip */}
+                      <View style={styles.cardRatingRow}>
+                        <View style={styles.ratingPill}>
+                          <Star color="#F59E0B" fill="#F59E0B" size={11} />
+                          <Text style={styles.ratingText}>4.9</Text>
+                        </View>
+                        <Text style={styles.conditionTag}>{item.condition || 'Used'}</Text>
+                      </View>
 
-                    <View style={styles.cardMeta}>
-                      <Text style={styles.cardSeller} numberOfLines={1}>
-                        {item.seller?.full_name ?? 'Seller'}
-                      </Text>
-                      {item.location ? (
-                        <Text style={styles.cardLocation} numberOfLines={1}>
-                          <MapPin size={10} color="#64748B" /> {item.location}
+                      <View style={styles.cardMeta}>
+                        <Text style={styles.cardSeller} numberOfLines={1}>
+                          {item.seller?.full_name ?? 'Seller'}
                         </Text>
-                      ) : null}
+                        {item.location ? (
+                          <Text style={styles.cardLocation} numberOfLines={1}>
+                            <MapPin size={10} color="#64748B" /> {item.location}
+                          </Text>
+                        ) : null}
+                      </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                </Reanimated.View>
               )}
             />
           )}
