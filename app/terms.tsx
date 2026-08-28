@@ -86,7 +86,7 @@ export default function TermsOfServiceScreen() {
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>7. الاتصال بالدعم القانوني</Text>
           <Text style={styles.bodyText}>
-            لأي استفسارات قانونية أو نزاعات، يرجى التواصل مع فريق الدعم القانوني عبر البريد: support@egbay.market أو عبر خدمة العملاء داخل التطبيق.
+            لأي استفسارات قانونية أو نزاعات، يرجى التواصل مع فريق الدعم القانوني عبر البريد: info@egbay.shop أو عبر خدمة العملاء داخل التطبيق.
           </Text>
         </View>
       </ScrollView>

@@ -41,12 +41,12 @@ We do **not** sell, rent, or trade your personal data with advertisers or data b
 
 In full compliance with Apple App Store Guidelines and global privacy laws:
 - You have the right to access, update, or permanently delete your account and all associated personal data at any time.
-- **Account Deletion:** You can delete your account instantly inside the app by going to **Profile → Delete Account (حذف الحساب نهائياً)** or by emailing us at **privacy@egbay.market**.
+- **Account Deletion:** You can delete your account instantly inside the app by going to **Profile → Delete Account (حذف الحساب نهائياً)** or by emailing us at **info@egbay.shop**.
 
 ---
 
 ## 5. Contact Us
 
 If you have any questions, concerns, or requests regarding this Privacy Policy, please contact our privacy and support team:
-- **Email:** support@egbay.market / privacy@egbay.market
+- **Email:** info@egbay.shop
 - **Support GitHub:** https://github.com/mo-ibrahem/MarketPlaceMobile

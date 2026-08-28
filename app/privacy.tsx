@@ -68,7 +68,7 @@ export default function PrivacyPolicyScreen() {
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>4. حقوق المستخدم وحذف الحساب (Account Deletion)</Text>
           <Text style={styles.bodyText}>
-            وفقاً لإرشادات Apple وسياسات الخصوصية العالمية، لك كامل الحق في طلب حذف حسابك وبياناتك الشخصية بشكل نهائي في أي وقت من خلال خيار "حذف الحساب" في إعدادات الملف الشخصي داخل التطبيق أو بمراسلتنا على privacy@egbay.market.
+            وفقاً لإرشادات Apple وسياسات الخصوصية العالمية، لك كامل الحق في طلب حذف حسابك وبياناتك الشخصية بشكل نهائي في أي وقت من خلال خيار "حذف الحساب" في إعدادات الملف الشخصي داخل التطبيق أو بمراسلتنا على info@egbay.shop.
           </Text>
         </View>
 
