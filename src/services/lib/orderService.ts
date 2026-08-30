@@ -130,6 +130,22 @@ export async function confirmOrderPayment(orderId: string): Promise<void> {
   const order = await getOrderById(orderId);
   if (!order) throw new Error('Order not found: ' + orderId);
 
+  // 1. Call server API to guarantee Postgres updates bypassing client RLS
+  try {
+    await fetch('https://egbay.shop/api/wallet/credit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        merchantOrderId: orderId,
+        amountCents: Math.round(order.amount * 100),
+        txId: `mobile_confirm_${orderId}`,
+        isSuccess: true,
+      }),
+    });
+  } catch (apiErr) {
+    console.warn('[OrderService] Mobile server credit sync warning:', apiErr);
+  }
+
   // Update status in DB
   try {
     await supabase
