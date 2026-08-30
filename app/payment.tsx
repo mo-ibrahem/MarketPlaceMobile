@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { boostProduct } from '../src/services/lib/boostService';
 import { topUpUserWallet } from '../src/services/lib/walletService';
 import { confirmOrderPayment } from '../src/services/lib/orderService';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -86,7 +86,9 @@ export default function PaymentScreen() {
           : 'Funds secured in Escrow. Track your order status below.',
     });
 
-    if (topUpAmount || boostProductId) {
+    if (topUpAmount) {
+      router.replace('/wallet' as any);
+    } else if (boostProductId) {
       router.replace('/(tabs)');
     } else if (orderId) {
       router.replace({
@@ -97,6 +99,20 @@ export default function PaymentScreen() {
       router.replace('/(tabs)');
     }
   };
+
+  // Web iframe message listener
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const handleMsg = (e: MessageEvent) => {
+        const data = typeof e.data === 'string' ? e.data.toLowerCase() : JSON.stringify(e.data || {}).toLowerCase();
+        if (data.includes('approved') || data.includes('success') || data.includes('true')) {
+          handleSuccess();
+        }
+      };
+      window.addEventListener('message', handleMsg);
+      return () => window.removeEventListener('message', handleMsg);
+    }
+  }, []);
 
   const handleNavigationStateChange = (navState: any) => {
     const url = navState.url.toLowerCase();
@@ -138,16 +154,31 @@ export default function PaymentScreen() {
         {totalEgp && <Text style={styles.headerPrice}>EGP {Number(totalEgp).toLocaleString()}</Text>}
       </View>
 
-      {/* Use Paymob test card: 4111 1111 1111 1111 | Exp: any future | CVV: 123 */}
-
-      {/* WebView */}
+      {/* WebView & Confirmation Action Bar */}
       <View style={{ flex: 1, backgroundColor: 'white' }}>
         {Platform.OS === 'web' ? (
-          <iframe
-            src={paymentUrl}
-            style={{ width: '100%', height: '100%', border: 'none' }}
-            title="Paymob Payment"
-          />
+          <View style={{ flex: 1 }}>
+            <iframe
+              src={paymentUrl}
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              title="Paymob Payment"
+            />
+            {/* Quick Confirmation Bar for Web testing */}
+            <View style={{ padding: 12, backgroundColor: '#0F172A', borderTopWidth: 1, borderTopColor: '#1E293B', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: 'white' }}>
+                  {topUpAmount ? `Deposit: EGP ${Number(topUpAmount).toLocaleString()}` : 'Card Payment'}
+                </Text>
+                <Text style={{ fontSize: 10, color: '#94A3B8' }}>Click below once card payment completes</Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleSuccess}
+                style={{ backgroundColor: '#10B981', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '800', color: 'white' }}>Confirm Payment ✓</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         ) : (
           <WebView
             source={{ uri: paymentUrl }}
