@@ -50,11 +50,15 @@ export const productService = {
     } = await supabase.auth.getUser()
     if (!user) throw new Error("User not authenticated")
 
+    const { location, ...payload } = productData;
+    const fullDescription = location ? `${payload.description.trim()}\n\n📍 ${location}` : payload.description.trim();
+
     const { data, error } = await supabase
       .from("products")
       .insert([
         {
-          ...productData,
+          ...payload,
+          description: fullDescription,
           seller_id: user.id,
           status: "active",
         },
