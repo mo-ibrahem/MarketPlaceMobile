@@ -131,9 +131,41 @@ export default function PaymentScreen() {
     }
   }, []);
 
+  const handleShouldStartLoadWithRequest = (request: any) => {
+    const url = (request.url || '').toLowerCase();
+
+    // If Paymob finishes and redirects to the configured dashboard URL or success parameters
+    if (
+      url.includes('success=true') ||
+      url.includes('txn_response_code=approved') ||
+      url.includes('egbay.shop') ||
+      url.includes('egbay.market') ||
+      url.includes('/wallet') ||
+      url.includes('callback/paymob')
+    ) {
+      handleSuccess();
+      return false; // Prevent WebView from loading the web page!
+    }
+
+    if (url.includes('success=false') || url.includes('declined') || url.includes('txn_response_code=declined')) {
+      Alert.alert('Payment Declined', 'Transaction was not completed. Please try another card or payment method.');
+      router.back();
+      return false;
+    }
+
+    return true;
+  };
+
   const handleNavigationStateChange = (navState: any) => {
-    const url = navState.url.toLowerCase();
-    if (url.includes('success=true') || url.includes('txn_response_code=approved') || url.includes('callback/paymob')) {
+    const url = (navState.url || '').toLowerCase();
+    if (
+      url.includes('success=true') ||
+      url.includes('txn_response_code=approved') ||
+      url.includes('egbay.shop') ||
+      url.includes('egbay.market') ||
+      url.includes('/wallet') ||
+      url.includes('callback/paymob')
+    ) {
       handleSuccess();
     } else if (url.includes('success=false') || url.includes('declined')) {
       Alert.alert('Payment Declined', 'Transaction was not completed. Please try another card or payment method.');
@@ -199,6 +231,7 @@ export default function PaymentScreen() {
         ) : (
           <WebView
             source={{ uri: paymentUrl }}
+            onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
             onNavigationStateChange={handleNavigationStateChange}
             startInLoadingState={true}
             renderLoading={() => (
