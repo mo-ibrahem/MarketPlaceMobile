@@ -138,6 +138,46 @@ export async function confirmOrderPayment(orderId: string): Promise<void> {
         updated_at: new Date().toISOString(),
       } as any)
       .eq('id', orderId);
+
+    // Stock & Inventory Management: Decrement quantity or mark sold if last item
+    if (order.product_id) {
+      const { data: prod } = await supabase
+        .from('products' as any)
+        .select('id, description, status')
+        .eq('id', order.product_id)
+        .maybeSingle();
+
+      if (prod) {
+        const prodData = prod as any;
+        const stockMatch = (prodData.description || '').match(/📦\s*Stock:\s*(\d+)/i) || (prodData.description || '').match(/الكمية:\s*(\d+)/i);
+        const currentStock = stockMatch ? parseInt(stockMatch[1], 10) : 1;
+        const remainingStock = currentStock - 1;
+
+        if (remainingStock <= 0) {
+          // Last item in stock — mark SOLD and remove from active marketplace!
+          await supabase
+            .from('products' as any)
+            .update({
+              status: 'sold',
+              updated_at: new Date().toISOString(),
+            } as any)
+            .eq('id', order.product_id);
+        } else {
+          // Multiple in stock — decrement stock tag and keep active for other buyers!
+          const updatedDescription = (prodData.description || '').replace(
+            /📦\s*Stock:\s*\d+/i,
+            `📦 Stock: ${remainingStock}`
+          );
+          await supabase
+            .from('products' as any)
+            .update({
+              description: updatedDescription,
+              updated_at: new Date().toISOString(),
+            } as any)
+            .eq('id', order.product_id);
+        }
+      }
+    }
   } catch (err) {
     console.warn('[OrderService] confirmOrderPayment status update failed:', err);
   }

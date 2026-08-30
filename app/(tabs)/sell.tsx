@@ -90,6 +90,7 @@ export default function SellScreen() {
   const [category,  setCategory]  = useState("Electronics");
   const [condition, setCondition] = useState("New");
   const [location,  setLocation]  = useState("");
+  const [stock,     setStock]     = useState("1");
   const [isPromotedOnSale, setIsPromotedOnSale] = useState(false);
   const [promotedAdRate, setPromotedAdRate] = useState(0.08); // 8% default
   const [loading,   setLoading]   = useState(false);
@@ -199,14 +200,20 @@ export default function SellScreen() {
 
     setLoading(true);
     try {
+      const stockNum = Math.max(1, parseInt(stock, 10) || 1);
+      const tags = [
+        location ? `📍 ${location}` : '',
+        `📦 Stock: ${stockNum}`,
+      ].filter(Boolean).join('\n');
+      const fullDescription = `${desc.trim()}\n\n${tags}`;
+
       const imageUrls = await Promise.all(images.map(uploadImage));
       await productService.createProduct({
         title: title.trim(),
-        description: desc.trim(),
+        description: fullDescription,
         price: parseFloat(price),
         category,
         condition,
-        location: location || undefined,
         images: imageUrls,
         is_promoted: isPromotedOnSale,
         promoted_ad_rate: isPromotedOnSale ? promotedAdRate : 0,
@@ -476,8 +483,27 @@ export default function SellScreen() {
               </View>
             )}
 
+            {/* Available Stock Quantity */}
+            <Text style={[styles.fieldLabel, { marginTop: 18 }]}>
+              <Text style={styles.fieldLabelIcon}>📦 </Text>
+              Available Stock (Units)
+            </Text>
+            <View style={[styles.priceInputWrapper, { height: 48, marginTop: 6 }]}>
+              <TextInput
+                style={[styles.priceInput, { fontSize: 16, textAlign: 'left', paddingLeft: 16 }]}
+                placeholder="1"
+                placeholderTextColor="#CBD5E1"
+                value={stock}
+                onChangeText={setStock}
+                keyboardType="number-pad"
+              />
+            </View>
+            <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4, marginHorizontal: 4 }}>
+              When the last item sells, this listing is automatically removed from the market.
+            </Text>
+
             {/* Condition */}
-            <Text style={[styles.fieldLabel, { marginTop: 28 }]}>
+            <Text style={[styles.fieldLabel, { marginTop: 24 }]}>
               <Text style={styles.fieldLabelIcon}>✅ </Text>
               {t("sell.productCondition")}
             </Text>

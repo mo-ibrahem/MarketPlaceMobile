@@ -150,12 +150,12 @@ export default function CheckoutScreen() {
         return;
       }
 
-      // 4. If card / wallet selected, initiate Paymob payment session for remainingDue
-      if (paymentMethod === 'card' || paymentMethod === 'wallet') {
+      // 4. If remaining due > 0, initiate Paymob checkout session (Full or Split card payment)
+      if (remainingDue > 0) {
         const session = await startPaymobCheckoutSession({
           amountEgp: remainingDue,
           merchantOrderId: order.id,
-          itemName: `${product.title} (Split Payment)`,
+          itemName: `${product.title} (Order #${order.id.slice(-6)})`,
           billingData: {
             first_name: fullName.split(' ')[0] || 'Buyer',
             last_name: fullName.split(' ')[1] || 'Egbay',
@@ -175,14 +175,6 @@ export default function CheckoutScreen() {
             orderId: order.id,
             totalEgp: remainingDue.toString(),
           },
-        } as any);
-      } else {
-        // COD or InstaPay — no Paymob webhook will fire, confirm immediately
-        await confirmOrderPayment(order.id);
-        Toast.show({ type: 'success', text1: 'Order Placed with Escrow Protection! 🎉' });
-        router.replace({
-          pathname: '/order/[orderId]',
-          params: { orderId: order.id },
         } as any);
       }
     } catch (err: any) {
