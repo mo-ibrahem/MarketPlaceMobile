@@ -230,7 +230,7 @@ export async function getUserOrders(userId: string): Promise<MarketplaceOrder[]>
             ? `https://bosta.co/tracking-shipment/?trackNumber=${row.tracking_number}`
             : undefined,
           inspection_deadline: row.inspection_deadline,
-          product: row.products,
+          product: notesData.product || row.products,
           seller: row.seller,
           buyer: row.buyer,
           created_at: row.created_at,
