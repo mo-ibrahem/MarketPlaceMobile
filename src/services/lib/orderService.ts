@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { holdEscrowForSeller, releaseEscrowToSeller } from './walletService';
+import { notifyItemSold } from './notificationService';
 
 export interface MarketplaceOrder {
   id: string;
@@ -188,6 +189,7 @@ export async function confirmOrderPayment(orderId: string): Promise<void> {
 
   // NOW credit seller escrow — only after real payment is confirmed
   await holdEscrowForSeller(order.seller_id, orderId, order.amount);
+  await notifyItemSold(order.seller_id, order.product?.title || 'Your listing', order.amount, orderId, order.shipping_address?.full_name);
 }
 
 // ──────────────────────────────────────────────────────────────
