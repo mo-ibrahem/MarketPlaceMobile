@@ -50,25 +50,21 @@ export default function PaymentScreen() {
     setSuccessHandled(true);
 
     try {
-      // Credit wallet balance only after real payment confirmed
       if (topUpAmount && user) {
-        await topUpUserWallet(user.id, Number(topUpAmount), 'card');
         try {
-          const webUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-            ? 'http://localhost:3000'
-            : 'https://egbay.shop';
-          await fetch(`${webUrl}/api/wallet/credit`, {
+          await fetch('https://www.egbay.shop/api/wallet/credit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               merchantOrderId: `topup_${user.id}_${Date.now()}`,
-              amountCents: Number(topUpAmount) * 100,
+              targetUserId: user.id,
+              amountCents: Math.round(Number(topUpAmount) * 100),
               txId: `paymob_mobile_${Date.now()}`,
               isSuccess: true,
             }),
           });
         } catch (apiErr) {
-          console.warn('[PaymentScreen] Server sync warning:', apiErr);
+          console.warn('[PaymentScreen] Topup credit sync error:', apiErr);
         }
       }
       // Activate boost only after real payment confirmed

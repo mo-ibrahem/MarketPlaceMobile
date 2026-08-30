@@ -286,24 +286,7 @@ export async function holdEscrowForSeller(
       ? (Number(wallet.available_balance) || 0) + netAmount
       : Number(wallet.available_balance || 0);
 
-    await supabase
-      .from('user_wallets' as any)
-      .update({
-        pending_balance: newPending,
-        available_balance: newAvailable,
-        updated_at: new Date().toISOString(),
-      } as any)
-      .eq('user_id', sellerId);
-
-    await supabase.from('wallet_transactions' as any).insert({
-      wallet_id: wallet.id,
-      order_id: orderId,
-      type: isInstantClearance ? 'escrow_release' : 'escrow_hold',
-      amount: netAmount,
-      fee_amount: totalFeeAmount,
-      status: isInstantClearance ? 'completed' : 'pending',
-      created_at: new Date().toISOString(),
-    } as any);
+    // Direct DB mutation removed. Escrow hold is handled exclusively by the secure backend webhook.
   } catch (err) {
     console.warn('[WalletService] Error holding escrow, updating in-memory:', err);
   }
@@ -336,24 +319,7 @@ export async function releaseEscrowToSeller(sellerId: string, orderId: string, n
     const newPending = Math.max(0, (Number(wallet.pending_balance) || 0) - netAmount);
     const newAvailable = (Number(wallet.available_balance) || 0) + netAmount;
 
-    await supabase
-      .from('user_wallets' as any)
-      .update({
-        pending_balance: newPending,
-        available_balance: newAvailable,
-        updated_at: new Date().toISOString(),
-      } as any)
-      .eq('user_id', sellerId);
-
-    await supabase.from('wallet_transactions' as any).insert({
-      wallet_id: wallet.id,
-      order_id: orderId,
-      type: 'escrow_release',
-      amount: netAmount,
-      fee_amount: 0,
-      status: 'completed',
-      created_at: new Date().toISOString(),
-    } as any);
+    // Direct DB mutation removed. Escrow release is handled exclusively by the secure backend.
   } catch (err) {
     console.warn('[WalletService] Error releasing escrow, updating in-memory:', err);
   }
@@ -386,22 +352,15 @@ export async function topUpUserWallet(
   const newAvailable = (Number(wallet.available_balance) || 0) + amount;
 
   try {
-    await supabase
-      .from('user_wallets' as any)
-      .update({
-        available_balance: newAvailable,
-        updated_at: new Date().toISOString(),
-      } as any)
-      .eq('user_id', userId);
-
-    await supabase.from('wallet_transactions' as any).insert({
-      wallet_id: wallet.id,
-      type: 'top_up',
-      amount: amount,
-      fee_amount: 0,
-      status: 'completed',
-      description: `Wallet Deposit via ${paymentMethod === 'vodafone_cash' ? 'Vodafone Cash' : paymentMethod === 'instapay' ? 'InstaPay' : 'Card'}`,
-      created_at: new Date().toISOString(),
+    await fetch('https://www.egbay.shop/api/wallet/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'topup_manual',
+        userId,
+        amount,
+        paymentMethod
+      })
     });
   } catch (err) {
     console.warn('[WalletService] Supabase fallback topup:', err);
@@ -568,21 +527,20 @@ export async function requestPayout(
   const newAvailable = available - amount;
 
   try {
-    await supabase
-      .from('user_wallets' as any)
-      .update({ available_balance: newAvailable, updated_at: new Date().toISOString() } as any)
-      .eq('user_id', userId);
-
-    const txId = `payout_${Date.now()}`;
-    await supabase.from('wallet_transactions' as any).insert({
-      id: txId,
-      wallet_id: wallet.id,
-      type: 'payout',
-      amount: amount,
-      fee_amount: 0,
-      status: 'completed',
-      created_at: new Date().toISOString(),
-    } as any);
+    const res = await fetch('https://egbay.shop/api/wallet/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'request_payout',
+        userId,
+        amount,
+        payoutMethodId: payoutMethod.id,
+        payoutMethodIdentifier: payoutMethod.account_identifier
+      })
+    });
+    
+    const data = await res.json();
+    const txId = data?.txId || `payout_${Date.now()}`;
 
     return {
       success: true,
@@ -631,23 +589,16 @@ export async function deductWalletSpendableFunds(
   const newAvailable = available - amount;
 
   try {
-    await supabase
-      .from('user_wallets' as any)
-      .update({
-        available_balance: newAvailable,
-        updated_at: new Date().toISOString(),
-      } as any)
-      .eq('user_id', userId);
-
-    await supabase.from('wallet_transactions' as any).insert({
-      wallet_id: wallet.id,
-      order_id: orderId,
-      type: 'fee_deduction',
-      amount: amount,
-      fee_amount: 0,
-      status: 'completed',
-      description: `Purchase: ${itemTitle || 'Marketplace Item'} (Wallet Checkout)`,
-      created_at: new Date().toISOString(),
+    await fetch('https://egbay.shop/api/wallet/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'deduct_spendable',
+        userId,
+        amount,
+        orderId,
+        itemTitle
+      })
     });
   } catch (err) {
     console.warn('[WalletService] Fallback updating spendable funds in memory:', err);

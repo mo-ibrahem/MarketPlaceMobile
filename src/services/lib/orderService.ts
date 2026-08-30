@@ -90,32 +90,23 @@ export async function createMarketplaceOrder(orderData: {
     created_at: new Date().toISOString(),
   };
 
+  // Direct client-side DB insert removed for security. Relying strictly on API route.
   try {
-    const { data, error } = await supabase
-      .from('orders' as any)
-      .insert({
-        id: orderId,
-        product_id: orderData.product_id,
-        buyer_id: orderData.buyer_id,
-        seller_id: orderData.seller_id,
-        status: 'pending_payment',
-        notes: JSON.stringify({
-          handover_method: orderData.handover_method,
-          meetup_pin: randomPin,
-          amount: orderData.amount,
-        }),
-        shipping_address: orderData.shipping_address,
-        created_at: new Date().toISOString(),
-      } as any)
-      .select()
-      .maybeSingle();
-
-    if (data && !error) {
+    const res = await fetch('https://egbay.shop/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'create',
+        orderData: newOrder,
+      }),
+    });
+    const json = await res.json();
+    if (json?.success && json?.order) {
       inMemoryOrders[orderId] = newOrder;
       return newOrder;
     }
-  } catch (err) {
-    console.warn('[OrderService] Supabase insert fallback to memory:', err);
+  } catch (apiErr) {
+    console.warn('[OrderService] /api/orders create API warning:', apiErr);
   }
 
   inMemoryOrders[orderId] = newOrder;
@@ -146,58 +137,7 @@ export async function confirmOrderPayment(orderId: string): Promise<void> {
     console.warn('[OrderService] Mobile server credit sync warning:', apiErr);
   }
 
-  // Update status in DB
-  try {
-    await supabase
-      .from('orders' as any)
-      .update({
-        status: 'escrow_secured',
-        updated_at: new Date().toISOString(),
-      } as any)
-      .eq('id', orderId);
-
-    // Stock & Inventory Management: Decrement quantity or mark sold if last item
-    if (order.product_id) {
-      const { data: prod } = await supabase
-        .from('products' as any)
-        .select('id, description, status')
-        .eq('id', order.product_id)
-        .maybeSingle();
-
-      if (prod) {
-        const prodData = prod as any;
-        const stockMatch = (prodData.description || '').match(/📦\s*Stock:\s*(\d+)/i) || (prodData.description || '').match(/الكمية:\s*(\d+)/i);
-        const currentStock = stockMatch ? parseInt(stockMatch[1], 10) : 1;
-        const remainingStock = currentStock - 1;
-
-        if (remainingStock <= 0) {
-          // Last item in stock — mark SOLD and remove from active marketplace!
-          await supabase
-            .from('products' as any)
-            .update({
-              status: 'sold',
-              updated_at: new Date().toISOString(),
-            } as any)
-            .eq('id', order.product_id);
-        } else {
-          // Multiple in stock — decrement stock tag and keep active for other buyers!
-          const updatedDescription = (prodData.description || '').replace(
-            /📦\s*Stock:\s*\d+/i,
-            `📦 Stock: ${remainingStock}`
-          );
-          await supabase
-            .from('products' as any)
-            .update({
-              description: updatedDescription,
-              updated_at: new Date().toISOString(),
-            } as any)
-            .eq('id', order.product_id);
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('[OrderService] confirmOrderPayment status update failed:', err);
-  }
+  // DB Status is updated securely by the webhook handling /api/wallet/credit. No client DB mutation required.
 
   if (inMemoryOrders[orderId]) {
     inMemoryOrders[orderId].status = 'escrow_secured';
@@ -336,17 +276,18 @@ export async function updateOrderTracking(
   }
 
   try {
-    await supabase
-      .from('orders' as any)
-      .update({
+    await fetch('https://egbay.shop/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_tracking',
+        orderId,
         tracking_number: params.tracking_number,
-        courier_name: params.courier_name || 'Bosta',
-        status: 'shipped',
-        updated_at: new Date().toISOString(),
-      } as any)
-      .eq('id', orderId);
+        courier_name: params.courier_name || 'Bosta'
+      }),
+    });
   } catch (err) {
-    console.warn('[OrderService] updateOrderTracking error:', err);
+    console.warn('[OrderService] updateOrderTracking API fallback error:', err);
   }
 }
 
@@ -366,12 +307,17 @@ export async function approveOrderDelivery(orderId: string): Promise<{ success: 
   }
 
   try {
-    await supabase
-      .from('orders' as any)
-      .update({ status: 'completed', delivered_at: new Date().toISOString() } as any)
-      .eq('id', orderId);
+    await fetch('https://egbay.shop/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'release_escrow',
+        orderId,
+        requesterId: order.buyer_id
+      }),
+    });
   } catch (err) {
-    console.warn('[OrderService] approveOrderDelivery update error:', err);
+    console.warn('[OrderService] release_escrow API error:', err);
   }
 
   await releaseEscrowToSeller(order.seller_id, orderId, order.amount * 0.96);
@@ -399,20 +345,19 @@ export async function fileOrderDispute(
   }
 
   try {
-    await supabase
-      .from('orders' as any)
-      .update({
-        status: 'disputed',
-        updated_at: new Date().toISOString(),
-        notes: JSON.stringify({
-          dispute_reason: reason,
-          dispute_evidence: evidence,
-          disputed_at: new Date().toISOString(),
-        }),
-      } as any)
-      .eq('id', orderId);
+    await fetch('https://egbay.shop/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'dispute',
+        orderId,
+        reason,
+        notes: reason,
+        evidence
+      }),
+    });
   } catch (err) {
-    console.warn('[OrderService] fileOrderDispute error:', err);
+    console.warn('[OrderService] dispute API error:', err);
   }
 
   return {
@@ -448,12 +393,18 @@ export async function verifyMeetupPIN(
   inMemoryOrders[orderId] = order;
 
   try {
-    await supabase
-      .from('orders' as any)
-      .update({ status: 'delivered', delivered_at: new Date().toISOString() } as any)
-      .eq('id', orderId);
+    await fetch('https://egbay.shop/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'release_escrow',
+        orderId,
+        pin: enteredPin,
+        requesterId: order.seller_id
+      }),
+    });
   } catch (err) {
-    console.warn('[OrderService] Error updating order status in Supabase:', err);
+    console.warn('[OrderService] release API error:', err);
   }
 
   await releaseEscrowToSeller(order.seller_id, orderId, order.amount * 0.96);
