@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import Toast from 'react-native-toast-message';
 import {
   ArrowDownLeft,
   ArrowLeft,
@@ -40,7 +41,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
 import { useAuth } from '../hooks/useAuth';
 import {
   getPayoutMethods,
@@ -124,9 +124,44 @@ export default function WalletScreen() {
     return true;
   });
 
+  const searchParams = useLocalSearchParams<{ success?: string; amount_cents?: string; id?: string; order?: string; txn_response_code?: string }>();
+
   useEffect(() => {
     loadWalletData();
-  }, [loadWalletData]);
+
+    // Check if returning from Paymob approval on web or deep link
+    const isApproved =
+      searchParams.success === 'true' ||
+      searchParams.txn_response_code === 'APPROVED' ||
+      (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('success') === 'true'));
+
+    let amountCents = searchParams.amount_cents;
+    let txId = searchParams.id || searchParams.order;
+    if (typeof window !== 'undefined' && !amountCents) {
+      const q = new URLSearchParams(window.location.search);
+      amountCents = q.get('amount_cents') || undefined;
+      txId = q.get('id') || q.get('order') || undefined;
+    }
+
+    if (isApproved && user && (amountCents || txId)) {
+      const dedupeKey = `paymob_mobile_wallet_${txId || amountCents}`;
+      if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(dedupeKey)) {
+        sessionStorage.setItem(dedupeKey, '1');
+        const depositEgp = Math.round(Number(amountCents || 0) / 100);
+        if (depositEgp > 0) {
+          (async () => {
+            await topUpUserWallet(user.id, depositEgp, 'card', txId);
+            Toast.show({
+              type: 'success',
+              text1: `EGP ${depositEgp.toLocaleString()} Added to Wallet! 💳`,
+              text2: 'Your spendable balance has been updated.',
+            });
+            await loadWalletData();
+          })();
+        }
+      }
+    }
+  }, [loadWalletData, user, searchParams]);
 
   const handleTopUpSubmit = async () => {
     if (!user) return;

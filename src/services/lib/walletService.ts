@@ -379,7 +379,8 @@ export async function releaseEscrowToSeller(sellerId: string, orderId: string, n
 export async function topUpUserWallet(
   userId: string,
   amount: number,
-  paymentMethod: string = 'card'
+  paymentMethod: string = 'card',
+  referenceId?: string
 ): Promise<{ success: boolean; message: string; newBalance: number }> {
   const wallet = await getUserWallet(userId);
   const newAvailable = (Number(wallet.available_balance) || 0) + amount;
