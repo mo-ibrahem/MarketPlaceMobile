@@ -115,7 +115,7 @@ export default function BoostProductScreen() {
       try {
         const session = await startPaymobCheckoutSession({
           amountEgp: selectedPkg.priceEGP,
-          merchantOrderId: `boost_${product.id}_${selectedTier}_${Date.now()}`,
+          merchantOrderId: `boost_${product.id}_${selectedTier}_${user?.id}_${Date.now()}`,
           itemName: `EgyBay Boost: ${selectedPkg.title}`,
           billingData: {
             first_name: user?.user_metadata?.full_name?.split(' ')[0] || 'Seller',
