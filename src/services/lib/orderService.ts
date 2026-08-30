@@ -81,7 +81,7 @@ export async function createMarketplaceOrder(orderData: {
     seller_id: orderData.seller_id,
     amount: orderData.amount,
     currency: 'EGP',
-    status: 'escrow_secured',
+    status: 'pending_payment', // stays here until Paymob webhook or 100% wallet confirms
     handover_method: orderData.handover_method,
     meetup_pin: randomPin,
     shipping_address: orderData.shipping_address,
@@ -97,7 +97,7 @@ export async function createMarketplaceOrder(orderData: {
         product_id: orderData.product_id,
         buyer_id: orderData.buyer_id,
         seller_id: orderData.seller_id,
-        status: 'escrow_secured',
+        status: 'pending_payment',
         notes: JSON.stringify({
           handover_method: orderData.handover_method,
           meetup_pin: randomPin,
@@ -110,7 +110,6 @@ export async function createMarketplaceOrder(orderData: {
       .maybeSingle();
 
     if (data && !error) {
-      await holdEscrowForSeller(orderData.seller_id, orderId, orderData.amount);
       inMemoryOrders[orderId] = newOrder;
       return newOrder;
     }
@@ -118,9 +117,37 @@ export async function createMarketplaceOrder(orderData: {
     console.warn('[OrderService] Supabase insert fallback to memory:', err);
   }
 
-  await holdEscrowForSeller(orderData.seller_id, orderId, orderData.amount);
   inMemoryOrders[orderId] = newOrder;
   return newOrder;
+}
+
+/**
+ * Called after Paymob webhook confirms payment OR after 100% wallet checkout.
+ * Transitions the order to escrow_secured and credits the seller's pending balance.
+ */
+export async function confirmOrderPayment(orderId: string): Promise<void> {
+  const order = await getOrderById(orderId);
+  if (!order) throw new Error('Order not found: ' + orderId);
+
+  // Update status in DB
+  try {
+    await supabase
+      .from('orders' as any)
+      .update({
+        status: 'escrow_secured',
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('id', orderId);
+  } catch (err) {
+    console.warn('[OrderService] confirmOrderPayment status update failed:', err);
+  }
+
+  if (inMemoryOrders[orderId]) {
+    inMemoryOrders[orderId].status = 'escrow_secured';
+  }
+
+  // NOW credit seller escrow — only after real payment is confirmed
+  await holdEscrowForSeller(order.seller_id, orderId, order.amount);
 }
 
 // ──────────────────────────────────────────────────────────────

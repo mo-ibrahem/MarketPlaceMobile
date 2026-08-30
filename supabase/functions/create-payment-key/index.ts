@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
           floor: "NA", 
           building: "NA", 
           city: "Cairo", 
-          country: "EGY",
+          country: "EG",
           postal_code: "NA",
           state: "Cairo"
         },

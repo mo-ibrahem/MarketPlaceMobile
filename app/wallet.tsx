@@ -56,6 +56,7 @@ import {
   type UserWallet,
   type WalletTransaction,
 } from '../src/services/lib/walletService';
+import { startPaymobCheckoutSession } from '../src/services/lib/paymobService';
 
 export default function WalletScreen() {
   const router = useRouter();
@@ -134,20 +135,52 @@ export default function WalletScreen() {
       Toast.show({ type: 'error', text1: 'Please enter a valid deposit amount' });
       return;
     }
+    if (amount < 10) {
+      Toast.show({ type: 'error', text1: 'Minimum deposit is EGP 10' });
+      return;
+    }
 
-    setToppingUp(true);
-    try {
-      const res = await topUpUserWallet(user.id, amount, topUpMethod);
-      Toast.show({ type: 'success', text1: 'Funds Added! 💳✨', text2: res.message });
-      setTopUpModalVisible(false);
-      setTopUpAmount('');
-      await loadWalletData();
-    } catch (err: any) {
-      Alert.alert('Deposit Error', err?.message || 'Failed to deposit funds');
-    } finally {
-      setToppingUp(false);
+    if (topUpMethod === 'card') {
+      // Route through Paymob — balance is ONLY credited after payment.tsx confirms success
+      setToppingUp(true);
+      try {
+        const session = await startPaymobCheckoutSession({
+          amountEgp: amount,
+          merchantOrderId: `topup_${user.id}_${Date.now()}`,
+          itemName: `EgyBay Wallet Deposit: EGP ${amount}`,
+          billingData: {
+            first_name: user.user_metadata?.full_name?.split(' ')[0] || 'User',
+            last_name: user.user_metadata?.full_name?.split(' ')[1] || 'EgyBay',
+            email: user.email || 'user@egbay.market',
+            phone_number: '+201000000000',
+            city: 'Cairo',
+          },
+        });
+        setTopUpModalVisible(false);
+        setTopUpAmount('');
+        router.push({
+          pathname: '/payment',
+          params: {
+            paymentToken: session.paymentToken,
+            orderId: `topup_${user.id}`,
+            topUpAmount: amount.toString(),
+          },
+        } as any);
+      } catch (err: any) {
+        Alert.alert('Deposit Error', err?.message || 'Could not start payment. Try again.');
+      } finally {
+        setToppingUp(false);
+      }
+    } else {
+      // Vodafone Cash / InstaPay — manual transfer (full integration in Phase 4)
+      Alert.alert(
+        topUpMethod === 'vodafone_cash' ? 'Vodafone Cash Deposit' : 'InstaPay Deposit',
+        `To deposit EGP ${amount.toLocaleString()}, transfer to:\n\nVodafone Cash: 01098765432\nInstaPay IPA: egbay@instapay\n\nSend your receipt to support@egbay.market and we will credit your wallet within 1 hour.`,
+        [{ text: 'Got It', onPress: () => setTopUpModalVisible(false) }],
+      );
     }
   };
+
 
   const handleWithdrawSubmit = async () => {
     if (!user || !wallet || !selectedMethod) {

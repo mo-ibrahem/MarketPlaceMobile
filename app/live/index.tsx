@@ -131,15 +131,19 @@ export default function LiveDiscoveryScreen() {
               <View style={styles.center}><ActivityIndicator color="#EF4444" /></View>
             ) : liveNow.length === 0 ? (
               <View style={styles.emptyWrap}>
-                <Video color="#CBD5E1" size={40} />
-                <Text style={styles.emptyTitle}>لا توجد بثوث حية الآن</Text>
-                <Text style={styles.emptySub}>تحقق لاحقاً أو ابدأ بثك الخاص</Text>
-                {user && (
-                  <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/live/book' as any)}>
-                    <Video color="white" size={14} />
-                    <Text style={styles.emptyBtnText}>ابدأ بثك الآن</Text>
-                  </TouchableOpacity>
-                )}
+                <View style={styles.emptyCard}>
+                  <View style={styles.emptyIcon}>
+                    <Video color="#EF4444" size={36} strokeWidth={2.5} />
+                  </View>
+                  <Text style={styles.emptyTitle}>لا توجد بثوث حية الآن</Text>
+                  <Text style={styles.emptySub}>تحقق لاحقاً أو ابدأ بثك المباشر الخاص وقم ببيع منتجاتك</Text>
+                  {user && (
+                    <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/live/book' as any)}>
+                      <Video color="white" size={16} strokeWidth={2.5} />
+                      <Text style={styles.emptyBtnText}>ابدأ بثك الآن</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             ) : (
               <View style={styles.sectionHeader}>
@@ -191,11 +195,16 @@ export default function LiveDiscoveryScreen() {
               </View>
             ))}
             <View style={styles.passRow}>
-              {LIVE_PASSES.map(pass => (
-                <View key={pass.tier} style={styles.passCard}>
+              {LIVE_PASSES.map((pass, idx) => (
+                <View key={pass.tier} style={[styles.passCard, idx === 2 && styles.passCardFeatured]}>
+                  {idx === 2 && (
+                    <View style={styles.passFeaturedBadge}>
+                      <Text style={styles.passFeaturedBadgeText}>الأكثر مبيعاً</Text>
+                    </View>
+                  )}
                   <Text style={styles.passEmoji}>{pass.badge}</Text>
                   <Text style={styles.passName}>{pass.name_ar}</Text>
-                  <Text style={styles.passPrice}>{pass.priceEGP} ج.م</Text>
+                  <Text style={[styles.passPrice, idx === 2 && { color: '#B45309' }]}>{pass.priceEGP} ج.م</Text>
                   <Text style={styles.passDuration}>{pass.durationMinutes} دقيقة</Text>
                 </View>
               ))}
@@ -216,59 +225,66 @@ export default function LiveDiscoveryScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { padding: 16, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerTitle: { fontSize: 20, fontWeight: '900', color: 'white' },
-  headerSub: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(239,68,68,0.2)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' },
-  liveDotRed: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444' },
-  liveBadgeText: { fontSize: 9, fontWeight: '800', color: '#EF4444', letterSpacing: 0.5 },
-  goLiveBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EF4444', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9 },
-  goLiveBtnText: { fontSize: 12, fontWeight: '800', color: 'white' },
+  header: { padding: 18, flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 24 },
+  headerTitle: { fontSize: 22, fontWeight: '900', color: 'white' },
+  headerSub: { fontSize: 12, color: '#94A3B8', marginTop: 4, fontWeight: '500' },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(239,68,68,0.2)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)' },
+  liveDotRed: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444', shadowColor: '#EF4444', shadowOffset: {width: 0, height: 0}, shadowOpacity: 0.8, shadowRadius: 4 },
+  liveBadgeText: { fontSize: 9, fontWeight: '900', color: '#EF4444', letterSpacing: 0.5 },
+  goLiveBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EF4444', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, shadowColor: '#EF4444', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.4, shadowRadius: 8, elevation: 4 },
+  goLiveBtnText: { fontSize: 13, fontWeight: '900', color: 'white' },
 
-  list: { padding: 10, gap: 10 },
+  list: { padding: 12, gap: 12 },
   center: { height: 100, alignItems: 'center', justifyContent: 'center' },
 
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
-  sectionTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+  sectionTitle: { fontSize: 15, fontWeight: '900', color: '#0F172A' },
 
   liveCard: { flex: 1 },
-  liveCardVideo: { aspectRatio: 9 / 14, borderRadius: 16, overflow: 'hidden', backgroundColor: '#0F172A', position: 'relative' },
+  liveCardVideo: { aspectRatio: 9 / 14, borderRadius: 20, overflow: 'hidden', backgroundColor: '#0F172A', position: 'relative', shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.15, shadowRadius: 10, elevation: 5 },
   liveCardImg: { width: '100%', height: '100%', position: 'absolute' },
-  livePill: { position: 'absolute', top: 8, left: 8, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EF4444', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
+  livePill: { position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EF4444', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },
   liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'white' },
-  livePillText: { fontSize: 9, fontWeight: '900', color: 'white' },
-  viewersBadge: { position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3 },
-  viewersText: { fontSize: 10, color: 'white', fontWeight: '700' },
-  liveCardGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 10 },
-  sellerAvatar: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#3B82F6', alignItems: 'center', justifyContent: 'center' },
-  sellerAvatarText: { fontSize: 10, fontWeight: '800', color: 'white' },
-  sellerName: { fontSize: 10, color: '#94A3B8' },
-  streamTitle: { fontSize: 11, fontWeight: '700', color: 'white' },
+  livePillText: { fontSize: 9, fontWeight: '900', color: 'white', letterSpacing: 0.5 },
+  viewersBadge: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  viewersText: { fontSize: 11, color: 'white', fontWeight: '800' },
+  liveCardGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12, paddingTop: 30 },
+  sellerAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#3B82F6', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'white' },
+  sellerAvatarText: { fontSize: 12, fontWeight: '900', color: 'white' },
+  sellerName: { fontSize: 11, color: '#E2E8F0', fontWeight: '600' },
+  streamTitle: { fontSize: 13, fontWeight: '800', color: 'white', marginTop: 2 },
 
-  upcomingCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'white', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 6 },
-  upcomingIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
-  upcomingTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
-  upcomingBy: { fontSize: 11, color: '#64748B' },
-  maxViewBadge: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  maxViewText: { fontSize: 10, color: '#94A3B8' },
+  upcomingCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'white', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#EEF2FF', marginBottom: 8, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  upcomingIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
+  upcomingTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 2 },
+  upcomingBy: { fontSize: 12, color: '#64748B', fontWeight: '500' },
+  maxViewBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  maxViewText: { fontSize: 11, color: '#64748B', fontWeight: '700' },
 
-  emptyWrap: { alignItems: 'center', paddingVertical: 40 },
-  emptyTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginTop: 12, marginBottom: 4 },
-  emptySub: { fontSize: 12, color: '#94A3B8', marginBottom: 16 },
-  emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EF4444', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 10 },
-  emptyBtnText: { fontSize: 13, fontWeight: '800', color: 'white' },
+  emptyWrap: { alignItems: 'center', paddingVertical: 10 },
+  emptyCard: { backgroundColor: 'white', width: '100%', borderRadius: 24, padding: 32, alignItems: 'center', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 4, borderWidth: 1, borderColor: '#FEF2F2' },
+  emptyIcon: { width: 72, height: 72, borderRadius: 24, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  emptyTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginBottom: 8, textAlign: 'center' },
+  emptySub: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  emptyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#EF4444', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 14, width: '100%', shadowColor: '#EF4444', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  emptyBtnText: { fontSize: 15, fontWeight: '900', color: 'white' },
 
-  howCard: { backgroundColor: 'white', borderRadius: 20, padding: 16, marginTop: 16, borderWidth: 1, borderColor: '#E2E8F0', gap: 12 },
-  howTitle: { fontSize: 14, fontWeight: '900', color: '#0F172A' },
-  howRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  howIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  howText: { fontSize: 12, color: '#475569', flex: 1 },
-  passRow: { flexDirection: 'row', gap: 8 },
-  passCard: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 10, alignItems: 'center', gap: 2, borderWidth: 1, borderColor: '#E2E8F0' },
-  passEmoji: { fontSize: 20 },
-  passName: { fontSize: 10, fontWeight: '700', color: '#0F172A', textAlign: 'center' },
-  passPrice: { fontSize: 14, fontWeight: '900', color: '#3B82F6' },
-  passDuration: { fontSize: 9, color: '#94A3B8' },
-  bookBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#EF4444', borderRadius: 14, padding: 13 },
-  bookBtnText: { fontSize: 13, fontWeight: '800', color: 'white', flex: 1, textAlign: 'center' },
+  howCard: { backgroundColor: 'white', borderRadius: 24, padding: 20, marginTop: 12, borderWidth: 1, borderColor: '#EEF2FF', gap: 14, shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
+  howTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A', marginBottom: 4 },
+  howRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  howIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  howText: { fontSize: 12, color: '#475569', flex: 1, fontWeight: '600', lineHeight: 18 },
+  
+  passRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  passCard: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 16, padding: 12, alignItems: 'center', gap: 2, borderWidth: 1, borderColor: '#E2E8F0', position: 'relative' },
+  passCardFeatured: { backgroundColor: '#FFFBEB', borderColor: '#FCD34D', shadowColor: '#F59E0B', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4 },
+  passFeaturedBadge: { position: 'absolute', top: -8, backgroundColor: '#F59E0B', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  passFeaturedBadgeText: { color: 'white', fontSize: 8, fontWeight: '900' },
+  passEmoji: { fontSize: 24, marginBottom: 4 },
+  passName: { fontSize: 11, fontWeight: '800', color: '#0F172A', textAlign: 'center', marginBottom: 2 },
+  passPrice: { fontSize: 15, fontWeight: '900', color: '#3B82F6' },
+  passDuration: { fontSize: 10, color: '#94A3B8', fontWeight: '600' },
+  
+  bookBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#EF4444', borderRadius: 16, padding: 14, marginTop: 8, shadowColor: '#EF4444', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  bookBtnText: { fontSize: 14, fontWeight: '900', color: 'white' },
 });

@@ -126,7 +126,7 @@ export const SELLER_TIERS: Record<1 | 2 | 3, SellerTierConfig> = {
     tier: 1,
     name: 'Casual Trader',
     badge: '🟡 Casual',
-    commissionFeePercent: 0.05, // 5% fee
+    commissionFeePercent: 0.035, // 3.5% platform fee
     listingLimitCount: 5,
     listingLimitAmount: 25000,
     fundReleaseTrigger: 'Buyer PIN verification or Courier delivery + 24 hrs',
@@ -137,7 +137,7 @@ export const SELLER_TIERS: Record<1 | 2 | 3, SellerTierConfig> = {
     tier: 2,
     name: 'Verified Trader',
     badge: '🛡️ Verified',
-    commissionFeePercent: 0.04, // 4% fee
+    commissionFeePercent: 0.025, // 2.5% platform fee
     listingLimitCount: 50,
     listingLimitAmount: 150000,
     fundReleaseTrigger: 'Instant QR / PIN scan or Courier delivery + 6 hrs',
@@ -148,7 +148,7 @@ export const SELLER_TIERS: Record<1 | 2 | 3, SellerTierConfig> = {
     tier: 3,
     name: 'EgyBay Pro / Store',
     badge: '⭐ Pro Merchant',
-    commissionFeePercent: 0.025, // 2.5% fee
+    commissionFeePercent: 0.015, // 1.5% platform fee
     listingLimitCount: 999999,
     listingLimitAmount: 99999999,
     fundReleaseTrigger: 'Instant release upon courier pickup scan',
@@ -268,9 +268,11 @@ export async function holdEscrowForSeller(
 ): Promise<void> {
   const sellerTier = await getSellerTier(sellerId);
   const baseFeePercent = sellerTier.commissionFeePercent;
-  const totalFeePercent = baseFeePercent + (promotedAdRate || 0);
-  const feeAmount = Math.round(totalAmount * totalFeePercent);
-  const netAmount = totalAmount - feeAmount;
+  const platformCommission = Math.round(totalAmount * (baseFeePercent + (promotedAdRate || 0)));
+  // Paymob processing fee: 2.75% + 3 EGP (same formula as web app)
+  const paymobFee = Math.round((totalAmount * 0.0275) + 3);
+  const totalFeeAmount = platformCommission + paymobFee;
+  const netAmount = totalAmount - totalFeeAmount;
 
   // Pro merchants (Tier 3) get instant clearance upon order placement!
   const isInstantClearance = sellerTier.tier === 3;
@@ -298,7 +300,7 @@ export async function holdEscrowForSeller(
       order_id: orderId,
       type: isInstantClearance ? 'escrow_release' : 'escrow_hold',
       amount: netAmount,
-      fee_amount: feeAmount,
+      fee_amount: totalFeeAmount,
       status: isInstantClearance ? 'completed' : 'pending',
       created_at: new Date().toISOString(),
     } as any);
@@ -318,9 +320,9 @@ export async function holdEscrowForSeller(
     order_id: orderId,
     type: isInstantClearance ? 'escrow_release' : 'escrow_hold',
     amount: netAmount,
-    fee_amount: feeAmount,
+    fee_amount: totalFeeAmount,
     status: isInstantClearance ? 'completed' : 'pending',
-    description: `Escrow Hold for Order #${orderId.slice(-6)} (${(totalFeePercent * 100).toFixed(1)}% Fee)`,
+    description: `Escrow Hold for Order #${orderId.slice(-6)} (Platform ${(baseFeePercent * 100).toFixed(1)}% + Paymob fees)`,
     created_at: new Date().toISOString(),
   });
 }

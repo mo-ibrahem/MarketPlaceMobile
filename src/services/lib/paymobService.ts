@@ -160,13 +160,9 @@ export async function startPaymobCheckoutSession({
       iframeUrl,
     };
   } catch (error: any) {
-    console.warn('[PaymobService] API Error:', error?.message);
-    const simulatedToken = `sim_token_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    return {
-      paymentToken: simulatedToken,
-      paymobOrderId: `sim_order_${Date.now()}`,
-      iframeId: PAYMOB_IFRAME_ID,
-      iframeUrl: `https://accept.paymob.com/api/acceptance/iframes/${PAYMOB_IFRAME_ID}?payment_token=${simulatedToken}`,
-    };
+    console.error('[PaymobService] Checkout session failed:', error?.message);
+    throw new Error(
+      error?.message || 'Could not start Paymob payment session. Please check your connection and try again.',
+    );
   }
 }

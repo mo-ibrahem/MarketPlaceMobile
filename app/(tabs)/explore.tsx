@@ -571,7 +571,7 @@ export default function ProfileScreen() {
 
         {/* ════════ HERO BANNER ════════ */}
         <LinearGradient
-          colors={['#4F46E5', '#7C3AED']}
+          colors={['#0F172A', '#1E293B']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.heroBanner, { paddingTop: insets.top + 20 }]}
@@ -631,29 +631,32 @@ export default function ProfileScreen() {
         </View>
 
         {/* ════════ MY WALLET & ESCROW BALANCE WIDGET ════════ */}
-        <TouchableOpacity
-          style={styles.walletWidgetCard}
-          onPress={() => router.push('/wallet' as any)}
-          activeOpacity={0.88}
-        >
-          <View style={styles.walletWidgetHeader}>
-            <View style={styles.walletWidgetIconBox}>
-              <Wallet color="#2563EB" size={18} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.walletWidgetTitle}>EgyBay Wallet & Escrow</Text>
-              <Text style={styles.walletWidgetSub}>
-                Pending Escrow: <Text style={{ fontWeight: '700', color: '#D97706' }}>EGP {Number(wallet?.pending_balance || 0).toLocaleString()}</Text>
-              </Text>
-            </View>
-            <View style={styles.walletWidgetRight}>
-              <Text style={styles.walletWidgetAvailable}>EGP {Number(wallet?.available_balance || 0).toLocaleString()}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                <Text style={styles.walletWidgetCta}>Withdraw</Text>
-                <ArrowUpRight size={12} color="#2563EB" />
+        <TouchableOpacity onPress={() => router.push('/wallet' as any)} activeOpacity={0.88} style={{ marginHorizontal: 20, marginTop: 14 }}>
+          <LinearGradient
+            colors={['#3665F3', '#5B3DDB']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.walletWidgetCard}
+          >
+            <View style={styles.walletWidgetHeader}>
+              <View style={styles.walletWidgetIconBox}>
+                <Wallet color="#3665F3" size={18} strokeWidth={2.5} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.walletWidgetTitle}>EgyBay Wallet & Escrow</Text>
+                <Text style={styles.walletWidgetSub}>
+                  Pending: <Text style={{ fontWeight: '800', color: '#FCD34D' }}>EGP {Number(wallet?.pending_balance || 0).toLocaleString()}</Text>
+                </Text>
+              </View>
+              <View style={styles.walletWidgetRight}>
+                <Text style={styles.walletWidgetAvailable}>EGP {Number(wallet?.available_balance || 0).toLocaleString()}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                  <Text style={styles.walletWidgetCta}>Withdraw</Text>
+                  <ArrowUpRight size={12} color="white" strokeWidth={3} />
+                </View>
               </View>
             </View>
-          </View>
+          </LinearGradient>
         </TouchableOpacity>
 
         {/* ════════ SELLER TRUST TIER CARD ════════ */}
@@ -737,28 +740,28 @@ const styles = StyleSheet.create({
   // Hero
   heroBanner: {
     paddingTop: 56,
-    paddingBottom: 36,
+    paddingBottom: 40,
     alignItems: 'center',
     paddingHorizontal: 24,
   },
   heroAvatarWrap: { position: 'relative', marginBottom: 14 },
-  heroAvatar: { width: 96, height: 96, borderRadius: 48, borderWidth: 3, borderColor: 'rgba(255,255,255,0.6)' },
+  heroAvatar: { width: 96, height: 96, borderRadius: 48, borderWidth: 4, borderColor: 'white' },
   heroAvatarFallback: {
     width: 96, height: 96, borderRadius: 48,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: '#334155',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)',
+    borderWidth: 4, borderColor: 'white',
   },
   heroAvatarInitials: { fontSize: 34, fontWeight: '800', color: 'white' },
   heroAvatarCamera: {
     position: 'absolute', bottom: 2, right: 2,
-    backgroundColor: '#6366F1', borderRadius: 14,
+    backgroundColor: '#3665F3', borderRadius: 14,
     width: 28, height: 28, justifyContent: 'center', alignItems: 'center',
     borderWidth: 2, borderColor: 'white',
   },
-  heroName:  { fontSize: 24, fontWeight: '800', color: 'white', marginBottom: 4 },
-  heroEmail: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
-  heroPhone: { fontSize: 13, color: 'rgba(255,255,255,0.65)' },
+  heroName:  { fontSize: 24, fontWeight: '900', color: 'white', marginBottom: 4, letterSpacing: -0.3 },
+  heroEmail: { fontSize: 14, color: '#94A3B8', marginBottom: 4, fontWeight: '600' },
+  heroPhone: { fontSize: 13, color: '#64748B', fontWeight: '600' },
 
   // Stat strip
   statStrip: {
@@ -766,35 +769,32 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     marginHorizontal: 20,
     marginTop: -20,
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 16,
     elevation: 8,
     gap: 4,
+    borderWidth: 1,
+    borderColor: '#F1F5F9'
   },
   statCard: { flex: 1, alignItems: 'center', gap: 6 },
   statIconBg: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
-  statValue: { fontSize: 20, fontWeight: '800', color: '#1E293B' },
-  statLabel: { fontSize: 12, color: '#94A3B8', fontWeight: '600' },
+  statValue: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
+  statLabel: { fontSize: 12, color: '#64748B', fontWeight: '700' },
   statDivider: { width: 1, backgroundColor: '#F1F5F9', marginVertical: 4 },
 
   // Wallet Widget
   walletWidgetCard: {
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    marginTop: 14,
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1.5,
-    borderColor: '#DBEAFE',
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    borderRadius: 24,
+    padding: 18,
+    shadowColor: '#3665F3',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
   },
   walletWidgetHeader: {
     flexDirection: 'row',
@@ -802,64 +802,68 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   walletWidgetIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EFF6FF',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  walletWidgetTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 2 },
-  walletWidgetSub: { fontSize: 11, color: '#64748B' },
+  walletWidgetTitle: { fontSize: 15, fontWeight: '800', color: 'white', marginBottom: 2 },
+  walletWidgetSub: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
   walletWidgetRight: { alignItems: 'flex-end' },
-  walletWidgetAvailable: { fontSize: 15, fontWeight: '900', color: '#059669', marginBottom: 2 },
-  walletWidgetCta: { fontSize: 11, fontWeight: '700', color: '#2563EB' },
+  walletWidgetAvailable: { fontSize: 16, fontWeight: '900', color: 'white', marginBottom: 4 },
+  walletWidgetCta: { fontSize: 12, fontWeight: '800', color: 'white' },
 
   // Seller Tier Card
   sellerTierCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'white',
     marginHorizontal: 20,
-    marginTop: 10,
-    borderRadius: 16,
-    padding: 12,
+    marginTop: 14,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#EEF2FF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   tierIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: '#ECFDF5',
     justifyContent: 'center',
     alignItems: 'center',
   },
   tierRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-  tierTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
-  tierBadge: { backgroundColor: '#D1FAE5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  tierBadgeText: { fontSize: 9, fontWeight: '800', color: '#059669' },
-  tierSub: { fontSize: 11, color: '#64748B' },
+  tierTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
+  tierBadge: { backgroundColor: '#10B981', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  tierBadgeText: { fontSize: 9, fontWeight: '900', color: 'white', letterSpacing: 0.5 },
+  tierSub: { fontSize: 11, color: '#64748B', fontWeight: '500' },
 
   // Tabs
   tabBar: {
     flexDirection: 'row',
     marginHorizontal: 20,
-    marginTop: 20,
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    marginTop: 24,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
+    padding: 4,
   },
-  tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', gap: 4, borderRadius: 12 },
-  tabBtnActive: { backgroundColor: '#EEF2FF' },
-  tabLabel: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
-  tabLabelActive: { color: '#6366F1' },
+  tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', gap: 4, borderRadius: 999 },
+  tabBtnActive: { backgroundColor: 'white', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 2 },
+  tabLabel: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+  tabLabelActive: { color: '#3665F3', fontWeight: '900' },
 
   // Tab content
   tabContent: { paddingHorizontal: 20, paddingTop: 20 },

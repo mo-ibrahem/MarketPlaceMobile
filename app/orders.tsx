@@ -10,11 +10,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
   Package,
-  ShoppingBag,
   Tag,
   Clock,
   ChevronRight,
@@ -22,11 +20,13 @@ import {
   Truck,
   AlertCircle,
   ShieldCheck,
+  RefreshCw,
+  Lock,
 } from 'lucide-react-native';
 import { useAuth } from '../hooks/useAuth';
 import { getUserOrders, type MarketplaceOrder } from '../src/services/lib/orderService';
 
-type TabKey = 'purchases' | 'sales' | 'all';
+type TabKey = 'all' | 'purchases' | 'sales';
 
 const STATUS_CONFIG: Record<MarketplaceOrder['status'], { label: string; label_ar: string; color: string; icon: any }> = {
   pending_payment: { label: 'Pending', label_ar: 'قيد الدفع', color: '#F59E0B', icon: Clock },
@@ -107,7 +107,7 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabKey>('purchases');
+  const [activeTab, setActiveTab] = useState<TabKey>('all');
 
   const fetchOrders = useCallback(async () => {
     if (!user) return;
@@ -141,66 +141,100 @@ export default function OrdersScreen() {
   const sales = orders.filter(o => o.seller_id === user?.id);
 
   const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: 'purchases', label: '🛍️ مشترياتي', count: purchases.length },
-    { key: 'sales', label: '🏷️ مبيعاتي', count: sales.length },
-    { key: 'all', label: 'الكل', count: orders.length },
+    { key: 'all', label: `الكل (${orders.length})`, count: orders.length },
+    { key: 'purchases', label: 'مشتريات 🛍️', count: purchases.length },
+    { key: 'sales', label: 'مبيعات 🏷️', count: sales.length },
   ];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
-      <LinearGradient colors={['#0F172A', '#1E293B']} style={styles.header}>
-        <Text style={styles.headerTitle}>سجل الطلبات</Text>
-        <Text style={styles.headerSub}>Order History</Text>
-      </LinearGradient>
+      {/* Premium Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.headerIconBox}>
+            <Package color="#3665F3" size={22} strokeWidth={2.5} />
+          </View>
+          <View>
+            <Text style={styles.headerTitle}>سجل الطلبات</Text>
+            <Text style={styles.headerSub}>Orders & Escrow</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.refreshBtn} onPress={onRefresh} disabled={loading || refreshing}>
+          <RefreshCw color="#64748B" size={16} />
+          <Text style={styles.refreshText}>تحديث</Text>
+        </TouchableOpacity>
+      </View>
 
-      {/* Tabs */}
-      <View style={styles.tabsRow}>
-        {tabs.map(tab => (
-          <TouchableOpacity
-            key={tab.key}
-            onPress={() => setActiveTab(tab.key)}
-            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-          >
-            <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
-              {tab.label}
-            </Text>
-            {tab.count > 0 && (
-              <View style={[styles.tabCount, activeTab === tab.key && styles.tabCountActive]}>
-                <Text style={[styles.tabCountText, activeTab === tab.key && { color: '#3B82F6' }]}>
-                  {tab.count}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        ))}
+      {/* Pill Tabs */}
+      <View style={styles.tabsWrapper}>
+        <View style={styles.tabsContainer}>
+          {tabs.map(tab => (
+            <TouchableOpacity
+              key={tab.key}
+              onPress={() => setActiveTab(tab.key)}
+              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+            >
+              <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* List */}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+          <ActivityIndicator size="large" color="#3665F3" />
         </View>
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={item => item.id}
-          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 80 }]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B82F6" />}
+          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 100 }]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3665F3" />}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
-              <View style={styles.emptyIcon}>
-                {activeTab === 'purchases' ? <ShoppingBag color="#94A3B8" size={32} /> : <Tag color="#94A3B8" size={32} />}
+              <View style={styles.emptyCard}>
+                <View style={styles.emptyIcon}>
+                  <Package color="#3665F3" size={36} strokeWidth={2} />
+                </View>
+                <Text style={styles.emptyTitle}>
+                  {activeTab === 'purchases' ? 'لا توجد مشتريات بعد' : activeTab === 'sales' ? 'لا توجد مبيعات بعد' : 'لا توجد طلبات'}
+                </Text>
+                <Text style={styles.emptyDesc}>
+                  {activeTab === 'purchases'
+                    ? 'تصفح المنتجات واشترِ بضمان حماية المشتري المالي وتوصيل بوسطة.'
+                    : 'أضف منتجاتك وابدأ رحلة البيع الآمن عبر المنصة.'}
+                </Text>
+                <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/' as any)}>
+                  <Text style={styles.emptyBtnText}>
+                    {activeTab === 'purchases' ? 'تصفح المنتجات' : 'أضف إعلانك'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.emptyTitle}>
-                {activeTab === 'purchases' ? 'لا توجد مشتريات بعد' : activeTab === 'sales' ? 'لا توجد مبيعات بعد' : 'لا توجد طلبات'}
-              </Text>
-              <Text style={styles.emptyDesc}>
-                {activeTab === 'purchases'
-                  ? 'تصفح المنتجات وأجر أول عملية شراء بضمان كامل'
-                  : 'أضف منتجاتك للبيع وابدأ رحلة البيع الآمن'}
-              </Text>
             </View>
+          }
+          ListFooterComponent={
+            filtered.length === 0 ? (
+              <View style={styles.trustFooter}>
+                <View style={styles.trustItem}>
+                  <ShieldCheck color="#10B981" size={24} strokeWidth={2} />
+                  <Text style={styles.trustTitle}>حماية الضمان المالي</Text>
+                  <Text style={styles.trustDesc}>أموالك محفوظة بأمان تام حتى فحص الطلب</Text>
+                </View>
+                <View style={styles.trustItem}>
+                  <Truck color="#3B82F6" size={24} strokeWidth={2} />
+                  <Text style={styles.trustTitle}>شحن وتوصيل بوسطة</Text>
+                  <Text style={styles.trustDesc}>توصيل سريع لكل محافظات مصر</Text>
+                </View>
+                <View style={styles.trustItem}>
+                  <Lock color="#7C3AED" size={24} strokeWidth={2} />
+                  <Text style={styles.trustTitle}>دفع وتسويات موثقة</Text>
+                  <Text style={styles.trustDesc}>تسويات فورية عبر شبكة إنستاباي</Text>
+                </View>
+              </View>
+            ) : null
           }
           renderItem={({ item }) => (
             <OrderCard
@@ -217,60 +251,163 @@ export default function OrdersScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
-  headerTitle: { fontSize: 22, fontWeight: '900', color: 'white' },
-  headerSub: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
-
-  tabsRow: {
+  
+  header: { 
     flexDirection: 'row',
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    paddingHorizontal: 12,
-    gap: 4,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16, 
+    paddingTop: 16, 
+    paddingBottom: 16,
+    backgroundColor: '#F8FAFC'
   },
-  tab: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 12, paddingHorizontal: 10, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: '#3B82F6' },
-  tabLabel: { fontSize: 12, fontWeight: '600', color: '#64748B' },
-  tabLabelActive: { color: '#3B82F6', fontWeight: '800' },
-  tabCount: { backgroundColor: '#F1F5F9', borderRadius: 10, paddingHorizontal: 5, paddingVertical: 1 },
-  tabCountActive: { backgroundColor: '#EFF6FF' },
-  tabCountText: { fontSize: 10, fontWeight: '700', color: '#94A3B8' },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  headerIconBox: {
+    width: 44,
+    height: 44,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#3665F3',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  headerTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
+  headerSub: { fontSize: 12, fontWeight: '600', color: '#64748B', marginTop: 2 },
+  
+  refreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'white',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  refreshText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569'
+  },
 
-  list: { padding: 12, gap: 10 },
+  tabsWrapper: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
+    padding: 4,
+  },
+  tab: { 
+    flex: 1,
+    alignItems: 'center', 
+    justifyContent: 'center',
+    paddingVertical: 8, 
+    borderRadius: 999,
+  },
+  tabActive: { 
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabLabel: { fontSize: 13, fontWeight: '700', color: '#64748B' },
+  tabLabelActive: { color: '#3665F3', fontWeight: '900' },
+
+  list: { padding: 16, gap: 12 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   card: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 20,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     borderWidth: 1,
     borderColor: '#F1F5F9',
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  cardImageWrap: { width: 56, height: 56, borderRadius: 12, overflow: 'hidden', flexShrink: 0 },
+  cardImageWrap: { width: 64, height: 64, borderRadius: 14, overflow: 'hidden', flexShrink: 0 },
   cardImage: { width: '100%', height: '100%' },
   cardBody: { flex: 1 },
-  cardTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A', marginBottom: 2 },
-  cardAmount: { fontSize: 14, fontWeight: '900', color: '#3B82F6', marginBottom: 2 },
-  roleBadge: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  cardTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
+  cardAmount: { fontSize: 15, fontWeight: '900', color: '#3665F3', marginBottom: 2 },
+  roleBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   roleText: { fontSize: 10, fontWeight: '800' },
-  dateText: { fontSize: 10, color: '#94A3B8' },
-  awbRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
-  awbText: { fontSize: 10, color: '#7C3AED', fontWeight: '600' },
-  cardRight: { alignItems: 'flex-end', gap: 8, flexShrink: 0 },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3, borderWidth: 1 },
-  statusText: { fontSize: 10, fontWeight: '700' },
+  dateText: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
+  awbRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  awbText: { fontSize: 11, color: '#7C3AED', fontWeight: '700' },
+  cardRight: { alignItems: 'flex-end', gap: 10, flexShrink: 0 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1 },
+  statusText: { fontSize: 10, fontWeight: '800' },
 
-  emptyWrap: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 },
-  emptyIcon: { width: 72, height: 72, borderRadius: 24, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 8, textAlign: 'center' },
-  emptyDesc: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20 },
+  emptyWrap: { alignItems: 'center', paddingTop: 20 },
+  emptyCard: {
+    backgroundColor: 'white',
+    width: '100%',
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#EEF2FF',
+  },
+  emptyIcon: { width: 72, height: 72, borderRadius: 24, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  emptyTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginBottom: 8, textAlign: 'center' },
+  emptyDesc: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 24, paddingHorizontal: 10 },
+  emptyBtn: {
+    backgroundColor: '#3665F3',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#3665F3',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  emptyBtnText: { color: 'white', fontSize: 15, fontWeight: '800' },
+
+  trustFooter: {
+    marginTop: 24,
+    backgroundColor: '#0F172A',
+    borderRadius: 24,
+    padding: 24,
+    gap: 20,
+  },
+  trustItem: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  trustTitle: { fontSize: 15, fontWeight: '800', color: 'white', marginTop: 4 },
+  trustDesc: { fontSize: 12, color: '#94A3B8', textAlign: 'center', lineHeight: 18 },
 });

@@ -1,5 +1,8 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, CheckCircle, Lock, ShieldCheck } from 'lucide-react-native';
+import { ArrowLeft, Lock, ShieldCheck } from 'lucide-react-native';
+import { useAuth } from '../hooks/useAuth';
+import { boostProduct } from '../src/services/lib/boostService';
+import { topUpUserWallet } from '../src/services/lib/walletService';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,23 +20,70 @@ import Toast from 'react-native-toast-message';
 const PAYMOB_IFRAME_ID = process.env.EXPO_PUBLIC_PAYMOB_IFRAME_ID || '957263';
 
 export default function PaymentScreen() {
-  const { paymentToken, orderId, totalEgp } = useLocalSearchParams<{
+  const {
+    paymentToken,
+    orderId,
+    totalEgp,
+    // Phase 2: boost activation after confirmed payment
+    boostProductId,
+    boostTier,
+    // Phase 2: wallet top-up credit after confirmed payment
+    topUpAmount,
+  } = useLocalSearchParams<{
     paymentToken: string;
     orderId: string;
     totalEgp?: string;
+    boostProductId?: string;
+    boostTier?: string;
+    topUpAmount?: string;
   }>();
   const router = useRouter();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [successHandled, setSuccessHandled] = useState(false);
 
   const paymentUrl = `https://accept.paymob.com/api/acceptance/iframes/${PAYMOB_IFRAME_ID}?payment_token=${paymentToken}`;
 
-  const handleSuccess = () => {
+  const handleSuccess = async () => {
+    if (successHandled) return; // prevent double-firing on multiple URL changes
+    setSuccessHandled(true);
+
+    try {
+      // Credit wallet balance only after real payment confirmed
+      if (topUpAmount && user) {
+        await topUpUserWallet(user.id, Number(topUpAmount), 'card');
+      }
+      // Activate boost only after real payment confirmed
+      if (boostProductId && boostTier && user) {
+        await boostProduct(
+          boostProductId,
+          user.id,
+          boostTier as 'urgent' | 'featured' | 'turbo',
+          'paymob',
+        );
+      }
+    } catch (err) {
+      // Non-fatal: payment succeeded, webhook will handle as backup
+      console.warn('[PaymentScreen] Post-payment action failed:', err);
+    }
+
     Toast.show({
       type: 'success',
-      text1: 'Payment Successful! 🎉',
-      text2: 'Funds secured in Escrow. Track your order status below.',
+      text1: topUpAmount
+        ? `EGP ${Number(topUpAmount).toLocaleString()} Added to Wallet! 💳`
+        : boostProductId
+          ? 'Boost Activated! 🚀'
+          : 'Payment Successful! 🎉',
+      text2: topUpAmount
+        ? 'Your spendable balance has been updated.'
+        : boostProductId
+          ? 'Your listing is now promoted.'
+          : 'Funds secured in Escrow. Track your order status below.',
     });
-    if (orderId) {
+
+    if (topUpAmount || boostProductId) {
+      router.replace('/(tabs)');
+    } else if (orderId) {
       router.replace({
         pathname: '/order/[orderId]',
         params: { orderId },
@@ -72,7 +122,9 @@ export default function PaymentScreen() {
           <ArrowLeft color="#0F172A" size={22} />
         </TouchableOpacity>
         <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle}>Paymob Card Checkout</Text>
+          <Text style={styles.headerTitle}>
+            {topUpAmount ? 'Wallet Deposit' : boostProductId ? 'Boost Payment' : 'Secure Card Checkout'}
+          </Text>
           <View style={styles.secureRow}>
             <ShieldCheck color="#10B981" size={13} />
             <Text style={styles.secureText}>256-Bit Encrypted Escrow</Text>
@@ -81,17 +133,7 @@ export default function PaymentScreen() {
         {totalEgp && <Text style={styles.headerPrice}>EGP {Number(totalEgp).toLocaleString()}</Text>}
       </View>
 
-      {/* Sandbox Instant Simulation Tool for Fast Testing */}
-      <View style={styles.sandboxNotice}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.sandboxTitle}>Paymob Test Mode</Text>
-          <Text style={styles.sandboxSub}>Use test card or tap to simulate instant approval</Text>
-        </View>
-        <TouchableOpacity style={styles.simulateBtn} onPress={handleSuccess} activeOpacity={0.8}>
-          <CheckCircle color="white" size={14} />
-          <Text style={styles.simulateBtnText}>Simulate Approval</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Use Paymob test card: 4111 1111 1111 1111 | Exp: any future | CVV: 123 */}
 
       {/* WebView */}
       <View style={{ flex: 1, backgroundColor: 'white' }}>
@@ -143,29 +185,7 @@ const styles = StyleSheet.create({
   secureText: { fontSize: 11, color: '#059669', fontWeight: '600' },
   headerPrice: { fontSize: 15, fontWeight: '900', color: '#2563EB' },
 
-  sandboxNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#BFDBFE',
-    gap: 8,
-  },
-  sandboxTitle: { fontSize: 12, fontWeight: '800', color: '#1E40AF' },
-  sandboxSub: { fontSize: 11, color: '#3B82F6' },
-  simulateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#10B981',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  simulateBtnText: { color: 'white', fontSize: 11, fontWeight: '800' },
+
 
   loadingWrap: {
     ...StyleSheet.absoluteFillObject,

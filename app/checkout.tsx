@@ -35,7 +35,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../hooks/useAuth';
-import { createMarketplaceOrder } from '../src/services/lib/orderService';
+import { createMarketplaceOrder, confirmOrderPayment } from '../src/services/lib/orderService';
 import { startPaymobCheckoutSession } from '../src/services/lib/paymobService';
 import { productService, type Product } from '../src/services/lib/products';
 import { deductWalletSpendableFunds, getUserWallet, type UserWallet } from '../src/services/lib/walletService';
@@ -135,8 +135,9 @@ export default function CheckoutScreen() {
         await deductWalletSpendableFunds(user.id, walletDeduction, order.id, product.title);
       }
 
-      // 3. If 100% paid with wallet, complete order instantly!
+      // 3. If 100% paid with wallet, confirm immediately (no Paymob needed)
       if (remainingDue === 0) {
+        await confirmOrderPayment(order.id); // credit escrow now
         Toast.show({
           type: 'success',
           text1: 'Paid with Wallet Balance! 🛍️🎉',
@@ -176,7 +177,8 @@ export default function CheckoutScreen() {
           },
         } as any);
       } else {
-        // COD or InstaPay reference instant order confirmation
+        // COD or InstaPay — no Paymob webhook will fire, confirm immediately
+        await confirmOrderPayment(order.id);
         Toast.show({ type: 'success', text1: 'Order Placed with Escrow Protection! 🎉' });
         router.replace({
           pathname: '/order/[orderId]',

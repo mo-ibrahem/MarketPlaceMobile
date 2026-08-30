@@ -127,16 +127,15 @@ export default function BoostProductScreen() {
           },
         });
 
-        // Activate boost state
-        await boostProduct(product.id, user.id, selectedTier, 'paymob');
-
-        // Route to Paymob WebView screen
+        // Route to Paymob WebView — boost activation happens AFTER payment succeeds in payment.tsx
         router.push({
           pathname: '/payment',
           params: {
-            iframeUrl: session.iframeUrl,
-            orderId: session.paymobOrderId.toString(),
-            totalAmount: selectedPkg.priceEGP.toString(),
+            paymentToken: session.paymentToken,
+            orderId: `boost_${product.id}_${Date.now()}`,
+            totalEgp: selectedPkg.priceEGP.toString(),
+            boostProductId: product.id,
+            boostTier: selectedTier,
           },
         } as any);
       } catch (err: any) {

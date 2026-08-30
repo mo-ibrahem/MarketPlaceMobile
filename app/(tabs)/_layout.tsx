@@ -1,22 +1,22 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, Tabs } from "expo-router";
-import { House, Video, Tag, Package, User } from "lucide-react-native";
+import { House, Video, Plus, Package, User } from "lucide-react-native";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../hooks/useAuth";
 
-// Custom Sell tab icon — gradient pill with "SELL" label
+// Custom Sell tab icon — floating action button matching the web app
 function SellTabIcon({ focused }: { focused: boolean }) {
   return (
     <View style={styles.sellIconWrap}>
       <LinearGradient
-        colors={focused ? ['#1D4ED8', '#7C3AED'] : ['#6366F1', '#8B5CF6']}
+        colors={['#3665F3', '#5B3DDB']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.sellPill}
+        end={{ x: 1, y: 1 }}
+        style={styles.fabCircle}
       >
-        <Tag color="white" size={14} />
-        <Text style={styles.sellPillText}>SELL</Text>
+        <Plus color="white" size={28} strokeWidth={2.5} />
       </LinearGradient>
+      <Text style={styles.fabText}>Sell</Text>
     </View>
   );
 }
@@ -39,25 +39,26 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#2563EB",
+        tabBarActiveTintColor: "#3665F3",
         tabBarInactiveTintColor: "#94A3B8",
         headerShown: false,
         tabBarStyle: {
           borderTopWidth: 1,
-          borderTopColor: '#F1F5F9',
-          elevation: 20,
-          shadowColor: '#0F172A',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.06,
-          shadowRadius: 16,
-          height: 64,
-          paddingBottom: 8,
+          borderTopColor: '#EEF2FF',
+          elevation: 24,
+          shadowColor: '#1E293B',
+          shadowOffset: { width: 0, height: -6 },
+          shadowOpacity: 0.08,
+          shadowRadius: 20,
+          height: 68,
+          paddingBottom: 10,
           paddingTop: 6,
-          backgroundColor: 'white',
+          backgroundColor: 'rgba(255,255,255,0.98)',
         },
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '700',
+          letterSpacing: 0.1,
         },
       }}
     >
@@ -96,16 +97,16 @@ export default function TabsLayout() {
           tabBarLabel: () => null,
           tabBarStyle: {
             borderTopWidth: 1,
-            borderTopColor: '#F1F5F9',
-            elevation: 20,
-            shadowColor: '#0F172A',
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.06,
-            shadowRadius: 16,
-            height: 64,
-            paddingBottom: 8,
+            borderTopColor: '#EEF2FF',
+            elevation: 24,
+            shadowColor: '#1E293B',
+            shadowOffset: { width: 0, height: -6 },
+            shadowOpacity: 0.08,
+            shadowRadius: 20,
+            height: 68,
+            paddingBottom: 10,
             paddingTop: 6,
-            backgroundColor: 'white',
+            backgroundColor: 'rgba(255,255,255,0.98)',
           },
         }}
       />
@@ -131,27 +132,29 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   sellIconWrap: {
-    marginBottom: 4,
+    top: -6,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  sellPill: {
-    flexDirection: 'row',
+  fabCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 4 },
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'white',
+    shadowColor: '#3665F3',
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowRadius: 10,
+    elevation: 8,
   },
-  sellPillText: {
-    color: 'white',
+  fabText: {
+    color: '#3665F3',
     fontSize: 10,
     fontWeight: '900',
-    letterSpacing: 0.6,
+    marginTop: 4,
   },
   liveIndicatorDot: {
     position: 'absolute',
