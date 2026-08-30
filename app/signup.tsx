@@ -29,7 +29,8 @@ export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
 
   const handleSignUp = async () => {
-    const cleanEmail = email.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim();
     if (!cleanEmail || !password) {
       Toast.show({
         type: 'error',
@@ -38,8 +39,28 @@ export default function SignUpScreen() {
       });
       return;
     }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Email',
+        text2: 'Please enter a valid email address.',
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      Toast.show({
+        type: 'error',
+        text1: 'Weak Password',
+        text2: 'Password must be at least 6 characters.',
+      });
+      return;
+    }
+
     setLoading(true);
-    const displayName = name.trim() || cleanEmail.split('@')[0];
+    const displayName = cleanName || cleanEmail.split('@')[0];
     try {
       const { data, error } = await auth.signUp(cleanEmail, password, displayName);
       
@@ -53,6 +74,13 @@ export default function SignUpScreen() {
         if (Platform.OS !== 'web') {
           Alert.alert("Sign Up Failed", error.message);
         }
+      } else if (data?.user && !data?.session) {
+        Toast.show({
+          type: 'success',
+          text1: '🎉 Account Created!',
+          text2: 'Please check your email to verify your account.',
+        });
+        router.back();
       } else {
         Toast.show({
           type: 'success',

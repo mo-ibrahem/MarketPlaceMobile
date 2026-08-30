@@ -3,6 +3,7 @@ import { ArrowLeft, Lock, ShieldCheck } from 'lucide-react-native';
 import { useAuth } from '../hooks/useAuth';
 import { boostProduct } from '../src/services/lib/boostService';
 import { topUpUserWallet } from '../src/services/lib/walletService';
+import { confirmOrderPayment } from '../src/services/lib/orderService';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -61,6 +62,10 @@ export default function PaymentScreen() {
           boostTier as 'urgent' | 'featured' | 'turbo',
           'paymob',
         );
+      }
+      // Confirm normal marketplace product order payment into escrow
+      if (orderId) {
+        await confirmOrderPayment(orderId);
       }
     } catch (err) {
       // Non-fatal: payment succeeded, webhook will handle as backup

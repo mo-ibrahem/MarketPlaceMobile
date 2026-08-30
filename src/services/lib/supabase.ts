@@ -93,6 +93,20 @@ export const auth = {
   },
   */
 
+  resetPasswordForEmail: async (email: string, redirectTo?: string) => {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectTo || 'https://egbay.market/reset-password',
+    });
+    return { data, error };
+  },
+
+  updatePassword: async (newPassword: string) => {
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    return { data, error };
+  },
+
   signOut: async () => {
     const { error } = await supabase.auth.signOut()
     return { error }

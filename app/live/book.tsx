@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle2, AlertCircle, Video, Wallet } from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { bookLiveSession, LIVE_PASSES, type LivePassTier } from '../../src/services/lib/liveService';
+import { getUserWallet } from '../../src/services/lib/walletService';
 import { supabase } from '../../src/services/lib/supabase';
 
 const CATEGORIES = [
@@ -42,13 +43,12 @@ export default function BookLiveScreen() {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('wallets')
-      .select('available_balance')
-      .eq('user_id', user.id)
-      .single()
-      .then(({ data }) => {
-        setBalance(data?.available_balance ?? 0);
+    getUserWallet(user.id)
+      .then((wallet) => {
+        setBalance(wallet?.available_balance ?? 0);
+        setLoading(false);
+      })
+      .catch(() => {
         setLoading(false);
       });
   }, [user]);

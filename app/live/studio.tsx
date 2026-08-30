@@ -176,11 +176,19 @@ export default function StudioScreen() {
     setCamOn(v => !v);
   };
 
-  const handleSendChat = async () => {
-    if (!chatInput.trim() || !user || !sessionId) return;
-    const msg = chatInput.trim();
-    setChatInput('');
-    await sendChatMessage({ sessionId, userId: user.id, username: user.user_metadata?.full_name || 'Host', message: msg, isHost: true });
+  const handleSendChat = async (customText?: string) => {
+    const content = customText || chatInput;
+    if (!content.trim() || !user || !sessionId) return;
+    const msg = content.trim();
+    if (!customText) setChatInput('');
+    await sendChatMessage({
+      sessionId,
+      userId: user.id,
+      username: user.user_metadata?.full_name || 'Host',
+      message: msg,
+      isHost: true,
+      msgType: customText ? 'reaction' : 'chat',
+    });
   };
 
   const handlePinProduct = async (product: any) => {
@@ -272,19 +280,50 @@ export default function StudioScreen() {
             data={messages}
             keyExtractor={m => m.id}
             style={{ flex: 1 }}
-            contentContainerStyle={{ padding: 8, gap: 4 }}
-            renderItem={({ item: msg }) => (
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: msg.is_host ? '#EF4444' : '#374151', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 9, color: 'white', fontWeight: '700' }}>{msg.username?.[0]?.toUpperCase()}</Text>
+            contentContainerStyle={{ padding: 8, gap: 6 }}
+            renderItem={({ item: msg }) => {
+              if (msg.msg_type === 'purchase') {
+                return (
+                  <View style={{ backgroundColor: '#451A03', borderWidth: 1, borderColor: '#F59E0B', borderRadius: 10, padding: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={{ fontSize: 14 }}>🎉</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#FCD34D' }}>طلب جديد!</Text>
+                      <Text style={{ fontSize: 10, color: '#34D399', fontWeight: '700' }}>{msg.message}</Text>
+                    </View>
+                  </View>
+                );
+              }
+              if (msg.msg_type === 'pin') {
+                return (
+                  <View style={{ backgroundColor: '#1E1B4B', borderWidth: 1, borderColor: '#6366F1', borderRadius: 8, padding: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontSize: 11 }}>📌</Text>
+                    <Text style={{ fontSize: 10, color: '#C7D2FE', fontWeight: '600' }}>{msg.message}</Text>
+                  </View>
+                );
+              }
+              return (
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: msg.is_host ? '#DC2626' : '#374151', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 9, color: 'white', fontWeight: '800' }}>{msg.is_host ? '👑' : (msg.username?.[0]?.toUpperCase() || '?')}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 9, color: msg.is_host ? '#FCA5A5' : '#9CA3AF', fontWeight: msg.is_host ? '800' : '500' }}>
+                      {msg.username} {msg.is_host ? '(HOST)' : ''}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: 'white' }}>{msg.message}</Text>
+                  </View>
                 </View>
-                <View>
-                  <Text style={{ fontSize: 9, color: msg.is_host ? '#FCA5A5' : '#9CA3AF' }}>{msg.username}</Text>
-                  <Text style={{ fontSize: 11, color: 'white' }}>{msg.message}</Text>
-                </View>
-              </View>
-            )}
+              );
+            }}
           />
+          {/* Quick Emojis Strip */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#0B0F19' }}>
+            {['❤️', '🔥', '👏', '🚀', '💎', '💯', '😂', '🎉'].map(emoji => (
+              <TouchableOpacity key={emoji} onPress={() => handleSendChat(emoji)} style={{ padding: 4 }}>
+                <Text style={{ fontSize: 16 }}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <View style={{ flexDirection: 'row', gap: 6, padding: 8, borderTopWidth: 1, borderTopColor: '#1F2937' }}>
             <TextInput
               value={chatInput}
@@ -292,9 +331,9 @@ export default function StudioScreen() {
               placeholder="اكتب رسالة..."
               placeholderTextColor="#6B7280"
               style={{ flex: 1, backgroundColor: '#1F2937', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, fontSize: 12, color: 'white' }}
-              onSubmitEditing={handleSendChat}
+              onSubmitEditing={() => handleSendChat()}
             />
-            <TouchableOpacity onPress={handleSendChat} style={{ width: 36, height: 36, backgroundColor: '#2563EB', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
+            <TouchableOpacity onPress={() => handleSendChat()} style={{ width: 36, height: 36, backgroundColor: '#2563EB', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
               <Send color="white" size={14} />
             </TouchableOpacity>
           </View>
