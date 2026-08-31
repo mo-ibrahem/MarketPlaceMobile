@@ -107,15 +107,17 @@ export async function createMarketplaceOrder(orderData: {
     });
     const json = await res.json();
     if (json?.success && json?.order) {
-      inMemoryOrders[orderId] = newOrder;
-      return newOrder;
+      // Map the backend's generated handover_pin to meetup_pin for the UI
+      json.order.meetup_pin = json.order.handover_pin;
+      inMemoryOrders[json.order.id] = json.order;
+      return json.order as MarketplaceOrder;
+    } else {
+      throw new Error(json?.error || 'Failed to create order on server');
     }
   } catch (apiErr) {
     console.warn('[OrderService] /api/orders create API warning:', apiErr);
+    throw apiErr;
   }
-
-  inMemoryOrders[orderId] = newOrder;
-  return newOrder;
 }
 
 /**
@@ -227,7 +229,7 @@ export async function getOrderById(orderId: string): Promise<MarketplaceOrder | 
         currency: 'EGP',
         status: data.status,
         handover_method: notesData.handover_method || 'courier',
-        meetup_pin: notesData.meetup_pin || '123456',
+        meetup_pin: notesData.meetup_pin || data.handover_pin || '123456',
         shipping_address: data.shipping_address,
         tracking_number: data.tracking_number,
         courier_name: data.courier_name || 'Bosta',
