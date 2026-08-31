@@ -367,3 +367,9 @@ entrypoint = "./functions/create-payment-key/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/create-payment-key/*.html" ]
+
+[functions.paymob-webhook]
+enabled = true
+verify_jwt = false
+import_map = "./functions/paymob-webhook/deno.json"
+entrypoint = "./functions/paymob-webhook/index.ts"

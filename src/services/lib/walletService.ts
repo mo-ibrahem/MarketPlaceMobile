@@ -352,12 +352,15 @@ export async function topUpUserWallet(
   const newAvailable = (Number(wallet.available_balance) || 0) + amount;
 
   try {
+    const { data: { session } } = await supabase.auth.getSession();
     await fetch('https://www.egbay.shop/api/wallet/action', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
+      },
       body: JSON.stringify({
         action: 'topup_manual',
-        userId,
         amount,
         paymentMethod
       })
@@ -527,12 +530,15 @@ export async function requestPayout(
   const newAvailable = available - amount;
 
   try {
+    const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch('https://egbay.shop/api/wallet/action', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
+      },
       body: JSON.stringify({
         action: 'request_payout',
-        userId,
         amount,
         payoutMethodId: payoutMethod.id,
         payoutMethodIdentifier: payoutMethod.account_identifier
@@ -589,12 +595,15 @@ export async function deductWalletSpendableFunds(
   const newAvailable = available - amount;
 
   try {
+    const { data: { session } } = await supabase.auth.getSession();
     await fetch('https://egbay.shop/api/wallet/action', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
+      },
       body: JSON.stringify({
         action: 'deduct_spendable',
-        userId,
         amount,
         orderId,
         itemTitle

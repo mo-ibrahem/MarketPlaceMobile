@@ -56,8 +56,7 @@ import {
   type UserWallet,
   type WalletTransaction,
 } from '../src/services/lib/walletService';
-import { startPaymobCheckoutSession } from '../src/services/lib/paymobService';
-
+import { supabase } from '../src/services/lib/supabase';
 export default function WalletScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -135,31 +134,16 @@ export default function WalletScreen() {
       searchParams.txn_response_code === 'APPROVED' ||
       (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('success') === 'true'));
 
-    let amountCents = searchParams.amount_cents;
-    let txId = searchParams.id || searchParams.order;
-    if (typeof window !== 'undefined' && !amountCents) {
-      const q = new URLSearchParams(window.location.search);
-      amountCents = q.get('amount_cents') || undefined;
-      txId = q.get('id') || q.get('order') || undefined;
-    }
-
-    if (isApproved && user && (amountCents || txId)) {
-      const dedupeKey = `paymob_mobile_wallet_${txId || amountCents}`;
-      if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(dedupeKey)) {
-        sessionStorage.setItem(dedupeKey, '1');
-        const depositEgp = Math.round(Number(amountCents || 0) / 100);
-        if (depositEgp > 0) {
-          (async () => {
-            await topUpUserWallet(user.id, depositEgp, 'card', txId);
-            Toast.show({
-              type: 'success',
-              text1: `EGP ${depositEgp.toLocaleString()} Added to Wallet! 💳`,
-              text2: 'Your spendable balance has been updated.',
-            });
-            await loadWalletData();
-          })();
-        }
-      }
+    if (isApproved) {
+      // Show a toast that payment is being verified by the server
+      Toast.show({
+        type: 'info',
+        text1: 'Verifying Payment... 🔄',
+        text2: 'Please wait a moment while we confirm your top-up.',
+      });
+      
+      // Reload wallet data to check if the backend webhook has credited the wallet
+      loadWalletData();
     }
   }, [loadWalletData, user, searchParams]);
 
@@ -176,28 +160,30 @@ export default function WalletScreen() {
     }
 
     if (topUpMethod === 'card') {
-      // Route through Paymob — balance is ONLY credited after payment.tsx confirms success
       setToppingUp(true);
       try {
-        const session = await startPaymobCheckoutSession({
-          amountEgp: amount,
-          merchantOrderId: `topup_${user.id}_${Date.now()}`,
-          itemName: `EgyBay Wallet Deposit: EGP ${amount}`,
-          billingData: {
-            first_name: user.user_metadata?.full_name?.split(' ')[0] || 'User',
-            last_name: user.user_metadata?.full_name?.split(' ')[1] || 'EgyBay',
-            email: user.email || 'user@egbay.market',
-            phone_number: '+201000000000',
-            city: 'Cairo',
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch('https://egbay.shop/api/wallet/topup/create', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token || ''}`
           },
+          body: JSON.stringify({ amount }),
         });
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to start payment session');
+        }
+
         setTopUpModalVisible(false);
         setTopUpAmount('');
         router.push({
           pathname: '/payment',
           params: {
-            paymentToken: session.paymentToken,
-            orderId: `topup_${user.id}`,
+            paymentToken: data.paymentToken,
+            orderId: data.topupId, // Pass topup ID to check status
             topUpAmount: amount.toString(),
           },
         } as any);

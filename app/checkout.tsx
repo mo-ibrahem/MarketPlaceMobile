@@ -18,6 +18,7 @@ import {
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { supabase } from '../src/services/lib/supabase';
 import {
   ActivityIndicator,
   Alert,
@@ -130,14 +131,28 @@ export default function CheckoutScreen() {
         },
       });
 
-      // 2. Deduct Spendable Funds if applied
-      if (walletDeduction > 0) {
-        await deductWalletSpendableFunds(user.id, walletDeduction, order.id, product.title);
-      }
+      // 2. 100% Wallet Checkout
+      if (useWalletBalance && remainingDue === 0) {
+        // Backend handles all fee/escrow deductions securely via the Phase 4 RPC
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch('https://egbay.shop/api/wallet/action', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(session && { 'Authorization': `Bearer ${session.access_token}` })
+          },
+          body: JSON.stringify({
+            action: 'deduct_spendable',
+            orderId: order.id
+          })
+        });
+        const walletResult = await res.json();
+        
+        if (!walletResult.success) {
+           throw new Error(walletResult.error || 'Wallet checkout failed');
+        }
 
-      // 3. If 100% paid with wallet, confirm immediately (no Paymob needed)
-      if (remainingDue === 0) {
-        await confirmOrderPayment(order.id); // credit escrow now
+        await confirmOrderPayment(order.id); // Triggers frontend UI refresh
         Toast.show({
           type: 'success',
           text1: 'Paid with Wallet Balance! 🛍️🎉',
@@ -153,9 +168,8 @@ export default function CheckoutScreen() {
       // 4. If remaining due > 0, initiate Paymob checkout session (Full or Split card payment)
       if (remainingDue > 0) {
         const session = await startPaymobCheckoutSession({
-          amountEgp: remainingDue,
-          merchantOrderId: order.id,
-          itemName: `${product.title} (Order #${order.id.slice(-6)})`,
+          purpose: 'order',
+          referenceId: order.id,
           billingData: {
             first_name: fullName.split(' ')[0] || 'Buyer',
             last_name: fullName.split(' ')[1] || 'Egbay',
@@ -360,7 +374,7 @@ export default function CheckoutScreen() {
 
             {/* ════════ EBAY SPENDABLE FUNDS & SPLIT PAYMENT CARD ════════ */}
             {walletBalance > 0 && (
-              <View style={styles.walletSplitCard}>
+              <View style={[styles.walletSplitCard, walletBalance < totalPrice && { opacity: 0.6 }]}>
                 <View style={styles.walletSplitTop}>
                   <View style={styles.walletSplitIconBox}>
                     <Wallet color="#10B981" size={20} />
@@ -370,36 +384,30 @@ export default function CheckoutScreen() {
                     <Text style={styles.walletSplitSub}>
                       Available: <Text style={{ fontWeight: '800', color: '#0F172A' }}>EGP {walletBalance.toLocaleString()}</Text>
                     </Text>
+                    {walletBalance < totalPrice && (
+                      <Text style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>Insufficient for full payment</Text>
+                    )}
                   </View>
                   <TouchableOpacity
                     style={[styles.togglePill, useWalletBalance && styles.togglePillActive]}
-                    onPress={() => setUseWalletBalance(!useWalletBalance)}
+                    onPress={() => {
+                      if (walletBalance >= totalPrice) {
+                        setUseWalletBalance(!useWalletBalance);
+                      } else {
+                        Toast.show({ type: 'info', text1: 'Insufficient Balance', text2: 'Wallet balance must cover the full amount.' });
+                      }
+                    }}
                     activeOpacity={0.8}
                   >
                     <View style={[styles.toggleCircle, useWalletBalance && styles.toggleCircleActive]} />
                   </TouchableOpacity>
                 </View>
 
-                {useWalletBalance && (
+                {useWalletBalance && walletBalance >= totalPrice && (
                   <View style={styles.walletSplitBreakdown}>
-                    <Text style={styles.walletSplitBreakdownText}>
-                      • Deduct from Wallet:{' '}
-                      <Text style={{ fontWeight: '800', color: '#10B981' }}>
-                        -EGP {walletDeduction.toLocaleString()}
-                      </Text>
+                    <Text style={[styles.walletSplitBreakdownText, { color: '#059669', fontWeight: '800' }]}>
+                      ✨ 100% Covered by Wallet — 1-Tap Instant Checkout!
                     </Text>
-                    {remainingDue > 0 ? (
-                      <Text style={styles.walletSplitBreakdownText}>
-                        • Remaining Due via Card/Gateway:{' '}
-                        <Text style={{ fontWeight: '800', color: '#2563EB' }}>
-                          EGP {remainingDue.toLocaleString()}
-                        </Text>
-                      </Text>
-                    ) : (
-                      <Text style={[styles.walletSplitBreakdownText, { color: '#059669', fontWeight: '800' }]}>
-                        ✨ 100% Covered by Wallet — 1-Tap Instant Checkout!
-                      </Text>
-                    )}
                   </View>
                 )}
               </View>

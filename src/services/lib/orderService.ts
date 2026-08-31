@@ -41,6 +41,7 @@ export interface MarketplaceOrder {
     condition: string;
     category: string;
   };
+  product_snapshot?: any;
   seller?: {
     full_name?: string;
     avatar_url?: string;
@@ -92,9 +93,13 @@ export async function createMarketplaceOrder(orderData: {
 
   // Direct client-side DB insert removed for security. Relying strictly on API route.
   try {
+    const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch('https://egbay.shop/api/orders', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
+      },
       body: JSON.stringify({
         action: 'create',
         orderData: newOrder,
@@ -121,31 +126,19 @@ export async function confirmOrderPayment(orderId: string): Promise<void> {
   const order = await getOrderById(orderId);
   if (!order) throw new Error('Order not found: ' + orderId);
 
-  // 1. Call server API to guarantee Postgres updates bypassing client RLS
+  // Payment confirmation is strictly handled by backend webhooks (/api/wallet/credit)
+  // We simply wait for the webhook to update the DB, no client-side mutations.
   try {
-    await fetch('https://egbay.shop/api/wallet/credit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        merchantOrderId: orderId,
-        amountCents: Math.round(order.amount * 100),
-        txId: `mobile_confirm_${orderId}`,
-        isSuccess: true,
-      }),
-    });
-  } catch (apiErr) {
-    console.warn('[OrderService] Mobile server credit sync warning:', apiErr);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      // Just poll backend once to force a refresh if possible, or rely on UI reload
+      await fetch(`https://egbay.shop/api/orders?id=${orderId}`, {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+    }
+  } catch (e) {
+    console.warn('Silent refresh error:', e);
   }
-
-  // DB Status is updated securely by the webhook handling /api/wallet/credit. No client DB mutation required.
-
-  if (inMemoryOrders[orderId]) {
-    inMemoryOrders[orderId].status = 'escrow_secured';
-  }
-
-  // NOW credit seller escrow — only after real payment is confirmed
-  await holdEscrowForSeller(order.seller_id, orderId, order.amount);
-  await notifyItemSold(order.seller_id, order.product?.title || 'Your listing', order.amount, orderId, order.shipping_address?.full_name);
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -276,9 +269,13 @@ export async function updateOrderTracking(
   }
 
   try {
+    const { data: { session } } = await supabase.auth.getSession();
     await fetch('https://egbay.shop/api/orders', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
+      },
       body: JSON.stringify({
         action: 'update_tracking',
         orderId,
@@ -307,20 +304,26 @@ export async function approveOrderDelivery(orderId: string): Promise<{ success: 
   }
 
   try {
-    await fetch('https://egbay.shop/api/orders', {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('https://egbay.shop/api/orders', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
+      },
       body: JSON.stringify({
         action: 'release_escrow',
-        orderId,
-        requesterId: order.buyer_id
+        orderId
       }),
     });
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error || 'Failed to release escrow');
   } catch (err) {
     console.warn('[OrderService] release_escrow API error:', err);
+    throw err;
   }
 
-  await releaseEscrowToSeller(order.seller_id, orderId, order.amount * 0.96);
+  // Reload order state if possible or rely on UI refresh
 
   return {
     success: true,
@@ -345,9 +348,13 @@ export async function fileOrderDispute(
   }
 
   try {
+    const { data: { session } } = await supabase.auth.getSession();
     await fetch('https://egbay.shop/api/orders', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
+      },
       body: JSON.stringify({
         action: 'dispute',
         orderId,
@@ -385,29 +392,31 @@ export async function verifyMeetupPIN(
     return { success: true, message: 'Order is already delivered and settled' };
   }
 
-  if (order.meetup_pin !== enteredPin.trim()) {
-    throw new Error('Invalid verification PIN. Please verify with the buyer');
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('https://egbay.shop/api/orders', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
+      },
+      body: JSON.stringify({
+        action: 'release_escrow',
+        orderId,
+        pin: enteredPin
+      }),
+    });
+    const result = await res.json();
+    if (!result.success) {
+       throw new Error(result.error || 'Invalid verification PIN.');
+    }
+  } catch (err) {
+    console.warn('[OrderService] release API error:', err);
+    throw err;
   }
 
   order.status = 'delivered';
   inMemoryOrders[orderId] = order;
-
-  try {
-    await fetch('https://egbay.shop/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'release_escrow',
-        orderId,
-        pin: enteredPin,
-        requesterId: order.seller_id
-      }),
-    });
-  } catch (err) {
-    console.warn('[OrderService] release API error:', err);
-  }
-
-  await releaseEscrowToSeller(order.seller_id, orderId, order.amount * 0.96);
 
   return {
     success: true,

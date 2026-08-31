@@ -50,21 +50,23 @@ export default function PaymentScreen() {
     setSuccessHandled(true);
 
     try {
-      if (topUpAmount && user) {
+      if (topUpAmount && user && orderId) {
         try {
-          await fetch('https://www.egbay.shop/api/wallet/credit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              merchantOrderId: `topup_${user.id}_${Date.now()}`,
-              targetUserId: user.id,
-              amountCents: Math.round(Number(topUpAmount) * 100),
-              txId: `paymob_mobile_${Date.now()}`,
-              isSuccess: true,
-            }),
-          });
+          // Wait up to 10 seconds for the backend Paymob webhook to process the transaction
+          const { supabase } = await import('../src/services/lib/supabase');
+          const { data: { session } } = await supabase.auth.getSession();
+          for (let i = 0; i < 5; i++) {
+            const res = await fetch(`https://egbay.shop/api/wallet/topup/status?id=${orderId}`, {
+              headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
+            });
+            const statusData = await res.json();
+            if (statusData.success && statusData.status === 'paid') {
+              break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
         } catch (apiErr) {
-          console.warn('[PaymentScreen] Topup credit sync error:', apiErr);
+          console.warn('[PaymentScreen] Status check error:', apiErr);
         }
       }
       // Activate boost only after real payment confirmed

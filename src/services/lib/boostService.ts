@@ -71,72 +71,47 @@ let inMemoryPromotions: Record<string, { tier: string; until: string }> = {};
  */
 export async function boostProduct(
   productId: string,
-  userId: string,
+  userId: string, // Kept for signature compatibility, backend will ignore
   packageId: 'urgent' | 'featured' | 'turbo',
   paymentSource: 'wallet_balance' | 'paymob'
 ): Promise<{ success: boolean; message: string; promotedUntil: string }> {
   const pkg = BOOST_PACKAGES[packageId];
   if (!pkg) throw new Error('Invalid boost package selected');
 
-  const expiryDate = new Date();
-  expiryDate.setDate(expiryDate.getDate() + pkg.durationDays);
-  const promotedUntil = expiryDate.toISOString();
-
-  // 1. If paying with wallet balance, verify & deduct
   if (paymentSource === 'wallet_balance') {
-    const wallet = await getUserWallet(userId);
-    const available = Number(wallet.available_balance) || 0;
-    if (available < pkg.priceEGP) {
-      throw new Error(`Insufficient wallet balance (Available: EGP ${available.toLocaleString()}, Needed: EGP ${pkg.priceEGP})`);
-    }
-
-    const newAvailable = available - pkg.priceEGP;
     try {
-      await supabase
-        .from('user_wallets' as any)
-        .update({ available_balance: newAvailable, updated_at: new Date().toISOString() } as any)
-        .eq('user_id', userId);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const res = await fetch('https://egbay.shop/api/boost', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(session && { 'Authorization': `Bearer ${session.access_token}` })
+        },
+        body: JSON.stringify({ productId, packageId })
+      });
+      
+      const data = await res.json();
+      if (!data.success) {
+         throw new Error(data.error || 'Failed to purchase boost');
+      }
 
-      await supabase.from('wallet_transactions' as any).insert({
-        wallet_id: wallet.id,
-        type: 'fee_deduction',
-        amount: pkg.priceEGP,
-        fee_amount: 0,
-        status: 'completed',
-        description: `Boost: ${pkg.title} (${pkg.durationDays} Days)`,
-        created_at: new Date().toISOString(),
-      } as any);
-    } catch (err) {
-      console.warn('[BoostService] Wallet deduction error, fallback to memory:', err);
+      return {
+        success: true,
+        message: `Your product is now boosted with ${pkg.title}!`,
+        promotedUntil: data.promotedUntil,
+      };
+    } catch (err: any) {
+      console.warn('[BoostService] API boost error:', err);
+      throw err;
     }
-
-    wallet.available_balance = newAvailable;
   }
 
-  // 2. Update product row on Supabase
-  try {
-    const { error } = await supabase
-      .from('products')
-      .update({
-        is_promoted: true,
-        promotion_tier: packageId,
-        promoted_until: promotedUntil,
-      } as any)
-      .eq('id', productId);
-
-    if (error) {
-      console.warn('[BoostService] Error updating product promotion on Supabase:', error);
-    }
-  } catch (err) {
-    console.warn('[BoostService] Fallback to in-memory promotion:', err);
-  }
-
-  inMemoryPromotions[productId] = { tier: packageId, until: promotedUntil };
-
+  // Paymob flow expects the webhook to handle activation
   return {
     success: true,
-    message: `Your product is now boosted with ${pkg.title}! It will enjoy ${pkg.multiplierText} for ${pkg.durationDays} days.`,
-    promotedUntil,
+    message: `Payment initiated for ${pkg.title}`,
+    promotedUntil: '',
   };
 }
 

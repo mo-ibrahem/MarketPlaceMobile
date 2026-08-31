@@ -10,7 +10,6 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const HMAC_SECRET = Deno.env.get('PAYMOB_HMAC_SECRET')!;
 
 // The 21 fields Paymob requires for HMAC-SHA512 verification, in exact alphabetical order.
-// See: https://docs.paymob.com/docs/hmac-calculation
 const HMAC_FIELDS = [
   'amount_cents', 'created_at', 'currency', 'error_occured',
   'has_parent_transaction', 'id', 'integration_id', 'is_3d_secure',
@@ -73,104 +72,41 @@ Deno.serve(async (req: Request) => {
     return new Response('OK: ignored non-success event', { status: 200 });
   }
 
-  const merchantOrderId: string = txn.order?.merchant_order_id || '';
-  const amountEgp: number = (txn.amount_cents || 0) / 100;
+  const merchantOrderId: string = String(txn.order?.merchant_order_id || '');
+  const amountCents: number = Number(txn.amount_cents || 0);
+  const txId: string = String(txn.id || '');
+  const currency: string = String(txn.currency || 'EGP');
+
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
   try {
     // 1. Wallet Top-Up — merchant_order_id: topup_<userId>_<timestamp>
     if (merchantOrderId.startsWith('topup_')) {
-      const userId = merchantOrderId.split('_')[1];
-
-      const { data: wallet } = await supabase
-        .from('user_wallets').select('id, available_balance')
-        .eq('user_id', userId).maybeSingle();
-
-      if (wallet) {
-        const newBalance = Number(wallet.available_balance || 0) + amountEgp;
-        await supabase.from('user_wallets')
-          .update({ available_balance: newBalance, updated_at: new Date().toISOString() })
-          .eq('user_id', userId);
-
-        await supabase.from('wallet_transactions').insert({
-          wallet_id: wallet.id, type: 'top_up', amount: amountEgp,
-          fee_amount: 0, status: 'completed',
-          description: `Wallet Deposit via Paymob (txn #${txn.id})`,
-          created_at: new Date().toISOString(),
-        });
-      }
+      const { data, error } = await supabase.rpc('process_paymob_topup', {
+        p_merchant_order_id: merchantOrderId,
+        p_paymob_tx_id: parseInt(txId, 10),
+        p_amount_cents: amountCents,
+        p_currency: currency
+      });
+      if (error) throw error;
     }
 
     // 2. Boost Payment — merchant_order_id: boost_<productId>_<tier>_<timestamp>
     else if (merchantOrderId.startsWith('boost_')) {
-      const parts = merchantOrderId.split('_');
-      const productId = parts[1];
-      const tier = parts[2] || 'featured';
-      const daysMap: Record<string, number> = { urgent: 3, featured: 7, turbo: 14 };
-      const days = daysMap[tier] || 7;
-      const promotedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
-
-      await supabase.from('products').update({
-        is_promoted: true, promotion_tier: tier,
-        promoted_until: promotedUntil, updated_at: new Date().toISOString(),
-      }).eq('id', productId);
+      // Direct integration for boost webhooks is deprecated in this phase as it's processed on the client side directly
+      // If we still receive them, we log and acknowledge.
+      console.log('Boost webhook received (deprecated):', merchantOrderId);
     }
 
     // 3. Marketplace Order — merchant_order_id: ord_<timestamp>
     else if (merchantOrderId.startsWith('ord_')) {
-      const { data: order } = await supabase.from('orders')
-        .select('id, status, seller_id, amount')
-        .eq('id', merchantOrderId).maybeSingle();
-
-      if (!order || order.status !== 'pending_payment') {
-        return new Response('OK: order not found or already processed', { status: 200 });
-      }
-
-      // Fetch seller tier for commission rate
-      const { data: profile } = await supabase.from('user_profiles')
-        .select('tier').eq('id', order.seller_id).maybeSingle();
-
-      const tier = ((profile as any)?.tier as 1 | 2 | 3) || 1;
-      const tierRates: Record<number, number> = { 1: 0.035, 2: 0.025, 3: 0.015 };
-      const platformFeeRate = tierRates[tier] || 0.035;
-      const paymobFee = Math.round((order.amount * 0.0275) + 3);
-      const platformCommission = Math.round(order.amount * platformFeeRate);
-      const totalDeductions = platformCommission + paymobFee;
-      const netAmount = order.amount - totalDeductions;
-      const isInstantClearance = tier === 3;
-
-      // Transition order status
-      await supabase.from('orders')
-        .update({ status: 'escrow_secured', updated_at: new Date().toISOString() })
-        .eq('id', merchantOrderId);
-
-      // Credit seller wallet (service role bypasses RLS)
-      const { data: sellerWallet } = await supabase.from('user_wallets')
-        .select('id, pending_balance, available_balance')
-        .eq('user_id', order.seller_id).maybeSingle();
-
-      if (sellerWallet) {
-        const updatePayload = isInstantClearance
-          ? { available_balance: Number(sellerWallet.available_balance || 0) + netAmount }
-          : { pending_balance: Number(sellerWallet.pending_balance || 0) + netAmount };
-
-        await supabase.from('user_wallets')
-          .update({ ...updatePayload, updated_at: new Date().toISOString() })
-          .eq('user_id', order.seller_id);
-
-        await supabase.from('wallet_transactions').insert({
-          wallet_id: sellerWallet.id,
-          order_id: merchantOrderId,
-          type: isInstantClearance ? 'escrow_release' : 'escrow_hold',
-          amount: netAmount,
-          fee_amount: totalDeductions,
-          status: 'completed',
-          description: isInstantClearance
-            ? `Instant Payout: Order #${merchantOrderId.slice(-6).toUpperCase()} (Pro Tier)`
-            : `Escrow Hold: Order #${merchantOrderId.slice(-6).toUpperCase()} (${(platformFeeRate * 100).toFixed(1)}% + Paymob fees)`,
-          created_at: new Date().toISOString(),
-        });
-      }
+      const { data, error } = await supabase.rpc('process_paymob_order_payment', {
+        p_merchant_order_id: merchantOrderId,
+        p_paymob_tx_id: parseInt(txId, 10),
+        p_amount_cents: amountCents,
+        p_currency: currency
+      });
+      if (error) throw error;
     }
   } catch (err) {
     console.error('[PaymobWebhook] Processing error:', err);

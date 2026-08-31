@@ -43,7 +43,7 @@ function OrderCard({ order, userId, onPress }: { order: MarketplaceOrder; userId
   const isBuyer = order.buyer_id === userId;
   const cfg = STATUS_CONFIG[order.status];
   const StatusIcon = cfg.icon;
-  const image = order.product?.images?.[0];
+  const image = (order.product_snapshot as any)?.images?.[0] || order.product?.images?.[0];
   const dateStr = new Date(order.created_at).toLocaleDateString('ar-EG', {
     day: 'numeric',
     month: 'short',
@@ -74,7 +74,7 @@ function OrderCard({ order, userId, onPress }: { order: MarketplaceOrder; userId
         </View>
 
         <Text style={styles.cardTitle} numberOfLines={1}>
-          {order.product?.title || 'منتج'}
+          {(order.product_snapshot as any)?.title || order.product?.title || 'منتج'}
         </Text>
         <Text style={styles.cardAmount}>{order.amount.toLocaleString('ar-EG')} ج.م</Text>
 
