@@ -3,9 +3,8 @@
   "compilerOptions": {
     "strict": true,
     
-    // 1. ADD THIS LINE: It is crucial for 'paths' to work correctly.
-    "baseUrl": ".", 
-    
+    // "paths" below are tsconfig-relative, so no "baseUrl" is needed --
+    // TypeScript 6 deprecates it and 7 removes it.
     "paths": {
       // Your existing alias
       "@/*": [

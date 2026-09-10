@@ -474,7 +474,13 @@ const styles = StyleSheet.create({
   webBarBtnText: { fontSize: 11, fontWeight: '800', color: 'white' },
 
   loadingWrap: {
-    ...StyleSheet.absoluteFillObject,
+    // Written out rather than spreading StyleSheet.absoluteFillObject, which
+    // RN 0.86 no longer exposes on the StyleSheet type.
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
