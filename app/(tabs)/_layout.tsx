@@ -2,27 +2,38 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, Tabs } from "expo-router";
 import { House, Video, Plus, Package, User } from "lucide-react-native";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../hooks/useAuth";
+import { useLanguage } from "../../src/i18n/LanguageContext";
+import { color, font, space, weight } from "../../src/design/tokens";
 
 // Custom Sell tab icon — floating action button matching the web app
-function SellTabIcon({ focused }: { focused: boolean }) {
+function SellTabIcon({ label }: { label: string }) {
   return (
     <View style={styles.sellIconWrap}>
       <LinearGradient
-        colors={['#3665F3', '#5B3DDB']}
+        colors={[color.primary, color.accentAlt]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.fabCircle}
       >
         <Plus color="white" size={28} strokeWidth={2.5} />
       </LinearGradient>
-      <Text style={styles.fabText}>Sell</Text>
+      <Text style={styles.fabText}>{label}</Text>
     </View>
   );
 }
 
 export default function TabsLayout() {
   const { user, loading } = useAuth();
+  const { isRTL } = useLanguage();
+  const insets = useSafeAreaInsets();
+
+  // Tab labels are the most-read text in the app and were English-only, on an
+  // app that ships a language switcher for an Egyptian market.
+  const L = isRTL
+    ? { home: 'الرئيسية', live: 'بث مباشر', sell: 'بيع', orders: 'الطلبات', profile: 'حسابي' }
+    : { home: 'Home', live: 'Live', sell: 'Sell', orders: 'Orders', profile: 'Profile' };
 
   if (loading) {
     return (
@@ -39,24 +50,29 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#3665F3",
-        tabBarInactiveTintColor: "#94A3B8",
+        tabBarActiveTintColor: color.primary,
+        tabBarInactiveTintColor: color.textFaint,
         headerShown: false,
         tabBarStyle: {
           borderTopWidth: 1,
-          borderTopColor: '#EEF2FF',
+          borderTopColor: color.border,
           elevation: 24,
-          shadowColor: '#1E293B',
+          shadowColor: color.inkAlt,
           shadowOffset: { width: 0, height: -6 },
           shadowOpacity: 0.08,
           shadowRadius: 20,
-          height: 68,
-          paddingBottom: 10,
-          paddingTop: 6,
+          // Was a fixed height/padding, which crowded the home indicator on
+          // devices that have one and left dead space on those that do not.
+          // 22pt icon + 11pt label + breathing room = 64 of content, then the
+          // home indicator on top of that. A fixed 68 crowded the indicator on
+          // devices that have one and clipped the label on those that do not.
+          height: 64 + insets.bottom,
+          paddingBottom: Math.max(insets.bottom, space.xs),
+          paddingTop: space.xs + 2,
           backgroundColor: 'rgba(255,255,255,0.98)',
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: font.caption2,
           fontWeight: '700',
           letterSpacing: 0.1,
         },
@@ -65,7 +81,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: L.home,
           tabBarIcon: ({ color, size }) => <House color={color} size={22} />,
         }}
       />
@@ -73,7 +89,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="live"
         options={{
-          title: "Live",
+          title: L.live,
           tabBarIcon: ({ color, focused }) => (
             <View style={{ position: 'relative' }}>
               <Video color={focused ? '#EF4444' : color} size={22} />
@@ -93,7 +109,7 @@ export default function TabsLayout() {
         name="sell"
         options={{
           title: "",
-          tabBarIcon: ({ focused }) => <SellTabIcon focused={focused} />,
+          tabBarIcon: () => <SellTabIcon label={L.sell} />,
           tabBarLabel: () => null,
           tabBarStyle: {
             borderTopWidth: 1,
@@ -114,7 +130,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="orders"
         options={{
-          title: "Orders",
+          title: L.orders,
           tabBarIcon: ({ color, size }) => <Package color={color} size={22} />,
         }}
       />
@@ -122,7 +138,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: "Profile",
+          title: L.profile,
           tabBarIcon: ({ color, size }) => <User color={color} size={22} />,
         }}
       />
