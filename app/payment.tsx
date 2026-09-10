@@ -1,13 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Lock, ShieldCheck } from 'lucide-react-native';
-import { useAuth } from '../hooks/useAuth';
-import { boostProduct } from '../src/services/lib/boostService';
-import { topUpUserWallet } from '../src/services/lib/walletService';
-import { confirmOrderPayment } from '../src/services/lib/orderService';
-import React, { useState, useEffect } from 'react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Clock, ShieldCheck, XCircle } from 'lucide-react-native';
+import { supabase } from '../src/services/lib/supabase';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   StyleSheet,
   Text,
@@ -19,6 +15,62 @@ import { WebView } from 'react-native-webview';
 import Toast from 'react-native-toast-message';
 
 const PAYMOB_IFRAME_ID = process.env.EXPO_PUBLIC_PAYMOB_IFRAME_ID || '957263';
+
+// Paymob's browser redirect races its own server-to-server webhook, and the
+// browser usually wins. These bound how long we wait for the backend to catch up
+// before we stop waiting -- and we say "not confirmed yet", never "successful".
+const VERIFY_INTERVAL_MS = 2000;
+const VERIFY_TIMEOUT_MS = 40000;
+
+/**
+ * What a URL from the Paymob flow actually tells us.
+ *
+ * 'declined'  -- Paymob explicitly said the transaction failed.
+ * 'returned'  -- the flow ended and the browser came back to our redirect URL.
+ *                This is NOT proof of success: Paymob sends declines to the very
+ *                same redirect URL (`https://egbay.shop/wallet?success=false&...`),
+ *                and even an approved card can fail server-side afterwards. The
+ *                only thing it proves is that the checkout is over, so go ask the
+ *                database what really happened.
+ * 'none'      -- still inside the checkout, keep the WebView going.
+ *
+ * Exported so the classification can be tested without a WebView.
+ */
+export type PaymobUrlOutcome = 'declined' | 'returned' | 'none';
+
+export function classifyPaymobUrl(rawUrl: string): PaymobUrlOutcome {
+  const url = (rawUrl || '').toLowerCase();
+  if (!url) return 'none';
+
+  // Failure is tested FIRST and biased to fail closed. Previously the success
+  // branch ran first and matched on the bare host, so a declined redirect to
+  // egbay.shop was reported to the user as "Payment Successful".
+  if (
+    url.includes('success=false') ||
+    url.includes('declined') ||
+    url.includes('error_occured=true') ||
+    url.includes('is_voided=true') ||
+    url.includes('is_refunded=true')
+  ) {
+    return 'declined';
+  }
+
+  if (
+    url.includes('success=true') ||
+    url.includes('txn_response_code=approved') ||
+    url.includes('egbay.shop') ||
+    url.includes('egbay.market') ||
+    url.includes('/wallet') ||
+    url.includes('callback/paymob')
+  ) {
+    return 'returned';
+  }
+
+  return 'none';
+}
+
+type Phase = 'paying' | 'verifying' | 'confirmed' | 'unconfirmed' | 'declined';
+type BackendState = 'confirmed' | 'failed' | 'pending';
 
 export default function PaymentScreen() {
   const {
@@ -39,136 +91,187 @@ export default function PaymentScreen() {
     topUpAmount?: string;
   }>();
   const router = useRouter();
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [successHandled, setSuccessHandled] = useState(false);
+  const [phase, setPhase] = useState<Phase>('paying');
+  const [declineReason, setDeclineReason] = useState('');
+  const phaseRef = useRef<Phase>('paying');
+
+  const setPhaseOnce = useCallback((next: Phase) => {
+    // The WebView fires both onShouldStartLoadWithRequest and
+    // onNavigationStateChange for the same redirect; only the first wins.
+    if (phaseRef.current !== 'paying') return;
+    phaseRef.current = next;
+    setPhase(next);
+  }, []);
 
   const paymentUrl = `https://accept.paymob.com/api/acceptance/iframes/${PAYMOB_IFRAME_ID}?payment_token=${paymentToken}`;
 
-  const handleSuccess = async () => {
-    if (successHandled) return; // prevent double-firing on multiple URL changes
-    setSuccessHandled(true);
+  const isTopUp = !!topUpAmount;
+  const isBoost = !!boostProductId;
 
+  /**
+   * Ask the database what actually happened. Nothing here mutates anything --
+   * it only reads the row the backend webhook is responsible for updating, so a
+   * payment that never completed can never be reported as completed.
+   */
+  const readBackendState = useCallback(async (): Promise<BackendState> => {
     try {
-      if (topUpAmount && user && orderId) {
-        try {
-          // Wait up to 10 seconds for the backend Paymob webhook to process the transaction
-          const { supabase } = await import('../src/services/lib/supabase');
-          const { data: { session } } = await supabase.auth.getSession();
-          for (let i = 0; i < 5; i++) {
-            const res = await fetch(`https://egbay.shop/api/wallet/topup/status?id=${orderId}`, {
-              headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
-            });
-            const statusData = await res.json();
-            if (statusData.success && statusData.status === 'paid') {
-              break;
-            }
-            await new Promise(resolve => setTimeout(resolve, 2000));
-          }
-        } catch (apiErr) {
-          console.warn('[PaymentScreen] Status check error:', apiErr);
-        }
+      if (isTopUp) {
+        if (!orderId) return 'pending';
+        const { data, error } = await supabase
+          .from('wallet_topups' as any)
+          .select('status')
+          .eq('id', orderId)
+          .maybeSingle();
+        if (error || !data) return 'pending';
+        const status = (data as any).status;
+        if (status === 'paid') return 'confirmed';
+        if (status === 'failed' || status === 'cancelled') return 'failed';
+        return 'pending';
       }
-      // Activate boost only after real payment confirmed
-      if (boostProductId && boostTier && user) {
-        await boostProduct(
-          boostProductId,
-          user.id,
-          boostTier as 'urgent' | 'featured' | 'turbo',
-          'paymob',
-        );
+
+      if (isBoost) {
+        const { data, error } = await supabase
+          .from('products' as any)
+          .select('promoted_until')
+          .eq('id', boostProductId)
+          .maybeSingle();
+        if (error || !data) return 'pending';
+        const until = (data as any).promoted_until;
+        return until && new Date(until).getTime() > Date.now() ? 'confirmed' : 'pending';
       }
-      // Confirm normal marketplace product order payment into escrow
+
       if (orderId) {
-        await confirmOrderPayment(orderId);
+        const { data, error } = await supabase
+          .from('orders' as any)
+          .select('status')
+          .eq('id', orderId)
+          .maybeSingle();
+        if (error || !data) return 'pending';
+        const status = (data as any).status;
+        if (status === 'pending_payment') return 'pending';
+        if (status === 'cancelled' || status === 'payment_failed') return 'failed';
+        return 'confirmed';
       }
     } catch (err) {
-      // Non-fatal: payment succeeded, webhook will handle as backup
-      console.warn('[PaymentScreen] Post-payment action failed:', err);
+      console.warn('[PaymentScreen] Verification read failed:', err);
     }
+    return 'pending';
+  }, [isTopUp, isBoost, orderId, boostProductId]);
+
+  // Poll the real status while we are verifying. The copy stays truthful the
+  // whole time: "confirming", never "successful", until the row says so.
+  useEffect(() => {
+    if (phase !== 'verifying') return;
+
+    let cancelled = false;
+    let elapsed = 0;
+
+    const tick = async () => {
+      if (cancelled) return;
+      const state = await readBackendState();
+      if (cancelled) return;
+
+      if (state === 'confirmed') {
+        clearInterval(interval);
+        phaseRef.current = 'confirmed';
+        setPhase('confirmed');
+        return;
+      }
+      if (state === 'failed') {
+        clearInterval(interval);
+        setDeclineReason('Your bank did not complete this payment.');
+        phaseRef.current = 'declined';
+        setPhase('declined');
+        return;
+      }
+
+      elapsed += VERIFY_INTERVAL_MS;
+      if (elapsed >= VERIFY_TIMEOUT_MS) {
+        clearInterval(interval);
+        phaseRef.current = 'unconfirmed';
+        setPhase('unconfirmed');
+      }
+    };
+
+    const interval = setInterval(tick, VERIFY_INTERVAL_MS);
+    void tick();
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [phase, readBackendState]);
+
+  // Only fires once the backend actually confirmed. This is the single place
+  // allowed to make a success claim.
+  useEffect(() => {
+    if (phase !== 'confirmed') return;
 
     Toast.show({
       type: 'success',
-      text1: topUpAmount
+      text1: isTopUp
         ? `EGP ${Number(topUpAmount).toLocaleString()} Added to Wallet! 💳`
-        : boostProductId
+        : isBoost
           ? 'Boost Activated! 🚀'
-          : 'Payment Successful! 🎉',
-      text2: topUpAmount
+          : 'Payment Confirmed! 🎉',
+      text2: isTopUp
         ? 'Your spendable balance has been updated.'
-        : boostProductId
+        : isBoost
           ? 'Your listing is now promoted.'
           : 'Funds secured in Escrow. Track your order status below.',
     });
 
-    if (topUpAmount) {
+    if (isTopUp) {
       router.replace('/wallet' as any);
-    } else if (boostProductId) {
+    } else if (isBoost) {
       router.replace('/(tabs)');
     } else if (orderId) {
-      router.replace({
-        pathname: '/order/[orderId]',
-        params: { orderId },
-      } as any);
+      router.replace({ pathname: '/order/[orderId]', params: { orderId } } as any);
     } else {
       router.replace('/(tabs)');
     }
-  };
+  }, [phase, isTopUp, isBoost, topUpAmount, orderId, router]);
 
-  // Web iframe message listener
+  const handleUrl = useCallback(
+    (rawUrl: string): PaymobUrlOutcome => {
+      const outcome = classifyPaymobUrl(rawUrl);
+      if (outcome === 'declined') {
+        setDeclineReason('The transaction was not completed. Please try another card or payment method.');
+        setPhaseOnce('declined');
+      } else if (outcome === 'returned') {
+        setPhaseOnce('verifying');
+      }
+      return outcome;
+    },
+    [setPhaseOnce],
+  );
+
+  // Web iframe message listener. Previously any message containing the string
+  // "true" was treated as a successful payment; now a message can at most send
+  // us into verification, and the database decides.
   useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const handleMsg = (e: MessageEvent) => {
-        const data = typeof e.data === 'string' ? e.data.toLowerCase() : JSON.stringify(e.data || {}).toLowerCase();
-        if (data.includes('approved') || data.includes('success') || data.includes('true')) {
-          handleSuccess();
-        }
-      };
-      window.addEventListener('message', handleMsg);
-      return () => window.removeEventListener('message', handleMsg);
-    }
-  }, []);
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    const handleMsg = (e: MessageEvent) => {
+      const data =
+        typeof e.data === 'string' ? e.data.toLowerCase() : JSON.stringify(e.data || {}).toLowerCase();
+      if (data.includes('declined') || data.includes('success:false') || data.includes('"success":false')) {
+        setDeclineReason('The transaction was not completed. Please try another card or payment method.');
+        setPhaseOnce('declined');
+      } else if (data.includes('approved') || data.includes('success')) {
+        setPhaseOnce('verifying');
+      }
+    };
+    window.addEventListener('message', handleMsg);
+    return () => window.removeEventListener('message', handleMsg);
+  }, [setPhaseOnce]);
 
   const handleShouldStartLoadWithRequest = (request: any) => {
-    const url = (request.url || '').toLowerCase();
-
-    // If Paymob finishes and redirects to the configured dashboard URL or success parameters
-    if (
-      url.includes('success=true') ||
-      url.includes('txn_response_code=approved') ||
-      url.includes('egbay.shop') ||
-      url.includes('egbay.market') ||
-      url.includes('/wallet') ||
-      url.includes('callback/paymob')
-    ) {
-      handleSuccess();
-      return false; // Prevent WebView from loading the web page!
-    }
-
-    if (url.includes('success=false') || url.includes('declined') || url.includes('txn_response_code=declined')) {
-      Alert.alert('Payment Declined', 'Transaction was not completed. Please try another card or payment method.');
-      router.back();
-      return false;
-    }
-
-    return true;
+    return handleUrl(request?.url || '') === 'none';
   };
 
   const handleNavigationStateChange = (navState: any) => {
-    const url = (navState.url || '').toLowerCase();
-    if (
-      url.includes('success=true') ||
-      url.includes('txn_response_code=approved') ||
-      url.includes('egbay.shop') ||
-      url.includes('egbay.market') ||
-      url.includes('/wallet') ||
-      url.includes('callback/paymob')
-    ) {
-      handleSuccess();
-    } else if (url.includes('success=false') || url.includes('declined')) {
-      Alert.alert('Payment Declined', 'Transaction was not completed. Please try another card or payment method.');
-      router.back();
-    }
+    handleUrl(navState?.url || '');
   };
 
   if (!paymentToken) {
@@ -182,6 +285,95 @@ export default function PaymentScreen() {
     );
   }
 
+  const headerTitle = isTopUp ? 'Wallet Deposit' : isBoost ? 'Boost Payment' : 'Secure Card Checkout';
+
+  const renderStatusScreen = () => {
+    if (phase === 'verifying') {
+      return (
+        <View style={styles.statusWrap}>
+          <View style={[styles.statusIcon, styles.statusIconAmber]}>
+            <ActivityIndicator size="large" color="#D97706" />
+          </View>
+          <Text style={styles.statusTitle}>Confirming your payment…</Text>
+          <Text style={styles.statusBody}>
+            Waiting for confirmation from your bank. This screen updates automatically — please don&apos;t
+            close the app.
+          </Text>
+          <View style={styles.noteRow}>
+            <Clock color="#64748B" size={14} />
+            <Text style={styles.noteText}>Nothing is confirmed until your bank responds.</Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (phase === 'unconfirmed') {
+      return (
+        <View style={styles.statusWrap}>
+          <View style={[styles.statusIcon, styles.statusIconAmber]}>
+            <AlertCircle color="#D97706" size={34} />
+          </View>
+          <Text style={styles.statusTitle}>Not confirmed yet</Text>
+          <Text style={styles.statusBody}>
+            {isTopUp
+              ? 'We could not confirm this deposit with your bank yet. If it went through, your balance will update on its own — check your wallet in a few minutes.'
+              : isBoost
+                ? 'We could not confirm this boost payment yet. Do not pay again — check your listing shortly, and contact support if it stays unpromoted.'
+                : 'We could not confirm this payment yet. Do not pay again — if it went through, your order will update on its own. You can track it in My Orders.'}
+          </Text>
+          <Text style={styles.statusWarn}>
+            Do not treat this as a completed payment. Please check before retrying.
+          </Text>
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={() => {
+              if (isTopUp) router.replace('/wallet' as any);
+              else if (orderId && !isBoost)
+                router.replace({ pathname: '/order/[orderId]', params: { orderId } } as any);
+              else router.replace('/(tabs)');
+            }}
+          >
+            <Text style={styles.primaryBtnText}>
+              {isTopUp ? 'Go to Wallet' : isBoost ? 'Back to Home' : 'Track My Order'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={() => setPhase('verifying')}>
+            <Text style={styles.secondaryBtnText}>Check again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (phase === 'declined') {
+      return (
+        <View style={styles.statusWrap}>
+          <View style={[styles.statusIcon, styles.statusIconRose]}>
+            <XCircle color="#E11D48" size={34} />
+          </View>
+          <Text style={styles.statusTitle}>Payment declined</Text>
+          <Text style={styles.statusBody}>
+            {declineReason || 'The transaction was not completed.'}
+          </Text>
+          <Text style={styles.statusBody}>You have not been charged for this attempt.</Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => router.back()}>
+            <Text style={styles.primaryBtnText}>Try Another Method</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // 'confirmed' -- the redirect effect is already navigating away.
+    return (
+      <View style={styles.statusWrap}>
+        <View style={[styles.statusIcon, styles.statusIconEmerald]}>
+          <CheckCircle2 color="#059669" size={34} />
+        </View>
+        <Text style={styles.statusTitle}>Payment confirmed</Text>
+        <Text style={styles.statusBody}>Taking you to the next step…</Text>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
       {/* Header */}
@@ -190,9 +382,7 @@ export default function PaymentScreen() {
           <ArrowLeft color="#0F172A" size={22} />
         </TouchableOpacity>
         <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle}>
-            {topUpAmount ? 'Wallet Deposit' : boostProductId ? 'Boost Payment' : 'Secure Card Checkout'}
-          </Text>
+          <Text style={styles.headerTitle}>{headerTitle}</Text>
           <View style={styles.secureRow}>
             <ShieldCheck color="#10B981" size={13} />
             <Text style={styles.secureText}>256-Bit Encrypted Escrow</Text>
@@ -201,28 +391,27 @@ export default function PaymentScreen() {
         {totalEgp && <Text style={styles.headerPrice}>EGP {Number(totalEgp).toLocaleString()}</Text>}
       </View>
 
-      {/* WebView & Confirmation Action Bar */}
+      {/* Checkout, or the honest outcome of it */}
       <View style={{ flex: 1, backgroundColor: 'white' }}>
-        {Platform.OS === 'web' ? (
+        {phase !== 'paying' ? (
+          renderStatusScreen()
+        ) : Platform.OS === 'web' ? (
           <View style={{ flex: 1 }}>
             <iframe
               src={paymentUrl}
               style={{ width: '100%', height: '100%', border: 'none' }}
               title="Paymob Payment"
             />
-            {/* Quick Confirmation Bar for Web testing */}
-            <View style={{ padding: 12, backgroundColor: '#0F172A', borderTopWidth: 1, borderTopColor: '#1E293B', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* Web testing aid: this can only start verification, never claim success. */}
+            <View style={styles.webBar}>
               <View>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: 'white' }}>
-                  {topUpAmount ? `Deposit: EGP ${Number(topUpAmount).toLocaleString()}` : 'Card Payment'}
+                <Text style={styles.webBarTitle}>
+                  {isTopUp ? `Deposit: EGP ${Number(topUpAmount).toLocaleString()}` : 'Card Payment'}
                 </Text>
-                <Text style={{ fontSize: 10, color: '#94A3B8' }}>Click below once card payment completes</Text>
+                <Text style={styles.webBarSub}>Click below once the card payment completes</Text>
               </View>
-              <TouchableOpacity
-                onPress={handleSuccess}
-                style={{ backgroundColor: '#10B981', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 }}
-              >
-                <Text style={{ fontSize: 11, fontWeight: '800', color: 'white' }}>Confirm Payment ✓</Text>
+              <TouchableOpacity onPress={() => setPhaseOnce('verifying')} style={styles.webBarBtn}>
+                <Text style={styles.webBarBtnText}>Check Payment Status</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -269,7 +458,42 @@ const styles = StyleSheet.create({
   secureText: { fontSize: 11, color: '#059669', fontWeight: '600' },
   headerPrice: { fontSize: 15, fontWeight: '900', color: '#2563EB' },
 
+  statusWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, gap: 12 },
+  statusIcon: { width: 76, height: 76, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  statusIconAmber: { backgroundColor: '#FEF3C7' },
+  statusIconRose: { backgroundColor: '#FFE4E6' },
+  statusIconEmerald: { backgroundColor: '#D1FAE5' },
+  statusTitle: { fontSize: 21, fontWeight: '900', color: '#0F172A', textAlign: 'center' },
+  statusBody: { fontSize: 13, lineHeight: 20, color: '#64748B', textAlign: 'center' },
+  statusWarn: { fontSize: 12, lineHeight: 18, color: '#B45309', fontWeight: '700', textAlign: 'center', marginTop: 2 },
+  noteRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  noteText: { fontSize: 11, color: '#64748B', fontWeight: '600' },
 
+  primaryBtn: {
+    marginTop: 14,
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 26,
+    paddingVertical: 13,
+    borderRadius: 14,
+    alignSelf: 'stretch',
+  },
+  primaryBtnText: { color: 'white', fontWeight: '800', fontSize: 14, textAlign: 'center' },
+  secondaryBtn: { paddingHorizontal: 20, paddingVertical: 10 },
+  secondaryBtnText: { color: '#2563EB', fontWeight: '700', fontSize: 13 },
+
+  webBar: {
+    padding: 12,
+    backgroundColor: '#0F172A',
+    borderTopWidth: 1,
+    borderTopColor: '#1E293B',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  webBarTitle: { fontSize: 12, fontWeight: '700', color: 'white' },
+  webBarSub: { fontSize: 10, color: '#94A3B8' },
+  webBarBtn: { backgroundColor: '#2563EB', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
+  webBarBtnText: { fontSize: 11, fontWeight: '800', color: 'white' },
 
   loadingWrap: {
     ...StyleSheet.absoluteFillObject,
