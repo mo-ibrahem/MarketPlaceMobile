@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { displayName } from './displayName';
 
 export interface ChatMessage {
   id: string;
@@ -101,7 +102,7 @@ export const getChatRooms = async (): Promise<ChatRoomInfo[]> => {
     return {
       room_id: room.id,
       other_user_id: otherUserId || '',
-      other_user_name: profile?.full_name || 'EgyBay User',
+      other_user_name: displayName(profile?.full_name),
       other_user_avatar_url: profile?.avatar_url || '',
       product_id: room.product_id,
       product_title: product?.title,
@@ -185,7 +186,7 @@ export const getChatRoomDetails = async (roomId: string): Promise<ChatRoomInfo |
   return {
     room_id: room.id,
     other_user_id: otherUserId,
-    other_user_name: (profile as any)?.full_name || 'EgyBay User',
+    other_user_name: displayName((profile as any)?.full_name),
     other_user_avatar_url: (profile as any)?.avatar_url || '',
     product_id: room.product_id,
     product_title: (product as any)?.title,

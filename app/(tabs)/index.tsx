@@ -47,6 +47,7 @@ import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import { useLanguage } from '../../hooks/useLanguage';
 import { getProductBoostInfo } from '../../src/services/lib/boostService';
 import { productService, type Product } from '../../src/services/lib/products';
+import { displayName } from '../../src/services/lib/displayName';
 import { getUnreadNotificationCount } from '../../src/services/lib/notificationService';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -717,7 +718,7 @@ export default function HomeScreen() {
 
                       <View style={styles.cardMeta}>
                         <Text style={styles.cardSeller} numberOfLines={1}>
-                          {item.seller?.full_name ?? 'Seller'}
+                          {displayName(item.seller?.full_name, 'Seller')}
                         </Text>
                         {item.location ? (
                           <Text style={styles.cardLocation} numberOfLines={1}>

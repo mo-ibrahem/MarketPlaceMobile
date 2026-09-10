@@ -2,8 +2,10 @@ import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { StarRating } from './StarRating';
 import type { Review } from '../services/lib/reviewService';
+import { displayName } from '../services/lib/displayName';
 
-function initials(name?: string) {
+function initials(rawName?: string) {
+  const name = displayName(rawName, '');
   if (!name) return '?';
   return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
@@ -26,7 +28,7 @@ export function ReviewRow({ review, isRTL }: { review: Review; isRTL: boolean })
         )}
         <View style={{ flex: 1 }}>
           <Text style={s.name} numberOfLines={1}>
-            {review.reviewer_name || (isRTL ? 'مشتري' : 'Buyer')}
+            {displayName(review.reviewer_name, isRTL ? 'مشتري' : 'Buyer')}
           </Text>
           <View style={s.metaRow}>
             <StarRating value={review.rating} count={1} size={12} showNumber={false} isRTL={isRTL} />

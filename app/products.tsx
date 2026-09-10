@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { productService, type Product } from '../src/services/lib/products';
+import { displayName } from '../src/services/lib/displayName';
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -553,11 +554,11 @@ function ProductCard({
         <View style={styles.sellerRow}>
           <View style={styles.sellerAvatar}>
             <Text style={styles.sellerInitial}>
-              {(item.seller?.full_name ?? 'S').charAt(0).toUpperCase()}
+              {displayName(item.seller?.full_name, 'S').charAt(0).toUpperCase()}
             </Text>
           </View>
           <Text style={styles.sellerName} numberOfLines={1}>
-            {item.seller?.full_name ?? 'Seller'}
+            {displayName(item.seller?.full_name, 'Seller')}
           </Text>
         </View>
 

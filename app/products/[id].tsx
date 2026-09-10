@@ -49,6 +49,7 @@ import { getProductBoostInfo } from '../../src/services/lib/boostService';
 import { getOrCreateChatRoom, sendMessage } from '../../src/services/lib/chatService';
 import { productService, type Product } from '../../src/services/lib/products';
 import { useLanguage } from '../../src/i18n/LanguageContext';
+import { displayName } from '../../src/services/lib/displayName';
 import { StarRating } from '../../src/components/StarRating';
 import { ReviewList } from '../../src/components/ReviewList';
 import {
@@ -246,7 +247,7 @@ export default function ProductDetailScreen() {
 
   const isOwner = user?.id === product.seller_id;
   const images  = product.images?.length ? product.images : ['https://placehold.co/600x600/F1F5F9/64748B?text=Item'];
-  const sellerName    = product.seller?.full_name ?? 'Seller';
+  const sellerName    = displayName(product.seller?.full_name, 'Seller');
   const sellerInitial = sellerName.charAt(0).toUpperCase();
 
   return (
