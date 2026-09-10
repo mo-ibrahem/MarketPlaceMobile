@@ -37,6 +37,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../src/i18n/LanguageContext';
+import { displayName } from '../../src/services/lib/displayName';
 import { getOrCreateChatRoom } from '../../src/services/lib/chatService';
 import { ReviewForm } from '../../src/components/ReviewForm';
 import { ReviewRow } from '../../src/components/ReviewList';
@@ -77,7 +78,7 @@ const ORDER_STATUS_RANK: Record<MarketplaceOrder['status'], number> = {
   cancelled: 0,
 };
 
-function BostaStepper({ status }: { status: MarketplaceOrder['status'] }) {
+function BostaStepper({ status, isRTL }: { status: MarketplaceOrder['status']; isRTL: boolean }) {
   const currentRank = ORDER_STATUS_RANK[status] ?? 0;
 
   return (
@@ -98,8 +99,8 @@ function BostaStepper({ status }: { status: MarketplaceOrder['status'] }) {
               {!isLast && <View style={[stepStyles.line, done && stepStyles.lineDone]} />}
             </View>
             <View style={stepStyles.stepContent}>
-              <Text style={[stepStyles.stepLabel, done && stepStyles.stepLabelDone]}>{step.label_ar}</Text>
-              <Text style={[stepStyles.stepSub, done && stepStyles.stepSubDone]}>{step.label}</Text>
+              <Text style={[stepStyles.stepLabel, done && stepStyles.stepLabelDone]}>{isRTL ? step.label_ar : step.label}</Text>
+              <Text style={[stepStyles.stepSub, done && stepStyles.stepSubDone]}>{isRTL ? step.label : step.label_ar}</Text>
             </View>
           </View>
         );
@@ -196,12 +197,12 @@ export default function OrderDetailScreen() {
     setDispatchingAwb(true);
     try {
       await updateOrderTracking(orderId, { tracking_number: awbInput.trim() });
-      Toast.show({ type: 'success', text1: 'تم إضافة رقم التتبع', text2: `AWB: ${awbInput.trim()}` });
+      Toast.show({ type: 'success', text1: (isRTL ? 'تم إضافة رقم التتبع' : 'Tracking number added'), text2: `AWB: ${awbInput.trim()}` });
       setShowAwbModal(false);
       setAwbInput('');
       await reload();
     } catch (err: any) {
-      Toast.show({ type: 'error', text1: 'خطأ', text2: err.message });
+      Toast.show({ type: 'error', text1: (isRTL ? 'خطأ' : 'Error'), text2: err.message });
     } finally {
       setDispatchingAwb(false);
     }
@@ -210,16 +211,16 @@ export default function OrderDetailScreen() {
   // ── Seller: PIN Verify ──
   const handleVerifyPin = async () => {
     if (!orderId || !enteredPin || enteredPin.length < 4) {
-      Toast.show({ type: 'error', text1: 'أدخل رمز التحقق الصحيح' });
+      Toast.show({ type: 'error', text1: (isRTL ? 'أدخل رمز التحقق الصحيح' : 'Enter the correct PIN') });
       return;
     }
     setVerifying(true);
     try {
       const result = await verifyMeetupPIN(orderId, enteredPin);
-      Toast.show({ type: 'success', text1: 'تم التحقق!', text2: result.message });
+      Toast.show({ type: 'success', text1: (isRTL ? 'تم التحقق!' : 'Verified!'), text2: result.message });
       await reload();
     } catch (err: any) {
-      Toast.show({ type: 'error', text1: 'رمز خاطئ', text2: err.message });
+      Toast.show({ type: 'error', text1: (isRTL ? 'رمز خاطئ' : 'Wrong PIN'), text2: err.message });
     } finally {
       setVerifying(false);
     }
@@ -228,22 +229,22 @@ export default function OrderDetailScreen() {
   // ── Buyer: Approve Delivery ──
   const handleApprove = async () => {
     Alert.alert(
-      'تأكيد استلام الطلب',
-      'بالضغط على تأكيد، تقر باستلامك للمنتج وفحصه. سيتم تحرير أموال الضمان للبائع فوراً.',
+      (isRTL ? 'تأكيد استلام الطلب' : 'Confirm you received the order'),
+      (isRTL ? 'بالضغط على تأكيد، تقر باستلامك للمنتج وفحصه. سيتم تحرير أموال الضمان للبائع فوراً.' : 'By confirming you acknowledge that you received and inspected the item. Escrow funds are released to the seller immediately.'),
       [
-        { text: 'إلغاء', style: 'cancel' },
+        { text: (isRTL ? 'إلغاء' : 'Cancel'), style: 'cancel' },
         {
-          text: 'تأكيد الاستلام ✓',
+          text: (isRTL ? 'تأكيد الاستلام ✓' : 'Confirm receipt ✓'),
           style: 'default',
           onPress: async () => {
             if (!orderId) return;
             setApproving(true);
             try {
               const result = await approveOrderDelivery(orderId);
-              Toast.show({ type: 'success', text1: 'تم التأكيد!', text2: result.message });
+              Toast.show({ type: 'success', text1: (isRTL ? 'تم التأكيد!' : 'Confirmed!'), text2: result.message });
               await reload();
             } catch (err: any) {
-              Toast.show({ type: 'error', text1: 'خطأ', text2: err.message });
+              Toast.show({ type: 'error', text1: (isRTL ? 'خطأ' : 'Error'), text2: err.message });
             } finally {
               setApproving(false);
             }
@@ -256,17 +257,17 @@ export default function OrderDetailScreen() {
   // ── Buyer: File Dispute ──
   const handleFileDispute = async () => {
     if (!orderId || !disputeReason.trim()) {
-      Toast.show({ type: 'error', text1: 'أدخل سبب النزاع' });
+      Toast.show({ type: 'error', text1: (isRTL ? 'أدخل سبب النزاع' : 'Describe the problem') });
       return;
     }
     setFilingDispute(true);
     try {
       const result = await fileOrderDispute(orderId, disputeReason);
-      Toast.show({ type: 'success', text1: 'تم فتح النزاع', text2: result.message });
+      Toast.show({ type: 'success', text1: (isRTL ? 'تم فتح النزاع' : 'Dispute opened'), text2: result.message });
       setShowDisputeModal(false);
       await reload();
     } catch (err: any) {
-      Toast.show({ type: 'error', text1: 'خطأ', text2: err.message });
+      Toast.show({ type: 'error', text1: (isRTL ? 'خطأ' : 'Error'), text2: err.message });
     } finally {
       setFilingDispute(false);
     }
@@ -284,7 +285,7 @@ export default function OrderDetailScreen() {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <Package color="#94A3B8" size={48} />
-        <Text style={{ color: '#64748B', marginTop: 12 }}>الطلب غير موجود</Text>
+        <Text style={{ color: '#64748B', marginTop: 12 }}>{isRTL ? 'الطلب غير موجود' : 'Order not found'}</Text>
       </View>
     );
   }
@@ -312,7 +313,7 @@ export default function OrderDetailScreen() {
             ? '🚚 شحن'
             : order.status === 'delivered'
               ? '📦 وصل'
-              : '🔒 ضمان';
+              : (isRTL ? '🔒 ضمان' : '🔒 Escrow');
 
   const reviewGate = canReviewOrder(order, user?.id, myReview);
 
@@ -329,7 +330,7 @@ export default function OrderDetailScreen() {
           <ArrowLeft color="white" size={20} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={s.headerTitle}>تفاصيل الطلب</Text>
+          <Text style={s.headerTitle}>{isRTL ? 'تفاصيل الطلب' : 'Order details'}</Text>
           <Text style={s.headerSub}>#{order.id.slice(-8).toUpperCase()}</Text>
         </View>
         <View
@@ -362,10 +363,16 @@ export default function OrderDetailScreen() {
               </View>
             )}
             <View style={{ flex: 1 }}>
-              <Text style={s.productTitle} numberOfLines={2}>{order.product?.title || 'منتج'}</Text>
-              <Text style={s.productAmount}>{order.amount.toLocaleString('ar-EG')} ج.م</Text>
+              <Text style={s.productTitle} numberOfLines={2}>{order.product?.title || (isRTL ? 'منتج' : 'Item')}</Text>
+              <Text style={s.productAmount}>
+                {isRTL
+                  ? `${order.amount.toLocaleString('ar-EG')} ج.م`
+                  : `EGP ${order.amount.toLocaleString('en-EG')}`}
+              </Text>
               <Text style={s.productCondition}>
-                {isBuyer ? `البائع: ${order.seller?.full_name || 'بائع'}` : `المشتري: ${order.buyer?.full_name || 'مشتري'}`}
+                {isBuyer
+                  ? `${isRTL ? 'البائع' : 'Seller'}: ${displayName(order.seller?.full_name, isRTL ? 'بائع' : 'Seller')}`
+                  : `${isRTL ? 'المشتري' : 'Buyer'}: ${displayName(order.buyer?.full_name, isRTL ? 'مشتري' : 'Buyer')}`}
               </Text>
             </View>
           </View>
@@ -401,7 +408,11 @@ export default function OrderDetailScreen() {
         {isInEscrow && !isDelivered && !isDisputed && (
           <View style={s.escrowBanner}>
             <ShieldCheck color="#10B981" size={18} />
-            <Text style={s.escrowText}>أموالك في الضمان الآمن — محمية حتى التسليم والفحص</Text>
+            <Text style={s.escrowText}>
+              {isRTL
+                ? 'أموالك في الضمان الآمن — محمية حتى التسليم والفحص'
+                : 'Your money is held safely in escrow — protected until delivery and inspection.'}
+            </Text>
           </View>
         )}
 
@@ -410,10 +421,10 @@ export default function OrderDetailScreen() {
           <View style={s.card}>
             <View style={s.cardHeader}>
               <Truck color="#3B82F6" size={16} />
-              <Text style={s.cardTitle}>تتبع الشحنة (بوسطة مصر)</Text>
+              <Text style={s.cardTitle}>{isRTL ? 'تتبع الشحنة (بوسطة مصر)' : 'Shipment tracking (Bosta Egypt)'}</Text>
             </View>
 
-            <BostaStepper status={order.status} />
+            <BostaStepper status={order.status} isRTL={isRTL} />
 
             {order.tracking_number ? (
               <TouchableOpacity
@@ -426,7 +437,7 @@ export default function OrderDetailScreen() {
             ) : (
               <View style={s.noTrackingWrap}>
                 <Clock color="#F59E0B" size={14} />
-                <Text style={s.noTrackingText}>في انتظار إرسال البائع رقم التتبع</Text>
+                <Text style={s.noTrackingText}>{isRTL ? 'في انتظار إرسال البائع رقم التتبع' : 'Waiting for the seller to add a tracking number'}</Text>
               </View>
             )}
           </View>
@@ -437,18 +448,18 @@ export default function OrderDetailScreen() {
           <View style={s.card}>
             <View style={s.cardHeader}>
               <QrCode color="#7C3AED" size={16} />
-              <Text style={s.cardTitle}>تسليم يدوي بكود التحقق</Text>
+              <Text style={s.cardTitle}>{isRTL ? 'تسليم يدوي بكود التحقق' : 'Hand delivery with a PIN'}</Text>
             </View>
             {isBuyer && (
               <View style={s.pinDisplay}>
-                <Text style={s.pinLabel}>كود التحقق الخاص بك (أعطه للبائع بعد الفحص)</Text>
+                <Text style={s.pinLabel}>{isRTL ? 'كود التحقق الخاص بك (أعطه للبائع بعد الفحص)' : 'Your PIN (give it to the seller after inspecting)'}</Text>
                 <Text style={s.pinCode}>{order.meetup_pin}</Text>
-                <Text style={s.pinSub}>لا تعطِ الكود إلا بعد الفحص والرضا الكامل</Text>
+                <Text style={s.pinSub}>{isRTL ? 'لا تعطِ الكود إلا بعد الفحص والرضا الكامل' : 'Only share it once you have inspected the item and are satisfied'}</Text>
               </View>
             )}
             {isSeller && !isDelivered && (
               <View>
-                <Text style={s.sellerPinNote}>اطلب من المشتري كود التحقق المكون من 6 أرقام بعد أن يفحص المنتج ويرضى عنه</Text>
+                <Text style={s.sellerPinNote}>{isRTL ? 'اطلب من المشتري كود التحقق المكون من 6 أرقام بعد أن يفحص المنتج ويرضى عنه' : 'Ask the buyer for their 6-digit PIN once they have inspected the item and are happy with it'}</Text>
                 <View style={s.pinRow}>
                   <TextInput
                     value={enteredPin}
@@ -476,12 +487,12 @@ export default function OrderDetailScreen() {
           <View style={s.card}>
             <View style={s.cardHeader}>
               <Truck color="#F97316" size={16} />
-              <Text style={s.cardTitle}>إرسال رقم بوليصة الشحن</Text>
+              <Text style={s.cardTitle}>{isRTL ? 'إرسال رقم بوليصة الشحن' : 'Add the airway bill'}</Text>
             </View>
-            <Text style={s.noteText}>أرسل المنتج عبر بوسطة مصر وأدخل رقم AWB لتحديث المشتري</Text>
+            <Text style={s.noteText}>{isRTL ? 'أرسل المنتج عبر بوسطة مصر وأدخل رقم AWB لتحديث المشتري' : 'Ship via Bosta Egypt and enter the AWB so the buyer can track it'}</Text>
             <TouchableOpacity style={s.dispatchBtn} onPress={() => setShowAwbModal(true)}>
               <Truck color="white" size={16} />
-              <Text style={s.dispatchBtnText}>أدخل رقم التتبع (AWB)</Text>
+              <Text style={s.dispatchBtnText}>{isRTL ? 'أدخل رقم التتبع (AWB)' : 'Enter tracking number (AWB)'}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -491,10 +502,12 @@ export default function OrderDetailScreen() {
           <View style={[s.card, { borderColor: '#A7F3D0', backgroundColor: '#F0FDF4' }]}>
             <View style={s.cardHeader}>
               <Clock color="#10B981" size={16} />
-              <Text style={[s.cardTitle, { color: '#065F46' }]}>نافذة الفحص والاستلام (٢٤ ساعة)</Text>
+              <Text style={[s.cardTitle, { color: '#065F46' }]}>{isRTL ? 'نافذة الفحص والاستلام (٢٤ ساعة)' : 'Inspection window (24 hours)'}</Text>
             </View>
             <Text style={[s.noteText, { color: '#047857' }]}>
-              فحص المنتج جيداً. إذا كان كل شيء مطابقاً، اضغط تأكيد الاستلام لتحرير أموال البائع.
+              {isRTL
+                ? 'افحص المنتج جيداً. إذا كان كل شيء مطابقاً، اضغط تأكيد الاستلام لتحرير أموال البائع.'
+                : 'Inspect the item carefully. If everything matches, confirm receipt to release the funds to the seller.'}
             </Text>
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
               <TouchableOpacity
@@ -503,11 +516,11 @@ export default function OrderDetailScreen() {
                 disabled={approving}
               >
                 {approving ? <ActivityIndicator color="white" size="small" /> : <ThumbsUp color="white" size={16} />}
-                <Text style={s.approveBtnText}>تأكيد الاستلام ✓</Text>
+                <Text style={s.approveBtnText}>{isRTL ? 'تأكيد الاستلام ✓' : 'Confirm receipt ✓'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.disputeBtn} onPress={() => setShowDisputeModal(true)}>
                 <ShieldAlert color="#EF4444" size={16} />
-                <Text style={s.disputeBtnText}>فتح نزاع</Text>
+                <Text style={s.disputeBtnText}>{isRTL ? 'فتح نزاع' : 'Open a dispute'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -517,7 +530,7 @@ export default function OrderDetailScreen() {
         {canDispute && !canApprove && !isDisputed && (
           <TouchableOpacity style={s.disputeOnlyBtn} onPress={() => setShowDisputeModal(true)}>
             <ShieldAlert color="#EF4444" size={16} />
-            <Text style={s.disputeBtnText}>السلعة لا تطابق الوصف؟ فتح نزاع</Text>
+            <Text style={s.disputeBtnText}>{isRTL ? 'السلعة لا تطابق الوصف؟ فتح نزاع' : 'Item not as described? Open a dispute'}</Text>
           </TouchableOpacity>
         )}
 
@@ -525,7 +538,7 @@ export default function OrderDetailScreen() {
         {isDisputed && (
           <View style={[s.card, { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }]}>
             <ShieldAlert color="#EF4444" size={20} />
-            <Text style={[s.cardTitle, { color: '#B91C1C', marginTop: 6 }]}>النزاع قيد المراجعة</Text>
+            <Text style={[s.cardTitle, { color: '#B91C1C', marginTop: 6 }]}>{isRTL ? 'النزاع قيد المراجعة' : 'Dispute under review'}</Text>
             <Text style={[s.noteText, { color: '#991B1B', marginTop: 4 }]}>
               أموالك محمية في الضمان. سيراجع فريقنا الأدلة خلال ٤٨ ساعة ويتصل بك.
             </Text>
@@ -537,7 +550,7 @@ export default function OrderDetailScreen() {
           <View style={s.card}>
             <View style={s.cardHeader}>
               <MapPin color="#64748B" size={16} />
-              <Text style={s.cardTitle}>عنوان التوصيل</Text>
+              <Text style={s.cardTitle}>{isRTL ? 'عنوان التوصيل' : 'Delivery address'}</Text>
             </View>
             <Text style={s.addressText}>
               {order.shipping_address.full_name}{'\n'}
@@ -602,7 +615,7 @@ export default function OrderDetailScreen() {
               );
               router.push(`/chat/${roomId}` as any);
             } catch (err: any) {
-              Alert.alert('تعذّر فتح المحادثة', err?.message || 'حاول مرة أخرى');
+              Alert.alert((isRTL ? 'تعذّر فتح المحادثة' : 'Could not open the chat'), err?.message || (isRTL ? 'حاول مرة أخرى' : 'Please try again'));
             } finally {
               setOpeningChat(false);
             }
@@ -613,7 +626,11 @@ export default function OrderDetailScreen() {
           ) : (
             <MessageCircle color="#3B82F6" size={18} />
           )}
-          <Text style={s.chatBtnText}>فتح المحادثة مع {isBuyer ? 'البائع' : 'المشتري'}</Text>
+          <Text style={s.chatBtnText}>
+            {isRTL
+              ? `فتح المحادثة مع ${isBuyer ? 'البائع' : 'المشتري'}`
+              : `Message the ${isBuyer ? 'seller' : 'buyer'}`}
+          </Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -622,8 +639,8 @@ export default function OrderDetailScreen() {
       <Modal visible={showAwbModal} transparent animationType="slide" onRequestClose={() => setShowAwbModal(false)}>
         <View style={s.modalOverlay}>
           <View style={s.modalSheet}>
-            <Text style={s.modalTitle}>أدخل رقم AWB من بوسطة</Text>
-            <Text style={s.modalSub}>ستجد رقم التتبع في تطبيق بوسطة أو على بوليصة الشحن</Text>
+            <Text style={s.modalTitle}>{isRTL ? 'أدخل رقم AWB من بوسطة' : 'Enter the AWB from Bosta'}</Text>
+            <Text style={s.modalSub}>{isRTL ? 'ستجد رقم التتبع في تطبيق بوسطة أو على بوليصة الشحن' : 'You will find it in the Bosta app or on the airway bill'}</Text>
             <TextInput
               value={awbInput}
               onChangeText={setAwbInput}
@@ -633,7 +650,7 @@ export default function OrderDetailScreen() {
             />
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowAwbModal(false)}>
-                <Text style={s.modalCancelText}>إلغاء</Text>
+                <Text style={s.modalCancelText}>{isRTL ? 'إلغاء' : 'Cancel'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.modalConfirmBtn, dispatchingAwb && { opacity: 0.6 }]}
@@ -641,7 +658,7 @@ export default function OrderDetailScreen() {
                 disabled={dispatchingAwb}
               >
                 {dispatchingAwb ? <ActivityIndicator color="white" size="small" /> : null}
-                <Text style={s.modalConfirmText}>تأكيد الشحن</Text>
+                <Text style={s.modalConfirmText}>{isRTL ? 'تأكيد الشحن' : 'Confirm dispatch'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -652,8 +669,8 @@ export default function OrderDetailScreen() {
       <Modal visible={showDisputeModal} transparent animationType="slide" onRequestClose={() => setShowDisputeModal(false)}>
         <View style={s.modalOverlay}>
           <View style={s.modalSheet}>
-            <Text style={s.modalTitle}>فتح نزاع رسمي</Text>
-            <Text style={s.modalSub}>أخبرنا بمشكلة السلعة وسنراجع الأمر خلال ٤٨ ساعة. أموالك آمنة في الضمان.</Text>
+            <Text style={s.modalTitle}>{isRTL ? 'فتح نزاع رسمي' : 'Open a formal dispute'}</Text>
+            <Text style={s.modalSub}>{isRTL ? 'أخبرنا بمشكلة السلعة وسنراجع الأمر خلال ٤٨ ساعة. أموالك آمنة في الضمان.' : 'Tell us what is wrong and we will review within 48 hours. Your money stays safe in escrow.'}</Text>
             <TextInput
               value={disputeReason}
               onChangeText={setDisputeReason}
@@ -664,7 +681,7 @@ export default function OrderDetailScreen() {
             />
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowDisputeModal(false)}>
-                <Text style={s.modalCancelText}>إلغاء</Text>
+                <Text style={s.modalCancelText}>{isRTL ? 'إلغاء' : 'Cancel'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.modalConfirmBtn, { backgroundColor: '#EF4444' }, filingDispute && { opacity: 0.6 }]}
@@ -672,7 +689,7 @@ export default function OrderDetailScreen() {
                 disabled={filingDispute}
               >
                 {filingDispute ? <ActivityIndicator color="white" size="small" /> : null}
-                <Text style={s.modalConfirmText}>فتح النزاع</Text>
+                <Text style={s.modalConfirmText}>{isRTL ? 'فتح النزاع' : 'Open dispute'}</Text>
               </TouchableOpacity>
             </View>
           </View>
