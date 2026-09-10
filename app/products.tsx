@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { productService, type Product } from '../src/services/lib/products';
+import { ProductCard } from '../src/components/ProductCard';
 import { displayName } from '../src/services/lib/displayName';
 
 
@@ -487,90 +488,6 @@ export default function ProductsScreen() {
         )}
       </View>
     </SafeAreaView>
-  );
-}
-
-// ─── ProductCard ──────────────────────────────────────────────────────────────
-
-function ProductCard({
-  item,
-  isWishlisted,
-  onPress,
-  onToggleWishlist,
-}: {
-  item: Product;
-  isWishlisted: boolean;
-  onPress: () => void;
-  onToggleWishlist: () => void;
-}) {
-  return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
-      <View style={styles.cardImgWrapper}>
-        <Image
-          source={{ uri: item.images?.[0] || 'https://placehold.co/400x300/F1F5F9/64748B?text=Item' }}
-          style={styles.cardImg}
-        />
-
-        <View style={styles.cardPricePill}>
-          <Text style={styles.cardPriceText}>{formatEGP(item.price)}</Text>
-        </View>
-
-        <TouchableOpacity style={styles.cardHeart} onPress={onToggleWishlist}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
-          <Heart
-            size={14}
-            color={isWishlisted ? '#EF4444' : 'white'}
-            fill={isWishlisted ? '#EF4444' : 'none'}
-          />
-        </TouchableOpacity>
-
-        {item.condition === 'New' && (
-          <View style={styles.newBadge}>
-            <Text style={styles.newBadgeText}>NEW</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.cardBody}>
-        <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-        
-        {/* Rating and Condition. The rating pill used to read a hardcoded
-            "4.9" on every card regardless of the seller; it now shows the real
-            aggregate, and shows nothing at all until there is one. */}
-        <View style={styles.cardRatingRow}>
-          {item.seller?.rating_count ? (
-            <View style={styles.ratingPill}>
-              <Star color="#F59E0B" fill="#F59E0B" size={10} />
-              <Text style={styles.ratingText}>
-                {Number(item.seller.rating_avg ?? 0).toFixed(1)}
-                <Text style={styles.ratingCount}> ({item.seller.rating_count})</Text>
-              </Text>
-            </View>
-          ) : (
-            <View />
-          )}
-          <Text style={styles.conditionTag}>{item.condition || 'Used'}</Text>
-        </View>
-
-        <View style={styles.sellerRow}>
-          <View style={styles.sellerAvatar}>
-            <Text style={styles.sellerInitial}>
-              {displayName(item.seller?.full_name, 'S').charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <Text style={styles.sellerName} numberOfLines={1}>
-            {displayName(item.seller?.full_name, 'Seller')}
-          </Text>
-        </View>
-
-        {item.location ? (
-          <Text style={styles.cardLocation} numberOfLines={1}>
-            <MapPin size={10} color="#64748B" /> {item.location}
-          </Text>
-        ) : null}
-      </View>
-    </TouchableOpacity>
   );
 }
 

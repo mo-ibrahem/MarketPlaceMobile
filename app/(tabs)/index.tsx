@@ -47,6 +47,7 @@ import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import { useLanguage } from '../../hooks/useLanguage';
 import { getProductBoostInfo } from '../../src/services/lib/boostService';
 import { productService, type Product } from '../../src/services/lib/products';
+import { ProductCard } from '../../src/components/ProductCard';
 import { displayName } from '../../src/services/lib/displayName';
 import { getUnreadNotificationCount } from '../../src/services/lib/notificationService';
 
@@ -659,83 +660,12 @@ export default function HomeScreen() {
                   entering={FadeInDown.duration(320).delay(Math.min(index, 8) * 60)}
                   style={{ flex: 1 }}
                 >
-                  <TouchableOpacity
-                    style={styles.productCard}
+                  <ProductCard
+                    item={item}
+                    isWishlisted={wishlistIds.has(item.id)}
                     onPress={() => router.push(`/products/${item.id}` as any)}
-                    activeOpacity={0.88}
-                  >
-                    {/* Image + overlaid badges */}
-                    <View style={styles.imgWrapper}>
-                      <Image
-                        source={{ uri: item.images?.[0] || 'https://placehold.co/400x300/F1F5F9/64748B?text=Item' }}
-                        style={styles.productImg}
-                      />
-                      {/* EGP price pill */}
-                      <View style={styles.imgPricePill}>
-                        <Text style={styles.imgPriceText}>{formatEGP(item.price)}</Text>
-                      </View>
-                      {/* Heart */}
-                      <TouchableOpacity style={styles.imgHeart} onPress={() => toggleWishlist(item)}>
-                        <Heart
-                          size={14}
-                          color={wishlistIds.has(item.id) ? '#EF4444' : '#6B7280'}
-                          fill={wishlistIds.has(item.id) ? '#EF4444' : 'none'}
-                        />
-                      </TouchableOpacity>
-                      {/* "NEW" badge */}
-                      {item.condition === 'New' && (
-                        <View style={styles.newBadge}>
-                          <Text style={styles.newBadgeText}>NEW</Text>
-                        </View>
-                      )}
-
-                      {/* Promoted / Urgent Ribbon Badge */}
-                      {(() => {
-                        const boost = getProductBoostInfo(item);
-                        if (boost.isPromoted && boost.pkg) {
-                          return (
-                            <View style={[styles.cardPromotedBadge, { backgroundColor: boost.pkg.id === 'urgent' ? '#F59E0B' : '#2563EB' }]}>
-                              <Text style={styles.cardPromotedBadgeText}>{boost.pkg.badgeEmoji} {boost.pkg.id.toUpperCase()}</Text>
-                            </View>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </View>
-                    {/* Card body */}
-                    <View style={styles.cardBody}>
-                      <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-                      
-                      {/* Rating & Condition Strip. The pill previously read a
-                          hardcoded "4.9" for every seller; it now shows the real
-                          aggregate and hides entirely until one exists. */}
-                      <View style={styles.cardRatingRow}>
-                        {item.seller?.rating_count ? (
-                          <View style={styles.ratingPill}>
-                            <Star color="#F59E0B" fill="#F59E0B" size={11} />
-                            <Text style={styles.ratingText}>
-                              {Number(item.seller.rating_avg ?? 0).toFixed(1)}
-                              <Text style={styles.ratingCount}> ({item.seller.rating_count})</Text>
-                            </Text>
-                          </View>
-                        ) : (
-                          <View />
-                        )}
-                        <Text style={styles.conditionTag}>{item.condition || 'Used'}</Text>
-                      </View>
-
-                      <View style={styles.cardMeta}>
-                        <Text style={styles.cardSeller} numberOfLines={1}>
-                          {displayName(item.seller?.full_name, 'Seller')}
-                        </Text>
-                        {item.location ? (
-                          <Text style={styles.cardLocation} numberOfLines={1}>
-                            <MapPin size={10} color="#64748B" /> {item.location}
-                          </Text>
-                        ) : null}
-                      </View>
-                    </View>
-                  </TouchableOpacity>
+                    onToggleWishlist={() => toggleWishlist(item)}
+                  />
                 </Reanimated.View>
               )}
             />
