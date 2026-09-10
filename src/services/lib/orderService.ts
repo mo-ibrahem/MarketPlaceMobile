@@ -1,6 +1,5 @@
 import { supabase } from './supabase';
 import { holdEscrowForSeller, releaseEscrowToSeller } from './walletService';
-import { notifyItemSold } from './notificationService';
 
 export interface MarketplaceOrder {
   id: string;

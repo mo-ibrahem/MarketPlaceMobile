@@ -48,6 +48,15 @@ import { useAuth } from '../../hooks/useAuth';
 import { getProductBoostInfo } from '../../src/services/lib/boostService';
 import { getOrCreateChatRoom, sendMessage } from '../../src/services/lib/chatService';
 import { productService, type Product } from '../../src/services/lib/products';
+import { useLanguage } from '../../src/i18n/LanguageContext';
+import { StarRating } from '../../src/components/StarRating';
+import { ReviewList } from '../../src/components/ReviewList';
+import {
+  getProductReviews,
+  getSellerRating,
+  type Review,
+  type SellerRating,
+} from '../../src/services/lib/reviewService';
 import { supabase } from '../../src/services/lib/supabase';
 import EscrowTrustModal from '../../src/components/EscrowTrustModal';
 
@@ -76,6 +85,7 @@ export default function ProductDetailScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const { t } = useTranslation();
+  const { isRTL } = useLanguage();
   const { width } = useWindowDimensions();
 
   const contentWidth = Math.min(width, 760);
@@ -87,6 +97,8 @@ export default function ProductDetailScreen() {
   const [isBuying,        setIsBuying]        = useState(false);
   const [isWishlisted,    setIsWishlisted]    = useState(false);
   const [activeIndex,     setActiveIndex]     = useState(0);
+  const [productReviews,  setProductReviews]  = useState<Review[]>([]);
+  const [sellerRating,    setSellerRating]    = useState<SellerRating | null>(null);
 
   // Offer Modal State
   const [offerModalVisible, setOfferModalVisible] = useState(false);
@@ -115,6 +127,15 @@ export default function ProductDetailScreen() {
       if (data?.category) {
         const similar = await productService.getSimilarProducts(data.category, id, 6);
         setSimilarProducts(similar);
+      }
+
+      // Reviews are supporting detail -- a failure here must not blank the
+      // listing, so they load beside the product rather than gating it.
+      getProductReviews(id).then(setProductReviews).catch(err =>
+        console.warn('[ProductDetail] product reviews failed:', err));
+      if (data?.seller_id) {
+        getSellerRating(data.seller_id).then(setSellerRating).catch(err =>
+          console.warn('[ProductDetail] seller rating failed:', err));
       }
     } catch {
       Toast.show({ type: 'error', text1: 'Failed to load product.' });
@@ -374,22 +395,26 @@ export default function ProductDetailScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.sellerName}>{sellerName}</Text>
                 <View style={styles.sellerMeta}>
-                  <ShieldCheck size={12} color="#10B981" />
-                  <Text style={styles.sellerMetaText}>Verified Seller</Text>
-                  <Text style={styles.sellerDot}>·</Text>
+                  {product.seller?.is_verified_seller && (
+                    <>
+                      <ShieldCheck size={12} color="#10B981" />
+                      <Text style={styles.sellerMetaText}>Verified Seller</Text>
+                      <Text style={styles.sellerDot}>·</Text>
+                    </>
+                  )}
                   <ShoppingBag size={12} color="#94A3B8" />
                   <Text style={styles.sellerMetaText}>Egypt</Text>
                 </View>
-                {/* Seller metrics */}
+                {/* Real rating from the reviews aggregate. The previous pills
+                    showed a hardcoded "18 items sold" for every seller and an
+                    unconditional "Verified Seller" badge -- both were invented. */}
                 <View style={styles.sellerMetricsRow}>
-                  <View style={styles.sellerMetricPill}>
-                    <Zap size={11} color="#059669" />
-                    <Text style={styles.sellerMetricText}>{t('products.fastResponder')}</Text>
-                  </View>
-                  <View style={styles.sellerMetricPill}>
-                    <Package size={11} color="#2563EB" />
-                    <Text style={styles.sellerMetricText}>18 {t('products.itemsSold')}</Text>
-                  </View>
+                  <StarRating
+                    value={sellerRating?.rating_avg ?? null}
+                    count={sellerRating?.rating_count ?? 0}
+                    size={13}
+                    isRTL={isRTL}
+                  />
                 </View>
               </View>
               <ChevronRight color="#CBD5E1" size={18} />
@@ -456,6 +481,29 @@ export default function ProductDetailScreen() {
               {product.description || 'No description provided.'}
             </Text>
           </Reanimated.View>
+
+          {/* ── Reviews for this listing ── */}
+          <View style={{ marginBottom: 24 }}>
+            <View style={styles.reviewsHeader}>
+              <Text style={styles.sectionLabel}>
+                {isRTL ? 'تقييمات هذا المنتج' : 'Reviews for this item'}
+              </Text>
+              {productReviews.length > 0 && (
+                <Text style={styles.reviewsCount}>
+                  {productReviews.length}
+                </Text>
+              )}
+            </View>
+            <ReviewList
+              reviews={productReviews}
+              isRTL={isRTL}
+              emptyText={
+                isRTL
+                  ? 'لا توجد تقييمات على هذا المنتج بعد.'
+                  : 'No reviews on this item yet.'
+              }
+            />
+          </View>
 
           {/* ── Similar Products Carousel (eBay style) ── */}
           {similarProducts.length > 0 && (
@@ -977,6 +1025,12 @@ const styles = StyleSheet.create({
   },
   safetyCardTitle: { fontSize: 13, fontWeight: '800', color: '#0369A1', marginBottom: 2 },
   safetyCardSub: { fontSize: 11, color: '#0284C7' },
+
+  reviewsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  reviewsCount: {
+    fontSize: 11, fontWeight: '800', color: '#64748B',
+    backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2,
+  },
 
   // Description
   sectionLabel: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 10 },

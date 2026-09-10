@@ -223,7 +223,9 @@ export default function WalletScreen() {
     setWithdrawing(true);
     try {
       const res = await requestPayout(user.id, amount, selectedMethod);
-      Toast.show({ type: 'success', text1: 'Payout Processed! 💸', text2: res.message });
+      // Never "Processed": the backend files a pending payout request for
+      // review and transfers nothing.
+      Toast.show({ type: 'success', text1: 'Payout Requested 💸', text2: res.message });
       setWithdrawModalVisible(false);
       setWithdrawAmount('');
       await loadWalletData();
@@ -243,16 +245,17 @@ export default function WalletScreen() {
 
     setUpgradingTier(true);
     try {
-      const newTier = await upgradeSellerTier(user.id, 2);
-      setSellerTier(newTier);
-      Toast.show({
-        type: 'success',
-        text1: 'Verification Approved! 🛡️',
-        text2: 'You are now a Verified Trader (Tier 2) with 4% fee and higher limits.',
-      });
+      // upgradeSellerTier now refuses: a National ID typed into the app was
+      // never checked by anything, and the client must not grant itself the
+      // Verified badge or a lower fee.
+      await upgradeSellerTier(user.id, 2);
       setTierModalVisible(false);
     } catch (err: any) {
-      Alert.alert('Verification Failed', err?.message || 'Could not verify ID');
+      Alert.alert(
+        'Verification unavailable',
+        err?.message ||
+          'Seller verification needs ID documents reviewed by our team, which the app cannot do yet. Your tier is unchanged.',
+      );
     } finally {
       setUpgradingTier(false);
     }

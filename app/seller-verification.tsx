@@ -108,10 +108,12 @@ export default function SellerVerificationScreen() {
 
     setSubmitting(true);
     try {
-      // 1. Upgrade seller tier
-      await upgradeSellerTier(user.id, selectedTier);
+      // The tier is deliberately NOT granted here. ID verification needs the
+      // document upload + human review flow web has; until mobile has it, this
+      // screen saves the payout destinations (which is real) and says plainly
+      // that verification itself is still pending. See upgradeSellerTier().
 
-      // 2. Register payout methods (add each non-empty method)
+      // Register payout methods (add each non-empty method)
       let isFirst = true;
 
       if (instapayIpa.trim()) {
@@ -121,7 +123,7 @@ export default function SellerVerificationScreen() {
           account_identifier: instapayIpa.trim(),
           account_holder_name: fullName.trim(),
           is_default: isFirst,
-          is_verified: true,
+          is_verified: false,
         });
         isFirst = false;
       }
@@ -133,7 +135,7 @@ export default function SellerVerificationScreen() {
           account_identifier: vodafoneCash.trim(),
           account_holder_name: fullName.trim(),
           is_default: isFirst,
-          is_verified: true,
+          is_verified: false,
         });
         isFirst = false;
       }
@@ -145,14 +147,15 @@ export default function SellerVerificationScreen() {
           account_identifier: bankIban.trim(),
           account_holder_name: fullName.trim(),
           is_default: isFirst,
-          is_verified: true,
+          is_verified: false,
         });
       }
 
       Toast.show({
         type: 'success',
-        text1: 'Verification Approved! 🛡️',
-        text2: `You are now an Amazon/eBay grade Verified Seller on EgyBay.`,
+        text1: 'Payout details saved',
+        text2: 'ID verification is not available in the app yet — your seller tier is unchanged.',
+        visibilityTime: 6000,
       });
 
       router.replace('/wallet' as any);

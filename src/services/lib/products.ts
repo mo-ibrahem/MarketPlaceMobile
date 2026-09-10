@@ -16,6 +16,9 @@ export interface Product {
   seller?: {
     full_name: string
     avatar_url?: string
+    is_verified_seller?: boolean
+    rating_avg?: number | null
+    rating_count?: number
   }
   isWishlisted?: boolean
 }
@@ -107,7 +110,7 @@ export const productService = {
 
       const { data: profiles, error: profilesError } = await supabase
         .from("user_profiles")
-        .select("id, full_name, avatar_url")
+        .select("id, full_name, avatar_url, is_verified_seller, rating_avg, rating_count")
         .in("id", sellerIds)
 
       if (profilesError) throw profilesError
@@ -118,7 +121,7 @@ export const productService = {
               map[profile.id] = profile
               	return map
             },
-            {} as Record<string, { id: string; full_name: string; avatar_url?: string }>,
+            {} as Record<string, { id: string; full_name: string; avatar_url?: string; is_verified_seller?: boolean; rating_avg?: number | null; rating_count?: number }>,
       	)
         : {}
 
@@ -157,7 +160,7 @@ export const productService = {
     if (product) {
       const { data: sellerProfile, error: profileError } = await supabase
         .from("user_profiles")
-        .select("id, full_name, avatar_url")
+        .select("id, full_name, avatar_url, is_verified_seller, rating_avg, rating_count")
         .eq("id", product.seller_id)
         .single()
 
@@ -313,7 +316,7 @@ export const productService = {
   	const sellerIds = [...new Set(products.map((product) => product.seller_id))]
   	const { data: profiles, error: profilesError } = await supabase
   		.from("user_profiles")
-  		.select("id, full_name, avatar_url")
+  		.select("id, full_name, avatar_url, is_verified_seller, rating_avg, rating_count")
   		.in("id", sellerIds)
 
   	if (profilesError) {

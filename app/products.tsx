@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { productService, type Product } from '../src/services/lib/products';
 
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type SortKey = 'newest' | 'price_asc' | 'price_desc';
@@ -531,12 +532,21 @@ function ProductCard({
       <View style={styles.cardBody}>
         <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
         
-        {/* Rating and Condition */}
+        {/* Rating and Condition. The rating pill used to read a hardcoded
+            "4.9" on every card regardless of the seller; it now shows the real
+            aggregate, and shows nothing at all until there is one. */}
         <View style={styles.cardRatingRow}>
-          <View style={styles.ratingPill}>
-            <Star color="#F59E0B" fill="#F59E0B" size={10} />
-            <Text style={styles.ratingText}>4.9</Text>
-          </View>
+          {item.seller?.rating_count ? (
+            <View style={styles.ratingPill}>
+              <Star color="#F59E0B" fill="#F59E0B" size={10} />
+              <Text style={styles.ratingText}>
+                {Number(item.seller.rating_avg ?? 0).toFixed(1)}
+                <Text style={styles.ratingCount}> ({item.seller.rating_count})</Text>
+              </Text>
+            </View>
+          ) : (
+            <View />
+          )}
           <Text style={styles.conditionTag}>{item.condition || 'Used'}</Text>
         </View>
 
@@ -768,6 +778,7 @@ const styles = StyleSheet.create({
   },
   sellerInitial: { fontSize: 10, fontWeight: '800', color: '#6366F1' },
   sellerName: { fontSize: 11, color: '#94A3B8', fontWeight: '500', flex: 1 },
+  ratingCount: { fontSize: 9, fontWeight: '700', color: '#B45309' },
   cardRatingRow: {
     flexDirection: 'row',
     alignItems: 'center',

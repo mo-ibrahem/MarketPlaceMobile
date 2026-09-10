@@ -12,6 +12,7 @@ import {
   Home,
   LayoutGrid,
   MapPin,
+  Bell,
   Search,
   ShieldCheck,
   Shirt,
@@ -46,6 +47,7 @@ import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import { useLanguage } from '../../hooks/useLanguage';
 import { getProductBoostInfo } from '../../src/services/lib/boostService';
 import { productService, type Product } from '../../src/services/lib/products';
+import { getUnreadNotificationCount } from '../../src/services/lib/notificationService';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -138,6 +140,7 @@ export default function HomeScreen() {
   const bannerWidth = Math.min(width - 32, 920);
   const numColumns = width >= 900 ? 4 : width >= 600 ? 3 : 2;
 
+  const [unreadCount, setUnreadCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -187,8 +190,18 @@ export default function HomeScreen() {
     }
   }, []);
 
+  // Refreshed on focus rather than polled: the badge should be right when the
+  // user looks at it, and a signed-out viewer simply has none.
+  const loadUnread = useCallback(async () => {
+    try {
+      setUnreadCount(await getUnreadNotificationCount());
+    } catch {
+      setUnreadCount(0);
+    }
+  }, []);
+
   useFocusEffect(
-    useCallback(() => { loadProducts(); }, [loadProducts])
+    useCallback(() => { loadProducts(); loadUnread(); }, [loadProducts, loadUnread])
   );
 
   const onRefresh = useCallback(async () => {
@@ -294,6 +307,23 @@ export default function HomeScreen() {
                 >
                   <Globe size={13} color="#475569" />
                   <Text style={styles.langPillText}>{language === 'en' ? 'عربي' : 'EN'}</Text>
+                </TouchableOpacity>
+
+                {/* Notification Bell */}
+                <TouchableOpacity
+                  style={styles.headerIconBtn}
+                  onPress={() => router.push('/notifications' as any)}
+                  activeOpacity={0.8}
+                  accessibilityLabel="Notifications"
+                >
+                  <Bell size={18} color="#334155" />
+                  {unreadCount > 0 && (
+                    <View style={styles.headerBadge}>
+                      <Text style={styles.headerBadgeText}>
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
 
                 {/* Wishlist Shortcut */}
@@ -667,12 +697,21 @@ export default function HomeScreen() {
                     <View style={styles.cardBody}>
                       <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
                       
-                      {/* Rating & Condition Strip */}
+                      {/* Rating & Condition Strip. The pill previously read a
+                          hardcoded "4.9" for every seller; it now shows the real
+                          aggregate and hides entirely until one exists. */}
                       <View style={styles.cardRatingRow}>
-                        <View style={styles.ratingPill}>
-                          <Star color="#F59E0B" fill="#F59E0B" size={11} />
-                          <Text style={styles.ratingText}>4.9</Text>
-                        </View>
+                        {item.seller?.rating_count ? (
+                          <View style={styles.ratingPill}>
+                            <Star color="#F59E0B" fill="#F59E0B" size={11} />
+                            <Text style={styles.ratingText}>
+                              {Number(item.seller.rating_avg ?? 0).toFixed(1)}
+                              <Text style={styles.ratingCount}> ({item.seller.rating_count})</Text>
+                            </Text>
+                          </View>
+                        ) : (
+                          <View />
+                        )}
                         <Text style={styles.conditionTag}>{item.condition || 'Used'}</Text>
                       </View>
 
@@ -1166,6 +1205,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   ratingText: { fontSize: 10, fontWeight: '800', color: '#92400E' },
+  ratingCount: { fontSize: 9, fontWeight: '700', color: '#B45309' },
   conditionTag: { fontSize: 10, fontWeight: '600', color: '#64748B' },
   cardMeta: { gap: 2, marginTop: 4 },
   cardSeller: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },

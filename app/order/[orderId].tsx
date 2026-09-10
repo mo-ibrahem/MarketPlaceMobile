@@ -14,6 +14,7 @@ import {
   QrCode,
   ShieldAlert,
   ShieldCheck,
+  Star,
   ThumbsUp,
   Truck,
   User,
@@ -35,6 +36,14 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
+import { useLanguage } from '../../src/i18n/LanguageContext';
+import { ReviewForm } from '../../src/components/ReviewForm';
+import { ReviewRow } from '../../src/components/ReviewList';
+import {
+  canReviewOrder,
+  getMyReviewForOrder,
+  type Review,
+} from '../../src/services/lib/reviewService';
 import {
   approveOrderDelivery,
   confirmBuyerReceipt,
@@ -121,6 +130,7 @@ const stepStyles = StyleSheet.create({
 export default function OrderDetailScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const { user } = useAuth();
+  const { isRTL } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -144,6 +154,10 @@ export default function OrderDetailScreen() {
   // Buyer — Approve delivery
   const [approving, setApproving] = useState(false);
 
+  // Buyer — Review
+  const [myReview, setMyReview] = useState<Review | null>(null);
+  const [editingReview, setEditingReview] = useState(false);
+
   const reload = async () => {
     if (!orderId) return;
     try {
@@ -156,7 +170,18 @@ export default function OrderDetailScreen() {
     }
   };
 
-  useEffect(() => { reload(); }, [orderId]);
+  const reloadReview = async () => {
+    if (!orderId) return;
+    try {
+      setMyReview(await getMyReviewForOrder(orderId));
+    } catch (err) {
+      // A missing review isn't an error state for this screen; the section
+      // simply renders as "not reviewed yet".
+      console.warn('[OrderDetail] review load failed:', err);
+    }
+  };
+
+  useEffect(() => { reload(); reloadReview(); }, [orderId]);
 
   const isBuyer = user?.id === order?.buyer_id;
   const isSeller = user?.id === order?.seller_id;
@@ -262,6 +287,32 @@ export default function OrderDetailScreen() {
   }
 
   const isDisputed = order.status === 'disputed';
+
+  // Money has reached escrow only once the backend moved the order out of
+  // pending_payment. Previously the badge fell through to "🔒 ضمان" and the
+  // escrow banner rendered for ANY status that wasn't delivered or disputed --
+  // pending_payment and cancelled included -- so an unpaid or cancelled order
+  // told the user their money was safely held when nothing had reached escrow.
+  const isAwaitingPayment = order.status === 'pending_payment';
+  const isCancelled = order.status === 'cancelled';
+  const isInEscrow = !isAwaitingPayment && !isCancelled;
+
+  const statusBadge = isDisputed
+    ? '⚠️ نزاع'
+    : isAwaitingPayment
+      ? '⏳ بانتظار الدفع'
+      : isCancelled
+        ? '✕ ملغي'
+        : order.status === 'completed'
+          ? '✓ مكتمل'
+          : order.status === 'shipped'
+            ? '🚚 شحن'
+            : order.status === 'delivered'
+              ? '📦 وصل'
+              : '🔒 ضمان';
+
+  const reviewGate = canReviewOrder(order, user?.id, myReview);
+
   const canApprove = isBuyer && (order.status === 'delivered');
   const canDispute = isBuyer && (order.status === 'delivered' || order.status === 'shipped' || order.status === 'out_for_delivery');
   const canDispatchAwb = isSeller && (order.status === 'escrow_secured') && order.handover_method === 'courier';
@@ -278,9 +329,19 @@ export default function OrderDetailScreen() {
           <Text style={s.headerTitle}>تفاصيل الطلب</Text>
           <Text style={s.headerSub}>#{order.id.slice(-8).toUpperCase()}</Text>
         </View>
-        <View style={[s.statusBadgeHeader, { borderColor: isDisputed ? '#FCA5A5' : '#93C5FD' }]}>
-          <Text style={[s.statusBadgeText, { color: isDisputed ? '#EF4444' : '#60A5FA' }]}>
-            {isDisputed ? '⚠️ نزاع' : order.status === 'completed' ? '✓ مكتمل' : order.status === 'shipped' ? '🚚 شحن' : order.status === 'delivered' ? '📦 وصل' : '🔒 ضمان'}
+        <View
+          style={[
+            s.statusBadgeHeader,
+            { borderColor: isDisputed || isCancelled ? '#FCA5A5' : isAwaitingPayment ? '#FCD34D' : '#93C5FD' },
+          ]}
+        >
+          <Text
+            style={[
+              s.statusBadgeText,
+              { color: isDisputed || isCancelled ? '#EF4444' : isAwaitingPayment ? '#FBBF24' : '#60A5FA' },
+            ]}
+          >
+            {statusBadge}
           </Text>
         </View>
       </LinearGradient>
@@ -307,8 +368,34 @@ export default function OrderDetailScreen() {
           </View>
         </View>
 
-        {/* Escrow Protection Banner */}
-        {!isDelivered && !isDisputed && (
+        {/* Payment state — never claims escrow before the backend confirms it */}
+        {isAwaitingPayment && (
+          <View style={s.pendingBanner}>
+            <Clock color="#D97706" size={18} />
+            <Text style={s.pendingText}>
+              {/* There is no resume-payment path, so this must not tell the
+                  buyer to "complete payment" with no way to do it. It says what
+                  actually happens: cancel_abandoned_orders releases the stock. */}
+              {isRTL
+                ? 'لم يتم تأكيد الدفع بعد — لم يصل أي مبلغ إلى الضمان. إذا لم يصل التأكيد، يُلغى الطلب تلقائياً ويعود المنتج للمخزون.'
+                : 'Payment not confirmed yet — nothing has reached escrow. If confirmation never arrives, this order cancels itself and the item returns to stock.'}
+            </Text>
+          </View>
+        )}
+
+        {isCancelled && (
+          <View style={s.cancelledBanner}>
+            <ShieldAlert color="#DC2626" size={18} />
+            <Text style={s.cancelledText}>
+              {isRTL
+                ? 'تم إلغاء هذا الطلب. لا توجد أموال محتجزة.'
+                : 'This order was cancelled. No funds are being held.'}
+            </Text>
+          </View>
+        )}
+
+        {/* Escrow Protection Banner — only once funds actually reached escrow */}
+        {isInEscrow && !isDelivered && !isDisputed && (
           <View style={s.escrowBanner}>
             <ShieldCheck color="#10B981" size={18} />
             <Text style={s.escrowText}>أموالك في الضمان الآمن — محمية حتى التسليم والفحص</Text>
@@ -458,6 +545,42 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
+        {/* Buyer review — the backend enforces every one of these rules inside
+            submit_review; this only avoids offering an action it would reject. */}
+        {isBuyer && (order.status === 'completed' || myReview) && (
+          <View style={s.card}>
+            <View style={s.cardHeader}>
+              <Star color="#F59E0B" size={16} />
+              <Text style={s.cardTitle}>{isRTL ? 'تقييم البائع' : 'Rate the seller'}</Text>
+            </View>
+
+            {myReview && !editingReview ? (
+              <View style={{ gap: 10 }}>
+                <ReviewRow review={myReview} isRTL={isRTL} />
+                <TouchableOpacity style={s.editReviewBtn} onPress={() => setEditingReview(true)}>
+                  <Text style={s.editReviewText}>{isRTL ? 'تعديل تقييمي' : 'Edit my review'}</Text>
+                </TouchableOpacity>
+              </View>
+            ) : reviewGate.allowed || editingReview ? (
+              <ReviewForm
+                orderId={order.id}
+                existing={editingReview ? myReview : null}
+                isRTL={isRTL}
+                onSaved={() => {
+                  setEditingReview(false);
+                  reloadReview();
+                }}
+              />
+            ) : (
+              <Text style={s.noteText}>
+                {reviewGate.reason === 'window_closed'
+                  ? (isRTL ? 'انتهت مهلة التقييم لهذا الطلب (٩٠ يوماً).' : 'The 90-day review window for this order has closed.')
+                  : (isRTL ? 'يمكنك التقييم بعد اكتمال الطلب.' : 'You can leave a review once this order is completed.')}
+              </Text>
+            )}
+          </View>
+        )}
+
         {/* Chat Button */}
         <TouchableOpacity
           style={s.chatBtn}
@@ -554,6 +677,12 @@ const s = StyleSheet.create({
 
   escrowBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#ECFDF5', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#A7F3D0' },
   escrowText: { fontSize: 12, fontWeight: '600', color: '#065F46', flex: 1 },
+  pendingBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFBEB', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#FDE68A' },
+  pendingText: { fontSize: 12, fontWeight: '700', color: '#92400E', flex: 1, lineHeight: 18 },
+  cancelledBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF2F2', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#FECACA' },
+  cancelledText: { fontSize: 12, fontWeight: '700', color: '#991B1B', flex: 1, lineHeight: 18 },
+  editReviewBtn: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12, backgroundColor: '#EFF6FF' },
+  editReviewText: { fontSize: 12, fontWeight: '800', color: '#2563EB' },
 
   noteText: { fontSize: 12, color: '#64748B', lineHeight: 18 },
   addressText: { fontSize: 12.5, color: '#334155', lineHeight: 20 },

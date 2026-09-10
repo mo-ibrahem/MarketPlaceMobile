@@ -232,29 +232,39 @@ export async function getSellerTier(userId: string): Promise<SellerTierConfig> {
     console.warn('[WalletService] getSellerTier fallback to memory:', err);
   }
 
-  const tierNum = inMemorySellerTiers[userId] || 2; // Default to Tier 2 for preview
-  return SELLER_TIERS[tierNum];
+  // Fall back to Tier 1, never Tier 2. Defaulting to "Verified Trader" on a
+  // failed read showed every unverified seller as verified and quoted them the
+  // lower commission rate. Tier 1 is the safe assumption: unverified until the
+  // profile actually says otherwise.
+  return SELLER_TIERS[1];
+}
+
+export class SellerVerificationUnavailable extends Error {
+  constructor() {
+    super('Seller verification is not available in the app yet.');
+    this.name = 'SellerVerificationUnavailable';
+  }
 }
 
 /**
- * Upgrade Seller Tier (e.g. Upload National ID for Tier 2 verification)
+ * Seller tier is NOT something the client may grant itself.
+ *
+ * This previously wrote `tier` and `is_verified_seller: true` straight into
+ * user_profiles from the device, after nothing more than a 14-digit length
+ * check on a National ID that was never sent anywhere or verified. Because the
+ * table's UPDATE policy is a bare `auth.uid() = id` with no column restriction,
+ * any signed-in user could hand themselves the "Verified" badge buyers rely on
+ * and a lower commission rate. It then swallowed the error and reported success
+ * regardless, so the UI said "Verification Approved!" either way.
+ *
+ * Web does this properly: ID photos go to a private storage bucket and a
+ * `pending` row is filed in seller_verification_requests for human review (see
+ * EgbayWeb app/seller-verification/page.tsx). Mobile has no upload flow yet, so
+ * until it does this refuses rather than pretending -- and never claims a tier
+ * the backend has not granted.
  */
-export async function upgradeSellerTier(userId: string, targetTier: 1 | 2 | 3): Promise<SellerTierConfig> {
-  try {
-    await supabase
-      .from('user_profiles' as any)
-      .update({
-        tier: targetTier,
-        tier_verified_at: new Date().toISOString(),
-        is_verified_seller: targetTier >= 2,
-      } as any)
-      .eq('id', userId);
-  } catch (err) {
-    console.warn('[WalletService] Error updating tier in Supabase:', err);
-  }
-
-  inMemorySellerTiers[userId] = targetTier;
-  return SELLER_TIERS[targetTier];
+export async function upgradeSellerTier(_userId: string, _targetTier: 1 | 2 | 3): Promise<SellerTierConfig> {
+  throw new SellerVerificationUnavailable();
 }
 
 /**
@@ -509,7 +519,11 @@ export async function addPayoutMethod(
 }
 
 /**
- * Request an instant withdrawal/payout to InstaPay or Vodafone Cash
+ * Request a withdrawal/payout to InstaPay or Vodafone Cash.
+ *
+ * This *requests* a payout -- it is not instant and nothing here moves money.
+ * The backend debits the available balance and files a `pending` payout request
+ * for review; no code in this system fulfils one yet.
  */
 export async function requestPayout(
   userId: string,
@@ -527,52 +541,44 @@ export async function requestPayout(
     throw new Error('Minimum withdrawal amount is EGP 100');
   }
 
-  const newAvailable = available - amount;
-
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch('https://egbay.shop/api/wallet/action', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
-      },
-      body: JSON.stringify({
-        action: 'request_payout',
-        amount,
-        payoutMethodId: payoutMethod.id,
-        payoutMethodIdentifier: payoutMethod.account_identifier
-      })
-    });
-    
-    const data = await res.json();
-    const txId = data?.txId || `payout_${Date.now()}`;
-
-    return {
-      success: true,
-      message: `Successfully transferred EGP ${amount.toLocaleString()} to ${payoutMethod.account_identifier}`,
-      transactionId: txId,
-    };
-  } catch (err) {
-    console.warn('[WalletService] Fallback processing payout in memory:', err);
-  }
-
-  wallet.available_balance = newAvailable;
-  const txId = `payout_${Date.now()}`;
-  inMemoryTransactions.unshift({
-    id: txId,
-    type: 'payout',
-    amount: amount,
-    fee_amount: 0,
-    status: 'completed',
-    description: `Payout to ${payoutMethod.account_identifier}`,
-    created_at: new Date().toISOString(),
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch('https://egbay.shop/api/wallet/action', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(session && { 'Authorization': `Bearer ${session.access_token}` })
+    },
+    body: JSON.stringify({
+      action: 'request_payout',
+      amount,
+      payoutMethodId: payoutMethod.id,
+      payoutMethodIdentifier: payoutMethod.account_identifier
+    })
   });
 
+  // A failure here must surface as a failure. This previously returned
+  // "Successfully transferred..." without ever reading the response, and fell
+  // back on a network error to fabricating a *completed* payout transaction in
+  // memory -- telling the user their money had been sent when nothing had
+  // happened at all.
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error('Could not reach the payout service. Your balance has not been changed.');
+  }
+  if (!res.ok || !data?.success) {
+    throw new Error(data?.error || 'Payout request failed. Your balance has not been changed.');
+  }
+
+  // request_wallet_payout only inserts a payout_requests row with status
+  // 'pending' and a pending wallet_transactions row -- it debits the available
+  // balance but transfers nothing. Nothing in this system fulfils a payout yet,
+  // so this reports a request received, never a completed transfer.
   return {
     success: true,
-    message: `Successfully transferred EGP ${amount.toLocaleString()} to ${payoutMethod.account_identifier}`,
-    transactionId: txId,
+    message: `Your request to withdraw EGP ${amount.toLocaleString()} to ${payoutMethod.account_identifier} is being reviewed.`,
+    transactionId: data?.payoutRequestId || data?.txId,
   };
 }
 
