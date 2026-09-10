@@ -218,8 +218,11 @@ export async function getUserWallet(userId: string): Promise<UserWallet> {
  */
 export async function getSellerTier(userId: string): Promise<SellerTierConfig> {
   try {
+    // public_profiles, not user_profiles: the latter's only SELECT policy is
+    // `auth.uid() = id` for authenticated alone, so reading it returns nothing
+    // for anyone else's seller -- and nothing at all when signed out.
     const { data, error } = await supabase
-      .from('user_profiles' as any)
+      .from('public_profiles' as any)
       .select('tier')
       .eq('id', userId)
       .maybeSingle();

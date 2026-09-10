@@ -109,7 +109,7 @@ export const productService = {
       const sellerIds = [...new Set(products.map((product) => product.seller_id))]
 
       const { data: profiles, error: profilesError } = await supabase
-        .from("user_profiles")
+        .from("public_profiles")
         .select("id, full_name, avatar_url, is_verified_seller, rating_avg, rating_count")
         .in("id", sellerIds)
 
@@ -159,7 +159,7 @@ export const productService = {
 
     if (product) {
       const { data: sellerProfile, error: profileError } = await supabase
-        .from("user_profiles")
+        .from("public_profiles")
         .select("id, full_name, avatar_url, is_verified_seller, rating_avg, rating_count")
         .eq("id", product.seller_id)
         .single()
@@ -315,7 +315,7 @@ export const productService = {
 
   	const sellerIds = [...new Set(products.map((product) => product.seller_id))]
   	const { data: profiles, error: profilesError } = await supabase
-  		.from("user_profiles")
+  		.from("public_profiles")
   		.select("id, full_name, avatar_url, is_verified_seller, rating_avg, rating_count")
   		.in("id", sellerIds)
 
@@ -389,6 +389,10 @@ export const profileService = {
 
   // This replaces the buggy 'upsertProfile' function
   updateProfile: async (userId: string, updates: Partial<UserProfile>) => {
+    // Writes go to the base table, never through public_profiles: that view is
+    // SELECT-only for clients (its write grants were the privilege-escalation
+    // hole revoked in 20260910120000), and user_profiles has a proper
+    // `auth.uid() = id` UPDATE policy.
     const { data, error } = await supabase
       .from("user_profiles")
       .update({ ...updates, updated_at: new Date().toISOString() })
