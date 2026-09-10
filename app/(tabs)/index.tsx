@@ -319,6 +319,7 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   style={styles.headerIconBtn}
                   onPress={() => router.push('/notifications' as any)}
+                  hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                   activeOpacity={0.8}
                   accessibilityLabel="Notifications"
                 >
@@ -336,6 +337,7 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   style={styles.headerIconBtn}
                   onPress={() => router.push('/(tabs)/explore' as any)}
+                  hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                   activeOpacity={0.8}
                 >
                   <Heart size={18} color="#334155" />
@@ -610,6 +612,7 @@ export default function HomeScreen() {
                   <TouchableOpacity style={styles.trendHeart} onPress={() => toggleWishlist(item)}>
                     <Heart
                       size={16}
+ hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
                       color={wishlistIds.has(item.id) ? '#EF4444' : 'white'}
                       fill={wishlistIds.has(item.id) ? '#EF4444' : 'none'}
                     />
@@ -866,7 +869,7 @@ const styles = StyleSheet.create({
   },
   headerBadgeText: {
     color: 'white',
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '900',
   },
   searchBarRow: {
@@ -953,12 +956,12 @@ const styles = StyleSheet.create({
   },
   storyLiveBadgeText: {
     color: 'white',
-    fontSize: 8,
+    fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
   storyLabel: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '600',
     color: '#475569',
     textAlign: 'center',
@@ -1000,12 +1003,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   tickerText: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '700',
     color: '#334155',
   },
   tickerDot: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#94A3B8',
   },
   flashTimerDigits: { fontWeight: '900', color: '#FEF08A' },
@@ -1185,7 +1188,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
-  newBadgeText: { color: 'white', fontSize: 9, fontWeight: '900', letterSpacing: 0.6 },
+  newBadgeText: { color: 'white', fontSize: 11, fontWeight: '900', letterSpacing: 0.6 },
   cardPromotedBadge: {
     position: 'absolute',
     top: 8,
@@ -1194,7 +1197,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
-  cardPromotedBadgeText: { color: 'white', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+  cardPromotedBadgeText: { color: 'white', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
   cardBody: { padding: 10 },
   cardTitle: { fontSize: 13, fontWeight: '700', color: '#1E293B', marginBottom: 4, lineHeight: 18 },
   cardRatingRow: {
@@ -1212,12 +1215,12 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
   },
-  ratingText: { fontSize: 10, fontWeight: '800', color: '#92400E' },
-  ratingCount: { fontSize: 9, fontWeight: '700', color: '#B45309' },
-  conditionTag: { fontSize: 10, fontWeight: '600', color: '#64748B' },
+  ratingText: { fontSize: 11, fontWeight: '800', color: '#92400E' },
+  ratingCount: { fontSize: 11, fontWeight: '700', color: '#B45309' },
+  conditionTag: { fontSize: 11, fontWeight: '600', color: '#64748B' },
   cardMeta: { gap: 2, marginTop: 4 },
   cardSeller: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
-  cardLocation: { fontSize: 10, color: '#64748B', fontWeight: '600' },
+  cardLocation: { fontSize: 11, color: '#64748B', fontWeight: '600' },
 
   // Empty
   emptyBox: { alignItems: 'center', padding: 40 },
@@ -1286,7 +1289,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   liveStripPillText: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '900',
     color: 'white',
     letterSpacing: 0.5,
@@ -1297,7 +1300,7 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   liveStripSub: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#CBD5E1',
     marginTop: 1,
   },

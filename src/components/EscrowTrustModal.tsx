@@ -38,7 +38,9 @@ export default function EscrowTrustModal({ visible, onClose }: EscrowTrustModalP
               <Text style={styles.headerTitle}>ضمان إيجي باي لحماية أموالك 🛡️</Text>
               <Text style={styles.headerSub}>EgyBay 100% Buyer & Seller Escrow Protection</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+          >
               <X color="#64748B" size={20} />
             </TouchableOpacity>
           </View>
@@ -231,7 +233,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  stepNumber: { fontSize: 10, fontWeight: '800', color: '#2563EB', textTransform: 'uppercase' },
+  stepNumber: { fontSize: 11, fontWeight: '800', color: '#2563EB', textTransform: 'uppercase' },
   stepTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A', marginTop: 2, marginBottom: 4 },
   stepDesc: { fontSize: 11.5, color: '#64748B', lineHeight: 17 },
 
@@ -246,7 +248,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   pillarTitle: { fontSize: 12, fontWeight: '800', color: '#0F172A' },
-  pillarSub: { fontSize: 10.5, color: '#64748B', lineHeight: 15 },
+  pillarSub: { fontSize: 11, color: '#64748B', lineHeight: 15 },
 
   bottomBar: {
     paddingHorizontal: 20,

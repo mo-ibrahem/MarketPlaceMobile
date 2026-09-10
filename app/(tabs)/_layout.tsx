@@ -56,7 +56,7 @@ export default function TabsLayout() {
           backgroundColor: 'rgba(255,255,255,0.98)',
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: '700',
           letterSpacing: 0.1,
         },
@@ -81,7 +81,7 @@ export default function TabsLayout() {
             </View>
           ),
           tabBarLabelStyle: {
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: '800',
             color: '#EF4444',
           },
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   },
   fabText: {
     color: '#3665F3',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '900',
     marginTop: 4,
   },

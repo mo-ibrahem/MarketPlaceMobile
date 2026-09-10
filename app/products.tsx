@@ -515,7 +515,9 @@ function ProductCard({
           <Text style={styles.cardPriceText}>{formatEGP(item.price)}</Text>
         </View>
 
-        <TouchableOpacity style={styles.cardHeart} onPress={onToggleWishlist}>
+        <TouchableOpacity style={styles.cardHeart} onPress={onToggleWishlist}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
           <Heart
             size={14}
             color={isWishlisted ? '#EF4444' : 'white'}
@@ -758,7 +760,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
-  newBadgeText: { color: 'white', fontSize: 9, fontWeight: '900', letterSpacing: 0.6 },
+  newBadgeText: { color: 'white', fontSize: 11, fontWeight: '900', letterSpacing: 0.6 },
   cardBody: { padding: 10 },
   cardTitle: {
     fontSize: 13,
@@ -777,9 +779,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  sellerInitial: { fontSize: 10, fontWeight: '800', color: '#6366F1' },
+  sellerInitial: { fontSize: 11, fontWeight: '800', color: '#6366F1' },
   sellerName: { fontSize: 11, color: '#94A3B8', fontWeight: '500', flex: 1 },
-  ratingCount: { fontSize: 9, fontWeight: '700', color: '#B45309' },
+  ratingCount: { fontSize: 11, fontWeight: '700', color: '#B45309' },
   cardRatingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -795,9 +797,9 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
   },
-  ratingText: { fontSize: 10, fontWeight: '800', color: '#92400E' },
-  conditionTag: { fontSize: 10, fontWeight: '600', color: '#64748B' },
-  cardLocation: { fontSize: 10, color: '#64748B', fontWeight: '600', marginTop: 3 },
+  ratingText: { fontSize: 11, fontWeight: '800', color: '#92400E' },
+  conditionTag: { fontSize: 11, fontWeight: '600', color: '#64748B' },
+  cardLocation: { fontSize: 11, color: '#64748B', fontWeight: '600', marginTop: 3 },
 
   // Empty state
   emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },

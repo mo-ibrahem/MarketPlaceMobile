@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
   tierIconBox: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
   tierCardTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
   badgePill: { backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  badgePillText: { fontSize: 9, fontWeight: '800', color: '#059669' },
+  badgePillText: { fontSize: 11, fontWeight: '800', color: '#059669' },
   tierCardSub: { fontSize: 11, color: '#64748B', marginTop: 1 },
   perksRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   perkChip: {
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   autoVerifyTitle: { fontSize: 12, fontWeight: '800', color: '#065F46' },
-  autoVerifySub: { fontSize: 10, color: '#047857', marginTop: 1 },
+  autoVerifySub: { fontSize: 11, color: '#047857', marginTop: 1 },
 
   docUploadCard: {
     backgroundColor: 'white',
@@ -595,7 +595,7 @@ const styles = StyleSheet.create({
   },
   docHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   docTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
-  uploadedTag: { fontSize: 10, fontWeight: '800', color: '#059669', backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  uploadedTag: { fontSize: 11, fontWeight: '800', color: '#059669', backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   uploadPlaceholder: {
     height: 120,
     borderRadius: 14,

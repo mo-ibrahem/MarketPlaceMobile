@@ -880,7 +880,7 @@ const styles = StyleSheet.create({
   },
   currencyBadgeText: { color: 'white', fontSize: 11, fontWeight: '700' },
 
-  balanceLabel: { fontSize: 10, color: 'rgba(255, 255, 255, 0.6)', fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
+  balanceLabel: { fontSize: 11, color: 'rgba(255, 255, 255, 0.6)', fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
   balanceValue: { fontSize: 32, fontWeight: '900', color: 'white', marginBottom: 16 },
 
   pendingBox: {
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
   },
   pendingLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   pendingLabel: { color: 'white', fontSize: 12, fontWeight: '700' },
-  pendingSub: { color: 'rgba(255, 255, 255, 0.5)', fontSize: 10 },
+  pendingSub: { color: 'rgba(255, 255, 255, 0.5)', fontSize: 11 },
   pendingValue: { color: '#FCD34D', fontSize: 15, fontWeight: '800' },
 
   heroActionsRow: { flexDirection: 'row', gap: 8 },
@@ -959,7 +959,7 @@ const styles = StyleSheet.create({
   tierBadgeBox: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
   tierNameText: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
   tierTagPill: { backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  tierTagPillText: { fontSize: 10, fontWeight: '800', color: '#059669' },
+  tierTagPillText: { fontSize: 11, fontWeight: '800', color: '#059669' },
   tierSubText: { fontSize: 11, color: '#64748B', marginTop: 1 },
   upgradeBtn: {
     flexDirection: 'row',
@@ -976,7 +976,7 @@ const styles = StyleSheet.create({
   tierDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 },
   tierGrid: { flexDirection: 'row', justifyContent: 'space-between' },
   tierGridItem: { alignItems: 'center', flex: 1 },
-  tierGridLabel: { fontSize: 10, color: '#94A3B8', fontWeight: '700', marginBottom: 2 },
+  tierGridLabel: { fontSize: 11, color: '#94A3B8', fontWeight: '700', marginBottom: 2 },
   tierGridValue: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
 
   payoutBanner: {
@@ -1053,7 +1053,7 @@ const styles = StyleSheet.create({
   txDesc: { fontSize: 13, fontWeight: '700', color: '#0F172A', marginBottom: 2 },
   txDate: { fontSize: 11, color: '#94A3B8' },
   txAmount: { fontSize: 14, fontWeight: '800', marginBottom: 2 },
-  txStatusBadge: { fontSize: 9, fontWeight: '800', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },
+  txStatusBadge: { fontSize: 11, fontWeight: '800', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },
   statusCompleted: { backgroundColor: '#ECFDF5', color: '#059669' },
   statusPending: { backgroundColor: '#FEF3C7', color: '#D97706' },
 
@@ -1122,7 +1122,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   uploadText: { fontSize: 11, fontWeight: '700', color: '#0F172A' },
-  uploadSub: { fontSize: 10, color: '#059669', fontWeight: '700' },
+  uploadSub: { fontSize: 11, color: '#059669', fontWeight: '700' },
 
   modalBtnRow: { flexDirection: 'row', gap: 12, marginTop: 14 },
   modalCancelBtn: {

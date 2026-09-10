@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   highlightTitle: { fontSize: 11, fontWeight: '800', color: '#0F172A', textAlign: 'center' },
-  highlightSub: { fontSize: 9, color: '#64748B', textAlign: 'center' },
+  highlightSub: { fontSize: 11, color: '#64748B', textAlign: 'center' },
 
   sectionCard: {
     backgroundColor: 'white',

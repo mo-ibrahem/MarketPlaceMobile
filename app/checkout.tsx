@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
   productTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
   productMetaRow: { flexDirection: 'row', gap: 6, marginBottom: 6 },
   conditionTag: { backgroundColor: '#F1F5F9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  conditionTagText: { fontSize: 10, fontWeight: '700', color: '#475569' },
+  conditionTagText: { fontSize: 11, fontWeight: '700', color: '#475569' },
   sellerTag: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   sellerTagText: { fontSize: 11, fontWeight: '600', color: '#64748B' },
   productPrice: { fontSize: 16, fontWeight: '900', color: '#2563EB' },
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
   payOptionTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
   payOptionSub: { fontSize: 11, color: '#64748B' },
   tagPill: { backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  tagPillText: { fontSize: 10, fontWeight: '800', color: '#059669' },
+  tagPillText: { fontSize: 11, fontWeight: '800', color: '#059669' },
 
   summaryBox: {
     backgroundColor: 'white',

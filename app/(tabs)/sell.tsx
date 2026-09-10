@@ -356,7 +356,7 @@ export default function SellScreen() {
                       <Text style={styles.coverBadgeText}>COVER</Text>
                     </View>
                   )}
-                  <TouchableOpacity style={styles.removeThumb} onPress={() => removeImage(idx)}>
+                  <TouchableOpacity style={styles.removeThumb} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => removeImage(idx)}>
                     <X size={12} color="white" />
                   </TouchableOpacity>
                 </View>
@@ -543,6 +543,7 @@ export default function SellScreen() {
                 </View>
                 <TouchableOpacity
                   style={[styles.togglePill, isPromotedOnSale && styles.togglePillActive]}
+                  hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
                   onPress={() => setIsPromotedOnSale(!isPromotedOnSale)}
                   activeOpacity={0.8}
                 >
@@ -823,7 +824,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
-  coverBadgeText: { color: "white", fontSize: 9, fontWeight: "800", letterSpacing: 0.5 },
+  coverBadgeText: { color: "white", fontSize: 11, fontWeight: "800", letterSpacing: 0.5 },
   removeThumb: {
     position: "absolute",
     top: 6,
@@ -1031,7 +1032,7 @@ const styles = StyleSheet.create({
   adRateChipActive: { borderColor: '#2563EB', backgroundColor: '#DBEAFE' },
   adRateChipLabel: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
   adRateChipLabelActive: { color: '#1D4ED8' },
-  adRateChipDesc: { fontSize: 9, color: '#64748B', marginTop: 2, textAlign: 'center' },
+  adRateChipDesc: { fontSize: 11, color: '#64748B', marginTop: 2, textAlign: 'center' },
   adRateChipDescActive: { color: '#1E40AF', fontWeight: '600' },
   adRateCalcBox: {
     marginTop: 10,

@@ -339,8 +339,8 @@ export default function LiveViewerScreen() {
                   <View style={{ backgroundColor: '#451A03', borderWidth: 1, borderColor: '#F59E0B', borderRadius: 10, padding: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Text style={{ fontSize: 14 }}>🎉</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#FCD34D' }}>طلب مؤكد بالبث!</Text>
-                      <Text style={{ fontSize: 10, color: '#34D399', fontWeight: '700' }}>{msg.message}</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#FCD34D' }}>طلب مؤكد بالبث!</Text>
+                      <Text style={{ fontSize: 11, color: '#34D399', fontWeight: '700' }}>{msg.message}</Text>
                     </View>
                   </View>
                 );
@@ -349,7 +349,7 @@ export default function LiveViewerScreen() {
                 return (
                   <View style={{ backgroundColor: '#1E1B4B', borderWidth: 1, borderColor: '#6366F1', borderRadius: 8, padding: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <Text style={{ fontSize: 11 }}>📌</Text>
-                    <Text style={{ fontSize: 10, color: '#C7D2FE', fontWeight: '600' }}>{msg.message}</Text>
+                    <Text style={{ fontSize: 11, color: '#C7D2FE', fontWeight: '600' }}>{msg.message}</Text>
                   </View>
                 );
               }
@@ -379,7 +379,9 @@ export default function LiveViewerScreen() {
                 style={styles.chatInput}
                 onSubmitEditing={handleSendChat}
               />
-              <TouchableOpacity onPress={handleSendChat} style={styles.chatSendBtn}>
+              <TouchableOpacity onPress={handleSendChat} style={styles.chatSendBtn}
+            hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+          >
                 <Send color="white" size={15} />
               </TouchableOpacity>
             </View>
@@ -431,7 +433,7 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 11, fontWeight: '800', color: 'white' },
   sellerName: { fontSize: 11, fontWeight: '700', color: 'white' },
-  streamTitle: { fontSize: 10, color: '#CBD5E1' },
+  streamTitle: { fontSize: 11, color: '#CBD5E1' },
   liveTag: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -442,7 +444,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'white' },
-  liveText: { fontSize: 9, fontWeight: '900', color: 'white' },
+  liveText: { fontSize: 11, fontWeight: '900', color: 'white' },
   viewersTag: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -452,7 +454,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
-  viewersNum: { fontSize: 10, color: 'white', fontWeight: '700' },
+  viewersNum: { fontSize: 11, color: 'white', fontWeight: '700' },
 
   pinnedCard: {
     position: 'absolute',
@@ -513,9 +515,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 2,
   },
-  chatAvatarText: { fontSize: 9, color: 'white', fontWeight: '700' },
+  chatAvatarText: { fontSize: 11, color: 'white', fontWeight: '700' },
   chatBubble: { flex: 1 },
-  chatAuthor: { fontSize: 10, fontWeight: '700', color: '#9CA3AF' },
+  chatAuthor: { fontSize: 11, fontWeight: '700', color: '#9CA3AF' },
   chatMsg: { fontSize: 12, color: 'white', lineHeight: 16 },
   chatInputRow: {
     flexDirection: 'row',

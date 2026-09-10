@@ -358,12 +358,14 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   style={styles.listingActionBtn}
                   onPress={e => { e.stopPropagation(); router.push(`/products/edit/${product.id}`); }}
+                  hitSlop={{ top: 7, bottom: 7, left: 7, right: 7 }}
                 >
                   <Edit3 size={13} color="#6366F1" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.listingActionBtn, styles.listingDeleteBtn]}
                   onPress={e => { e.stopPropagation(); handleDeleteProduct(product.id); }}
+                  hitSlop={{ top: 7, bottom: 7, left: 7, right: 7 }}
                 >
                   <Trash2 size={13} color="#EF4444" />
                 </TouchableOpacity>
@@ -883,7 +885,7 @@ const styles = StyleSheet.create({
   tierRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
   tierTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
   tierBadge: { backgroundColor: '#10B981', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  tierBadgeText: { fontSize: 9, fontWeight: '900', color: 'white', letterSpacing: 0.5 },
+  tierBadgeText: { fontSize: 11, fontWeight: '900', color: 'white', letterSpacing: 0.5 },
   tierSub: { fontSize: 11, color: '#64748B', fontWeight: '500' },
 
   // Tabs
@@ -953,7 +955,7 @@ const styles = StyleSheet.create({
   conditionPill: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   conditionNew: { backgroundColor: '#D1FAE5' },
   conditionUsed: { backgroundColor: '#FEF3C7' },
-  conditionText: { fontSize: 9, fontWeight: '800' },
+  conditionText: { fontSize: 11, fontWeight: '800' },
   conditionTextNew: { color: '#065F46' },
   conditionTextUsed: { color: '#92400E' },
 

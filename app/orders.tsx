@@ -356,13 +356,13 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
   cardAmount: { fontSize: 15, fontWeight: '900', color: '#3665F3', marginBottom: 2 },
   roleBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  roleText: { fontSize: 10, fontWeight: '800' },
+  roleText: { fontSize: 11, fontWeight: '800' },
   dateText: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
   awbRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   awbText: { fontSize: 11, color: '#7C3AED', fontWeight: '700' },
   cardRight: { alignItems: 'flex-end', gap: 10, flexShrink: 0 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1 },
-  statusText: { fontSize: 10, fontWeight: '800' },
+  statusText: { fontSize: 11, fontWeight: '800' },
 
   emptyWrap: { alignItems: 'center', paddingTop: 20 },
   emptyCard: {

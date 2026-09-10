@@ -241,7 +241,7 @@ export default function StudioScreen() {
           <View style={{ position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <View style={{ backgroundColor: '#EF4444', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: 'white' }} />
-              <Text style={{ fontSize: 10, fontWeight: '900', color: 'white' }}>LIVE</Text>
+              <Text style={{ fontSize: 11, fontWeight: '900', color: 'white' }}>LIVE</Text>
             </View>
             <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Users color="#60A5FA" size={11} />
@@ -287,8 +287,8 @@ export default function StudioScreen() {
                   <View style={{ backgroundColor: '#451A03', borderWidth: 1, borderColor: '#F59E0B', borderRadius: 10, padding: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Text style={{ fontSize: 14 }}>🎉</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#FCD34D' }}>طلب جديد!</Text>
-                      <Text style={{ fontSize: 10, color: '#34D399', fontWeight: '700' }}>{msg.message}</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#FCD34D' }}>طلب جديد!</Text>
+                      <Text style={{ fontSize: 11, color: '#34D399', fontWeight: '700' }}>{msg.message}</Text>
                     </View>
                   </View>
                 );
@@ -297,17 +297,17 @@ export default function StudioScreen() {
                 return (
                   <View style={{ backgroundColor: '#1E1B4B', borderWidth: 1, borderColor: '#6366F1', borderRadius: 8, padding: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <Text style={{ fontSize: 11 }}>📌</Text>
-                    <Text style={{ fontSize: 10, color: '#C7D2FE', fontWeight: '600' }}>{msg.message}</Text>
+                    <Text style={{ fontSize: 11, color: '#C7D2FE', fontWeight: '600' }}>{msg.message}</Text>
                   </View>
                 );
               }
               return (
                 <View style={{ flexDirection: 'row', gap: 6 }}>
                   <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: msg.is_host ? '#DC2626' : '#374151', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 9, color: 'white', fontWeight: '800' }}>{msg.is_host ? '👑' : (msg.username?.[0]?.toUpperCase() || '?')}</Text>
+                    <Text style={{ fontSize: 11, color: 'white', fontWeight: '800' }}>{msg.is_host ? '👑' : (msg.username?.[0]?.toUpperCase() || '?')}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 9, color: msg.is_host ? '#FCA5A5' : '#9CA3AF', fontWeight: msg.is_host ? '800' : '500' }}>
+                    <Text style={{ fontSize: 11, color: msg.is_host ? '#FCA5A5' : '#9CA3AF', fontWeight: msg.is_host ? '800' : '500' }}>
                       {msg.username} {msg.is_host ? '(HOST)' : ''}
                     </Text>
                     <Text style={{ fontSize: 11, color: 'white' }}>{msg.message}</Text>

@@ -248,7 +248,8 @@ export default function PayoutSettingsScreen() {
               style={[styles.togglePill, expressPayoutEnabled && styles.togglePillActive]}
               onPress={handleToggleExpress}
               activeOpacity={0.8}
-            >
+            hitSlop={{ top: 10, bottom: 10, left: 0, right: 0 }}
+          >
               <View style={[styles.toggleCircle, expressPayoutEnabled && styles.toggleCircleActive]} />
             </TouchableOpacity>
           </View>
@@ -436,7 +437,7 @@ const styles = StyleSheet.create({
   scheduleTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   scheduleTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
   recommendedBadge: { backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  recommendedBadgeText: { fontSize: 9, fontWeight: '800', color: '#059669' },
+  recommendedBadgeText: { fontSize: 11, fontWeight: '800', color: '#059669' },
   scheduleSub: { fontSize: 11, color: '#64748B', marginTop: 1 },
 
   // Express Payout Styles
@@ -461,7 +462,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   expressTitle: { fontSize: 13, fontWeight: '800', color: '#92400E' },
-  expressSub: { fontSize: 10.5, color: '#B45309', marginTop: 1 },
+  expressSub: { fontSize: 11, color: '#B45309', marginTop: 1 },
 
   togglePill: {
     width: 44,
@@ -517,7 +518,7 @@ const styles = StyleSheet.create({
   accountTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
   accountName: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
   defaultBadge: { backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  defaultBadgeText: { fontSize: 9, fontWeight: '800', color: '#059669' },
+  defaultBadgeText: { fontSize: 11, fontWeight: '800', color: '#059669' },
   accountIdentifier: { fontSize: 12, color: '#64748B' },
 
   addAccountBtn: {

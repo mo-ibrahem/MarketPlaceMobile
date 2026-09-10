@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   webBarTitle: { fontSize: 12, fontWeight: '700', color: 'white' },
-  webBarSub: { fontSize: 10, color: '#94A3B8' },
+  webBarSub: { fontSize: 11, color: '#94A3B8' },
   webBarBtn: { backgroundColor: '#2563EB', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
   webBarBtnText: { fontSize: 11, fontWeight: '800', color: 'white' },
 

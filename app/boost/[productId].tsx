@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 8,
   },
-  heroBadgeText: { color: '#38BDF8', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  heroBadgeText: { color: '#38BDF8', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
   heroTitle: { color: 'white', fontSize: 20, fontWeight: '900', marginBottom: 6 },
   heroSub: { color: 'rgba(255, 255, 255, 0.7)', fontSize: 12, lineHeight: 17 },
 
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderBottomLeftRadius: 10,
   },
-  popularRibbonText: { color: 'white', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+  popularRibbonText: { color: 'white', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
 
   pkgTopRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
   pkgBadgeWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
   pkgTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
   pkgMultiplier: { fontSize: 11, fontWeight: '800', color: '#2563EB', marginTop: 1 },
   pkgPrice: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
-  pkgDuration: { fontSize: 10, color: '#64748B', fontWeight: '600' },
+  pkgDuration: { fontSize: 11, color: '#64748B', fontWeight: '600' },
 
   pkgDesc: { fontSize: 12, color: '#64748B', marginBottom: 12, lineHeight: 16 },
 

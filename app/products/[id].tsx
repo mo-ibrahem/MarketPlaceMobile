@@ -277,18 +277,18 @@ export default function ProductDetailScreen() {
           />
 
           {/* Back button */}
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backBtn} hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }} onPress={() => router.back()}>
             <ArrowLeft color="white" size={22} />
           </TouchableOpacity>
 
         {/* Share + Wishlist (top right) */}
         <View style={styles.topRight}>
-          <TouchableOpacity style={styles.overlayBtn} onPress={handleShare}>
+          <TouchableOpacity style={styles.overlayBtn} hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }} onPress={handleShare}>
             <Share2 color="white" size={18} />
           </TouchableOpacity>
           {!isOwner && (
             <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-              <TouchableOpacity style={styles.overlayBtn} onPress={handleWishlist}>
+              <TouchableOpacity style={styles.overlayBtn} hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }} onPress={handleWishlist}>
                 <Heart
                   size={18}
                   color={isWishlisted ? '#F87171' : 'white'}
@@ -920,7 +920,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  sellerMetricText: { fontSize: 10, fontWeight: '700', color: '#475569' },
+  sellerMetricText: { fontSize: 11, fontWeight: '700', color: '#475569' },
 
   // Guarantee Card
   guaranteeCard: {
@@ -965,9 +965,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   deliveryOptionName: { fontSize: 12, fontWeight: '700', color: '#1E293B' },
-  deliveryOptionSub: { fontSize: 10, color: '#64748B', fontWeight: '500' },
+  deliveryOptionSub: { fontSize: 11, color: '#64748B', fontWeight: '500' },
   starRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2 },
-  starHalf: { fontSize: 10, color: '#F59E0B', fontWeight: '900', marginLeft: -2 },
+  starHalf: { fontSize: 11, color: '#F59E0B', fontWeight: '900', marginLeft: -2 },
 
   // Location badge
   locationBadge: {
@@ -1002,7 +1002,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  trustLabel: { fontSize: 10, fontWeight: '700', color: '#64748B', textAlign: 'center' },
+  trustLabel: { fontSize: 11, fontWeight: '700', color: '#64748B', textAlign: 'center' },
 
   // Safety Card
   safetyCard: {

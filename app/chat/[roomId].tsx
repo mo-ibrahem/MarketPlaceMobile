@@ -159,6 +159,7 @@ export default function ChatRoomScreen() {
             {/* Apple UGC: Block / Report User */}
             <TouchableOpacity
               style={styles.moreOptionsBtn}
+              hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
               onPress={() => {
                 Alert.alert(
                   `User Safety • أمان المستخدم (${otherName})`,
@@ -486,11 +487,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.2)',
   },
-  offerBadgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  offerBadgeText: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
   messageText: { fontSize: 14, lineHeight: 20 },
   myMessageText: { color: 'white' },
   theirMessageText: { color: '#1E293B' },
-  timeText: { fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
+  timeText: { fontSize: 11, marginTop: 4, alignSelf: 'flex-end' },
   myTimeText: { color: 'rgba(255,255,255,0.75)' },
   theirTimeText: { color: '#94A3B8' },
 

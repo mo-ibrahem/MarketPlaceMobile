@@ -721,7 +721,7 @@ const s = StyleSheet.create({
   pinDisplay: { alignItems: 'center', backgroundColor: '#F5F3FF', borderRadius: 16, padding: 16, gap: 4 },
   pinLabel: { fontSize: 11, color: '#7C3AED', textAlign: 'center' },
   pinCode: { fontSize: 38, fontWeight: '900', color: '#5B21B6', letterSpacing: 8 },
-  pinSub: { fontSize: 10, color: '#A78BFA', textAlign: 'center' },
+  pinSub: { fontSize: 11, color: '#A78BFA', textAlign: 'center' },
   sellerPinNote: { fontSize: 12, color: '#64748B', marginBottom: 10 },
   pinRow: { flexDirection: 'row', gap: 8 },
   pinInput: { flex: 1, borderWidth: 2, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 18, fontWeight: '800', textAlign: 'center', letterSpacing: 4 },
