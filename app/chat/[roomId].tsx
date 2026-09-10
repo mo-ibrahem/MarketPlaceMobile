@@ -140,7 +140,6 @@ export default function ChatRoomScreen() {
                   <Text style={styles.avatarInitial}>{otherInitial}</Text>
                 </View>
               )}
-              <View style={styles.onlineDot} />
             </View>
             <View>
               <Text style={styles.headerName} numberOfLines={1}>{otherName}</Text>

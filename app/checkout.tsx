@@ -263,10 +263,6 @@ export default function CheckoutScreen() {
                     <View style={styles.conditionTag}>
                       <Text style={styles.conditionTagText}>{product.condition}</Text>
                     </View>
-                    <View style={styles.sellerTag}>
-                      <User size={11} color="#64748B" />
-                      <Text style={styles.sellerTagText}>Verified Seller ��️</Text>
-                    </View>
                   </View>
                   <Text style={styles.productPrice}>EGP {Number(product.price).toLocaleString()}</Text>
                 </View>

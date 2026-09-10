@@ -24,6 +24,7 @@ import {
   Lock,
 } from 'lucide-react-native';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../src/i18n/LanguageContext';
 import { getUserOrders, type MarketplaceOrder } from '../src/services/lib/orderService';
 
 type TabKey = 'all' | 'purchases' | 'sales';
@@ -39,12 +40,12 @@ const STATUS_CONFIG: Record<MarketplaceOrder['status'], { label: string; label_a
   cancelled: { label: 'Cancelled', label_ar: 'ملغي', color: '#94A3B8', icon: AlertCircle },
 };
 
-function OrderCard({ order, userId, onPress }: { order: MarketplaceOrder; userId: string; onPress: () => void }) {
+function OrderCard({ order, userId, isRTL, onPress }: { order: MarketplaceOrder; userId: string; isRTL: boolean; onPress: () => void }) {
   const isBuyer = order.buyer_id === userId;
   const cfg = STATUS_CONFIG[order.status];
   const StatusIcon = cfg.icon;
   const image = (order.product_snapshot as any)?.images?.[0] || order.product?.images?.[0];
-  const dateStr = new Date(order.created_at).toLocaleDateString('ar-EG', {
+  const dateStr = new Date(order.created_at).toLocaleDateString(isRTL ? 'ar-EG' : 'en-EG', {
     day: 'numeric',
     month: 'short',
   });
@@ -67,16 +68,20 @@ function OrderCard({ order, userId, onPress }: { order: MarketplaceOrder; userId
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
           <View style={[styles.roleBadge, { backgroundColor: isBuyer ? '#EFF6FF' : '#FFF7ED' }]}>
             <Text style={[styles.roleText, { color: isBuyer ? '#3B82F6' : '#F97316' }]}>
-              {isBuyer ? '🛍️ مشتري' : '🏷️ بائع'}
+              {isBuyer ? (isRTL ? '🛍️ مشتري' : '🛍️ Buying') : (isRTL ? '🏷️ بائع' : '🏷️ Selling')}
             </Text>
           </View>
           <Text style={styles.dateText}>{dateStr}</Text>
         </View>
 
         <Text style={styles.cardTitle} numberOfLines={1}>
-          {(order.product_snapshot as any)?.title || order.product?.title || 'منتج'}
+          {(order.product_snapshot as any)?.title || order.product?.title || (isRTL ? 'منتج' : 'Item')}
         </Text>
-        <Text style={styles.cardAmount}>{order.amount.toLocaleString('ar-EG')} ج.م</Text>
+        <Text style={styles.cardAmount}>
+          {isRTL
+            ? `${order.amount.toLocaleString('ar-EG')} ج.م`
+            : `EGP ${order.amount.toLocaleString('en-EG')}`}
+        </Text>
 
         {/* Tracking number */}
         {order.tracking_number && (
@@ -91,7 +96,7 @@ function OrderCard({ order, userId, onPress }: { order: MarketplaceOrder; userId
       <View style={styles.cardRight}>
         <View style={[styles.statusBadge, { borderColor: cfg.color + '40', backgroundColor: cfg.color + '15' }]}>
           <StatusIcon color={cfg.color} size={11} />
-          <Text style={[styles.statusText, { color: cfg.color }]}>{cfg.label_ar}</Text>
+          <Text style={[styles.statusText, { color: cfg.color }]}>{isRTL ? cfg.label_ar : cfg.label}</Text>
         </View>
         <ChevronRight color="#CBD5E1" size={16} />
       </View>
@@ -101,6 +106,7 @@ function OrderCard({ order, userId, onPress }: { order: MarketplaceOrder; userId
 
 export default function OrdersScreen() {
   const { user } = useAuth();
+  const { isRTL } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -141,9 +147,9 @@ export default function OrdersScreen() {
   const sales = orders.filter(o => o.seller_id === user?.id);
 
   const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: 'all', label: `الكل (${orders.length})`, count: orders.length },
-    { key: 'purchases', label: 'مشتريات 🛍️', count: purchases.length },
-    { key: 'sales', label: 'مبيعات 🏷️', count: sales.length },
+    { key: 'all', label: isRTL ? `الكل (${orders.length})` : `All (${orders.length})`, count: orders.length },
+    { key: 'purchases', label: isRTL ? 'مشتريات 🛍️' : '🛍️ Buying', count: purchases.length },
+    { key: 'sales', label: isRTL ? 'مبيعات 🏷️' : '🏷️ Selling', count: sales.length },
   ];
 
   return (
@@ -155,13 +161,13 @@ export default function OrdersScreen() {
             <Package color="#3665F3" size={22} strokeWidth={2.5} />
           </View>
           <View>
-            <Text style={styles.headerTitle}>سجل الطلبات</Text>
+            <Text style={styles.headerTitle}>{isRTL ? 'سجل الطلبات' : 'Orders'}</Text>
             <Text style={styles.headerSub}>Orders & Escrow</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.refreshBtn} onPress={onRefresh} disabled={loading || refreshing}>
           <RefreshCw color="#64748B" size={16} />
-          <Text style={styles.refreshText}>تحديث</Text>
+          <Text style={styles.refreshText}>{isRTL ? 'تحديث' : 'Refresh'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -200,16 +206,26 @@ export default function OrdersScreen() {
                   <Package color="#3665F3" size={36} strokeWidth={2} />
                 </View>
                 <Text style={styles.emptyTitle}>
-                  {activeTab === 'purchases' ? 'لا توجد مشتريات بعد' : activeTab === 'sales' ? 'لا توجد مبيعات بعد' : 'لا توجد طلبات'}
+                  {activeTab === 'purchases'
+                    ? (isRTL ? 'لا توجد مشتريات بعد' : 'No purchases yet')
+                    : activeTab === 'sales'
+                      ? (isRTL ? 'لا توجد مبيعات بعد' : 'No sales yet')
+                      : (isRTL ? 'لا توجد طلبات' : 'No orders yet')}
                 </Text>
                 <Text style={styles.emptyDesc}>
                   {activeTab === 'purchases'
-                    ? 'تصفح المنتجات واشترِ بضمان حماية المشتري المالي وتوصيل بوسطة.'
-                    : 'أضف منتجاتك وابدأ رحلة البيع الآمن عبر المنصة.'}
+                    ? (isRTL
+                        ? 'تصفح المنتجات واشترِ بضمان حماية المشتري المالي وتوصيل بوسطة.'
+                        : 'Browse listings and buy with escrow protection and Bosta delivery.')
+                    : (isRTL
+                        ? 'أضف منتجاتك وابدأ رحلة البيع الآمن عبر المنصة.'
+                        : 'List an item and start selling safely on EgyBay.')}
                 </Text>
                 <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/' as any)}>
                   <Text style={styles.emptyBtnText}>
-                    {activeTab === 'purchases' ? 'تصفح المنتجات' : 'أضف إعلانك'}
+                    {activeTab === 'purchases'
+                      ? (isRTL ? 'تصفح المنتجات' : 'Browse listings')
+                      : (isRTL ? 'أضف إعلانك' : 'Create a listing')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -220,24 +236,25 @@ export default function OrdersScreen() {
               <View style={styles.trustFooter}>
                 <View style={styles.trustItem}>
                   <ShieldCheck color="#10B981" size={24} strokeWidth={2} />
-                  <Text style={styles.trustTitle}>حماية الضمان المالي</Text>
-                  <Text style={styles.trustDesc}>أموالك محفوظة بأمان تام حتى فحص الطلب</Text>
+                  <Text style={styles.trustTitle}>{isRTL ? 'حماية الضمان المالي' : 'Escrow protection'}</Text>
+                  <Text style={styles.trustDesc}>{isRTL ? 'أموالك محفوظة بأمان تام حتى فحص الطلب' : 'Your money is held safely until you inspect the item'}</Text>
                 </View>
                 <View style={styles.trustItem}>
                   <Truck color="#3B82F6" size={24} strokeWidth={2} />
-                  <Text style={styles.trustTitle}>شحن وتوصيل بوسطة</Text>
-                  <Text style={styles.trustDesc}>توصيل سريع لكل محافظات مصر</Text>
+                  <Text style={styles.trustTitle}>{isRTL ? 'شحن وتوصيل بوسطة' : 'Bosta shipping'}</Text>
+                  <Text style={styles.trustDesc}>{isRTL ? 'توصيل سريع لكل محافظات مصر' : 'Fast delivery to every governorate in Egypt'}</Text>
                 </View>
                 <View style={styles.trustItem}>
                   <Lock color="#7C3AED" size={24} strokeWidth={2} />
-                  <Text style={styles.trustTitle}>دفع وتسويات موثقة</Text>
-                  <Text style={styles.trustDesc}>تسويات فورية عبر شبكة إنستاباي</Text>
+                  <Text style={styles.trustTitle}>{isRTL ? 'دفع وتسويات موثقة' : 'Trusted payouts'}</Text>
+                  <Text style={styles.trustDesc}>{isRTL ? 'تسويات فورية عبر شبكة إنستاباي' : 'Instant settlement over InstaPay'}</Text>
                 </View>
               </View>
             ) : null
           }
           renderItem={({ item }) => (
             <OrderCard
+            isRTL={isRTL}
               order={item}
               userId={user!.id}
               onPress={() => router.push(`/order/${item.id}` as any)}
