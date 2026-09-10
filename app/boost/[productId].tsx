@@ -38,7 +38,6 @@ import {
   boostProduct,
   type BoostPackage,
 } from '../../src/services/lib/boostService';
-import { startPaymobCheckoutSession } from '../../src/services/lib/paymobService';
 import { productService, type Product } from '../../src/services/lib/products';
 import { getUserWallet, type UserWallet } from '../../src/services/lib/walletService';
 
@@ -52,7 +51,6 @@ export default function BoostProductScreen() {
   const [product, setProduct] = useState<Product | null>(null);
   const [wallet, setWallet] = useState<UserWallet | null>(null);
   const [selectedTier, setSelectedTier] = useState<'urgent' | 'featured' | 'turbo'>('featured');
-  const [paymentSource, setPaymentSource] = useState<'wallet_balance' | 'paymob'>('wallet_balance');
   const [loading, setLoading] = useState(true);
   const [boosting, setBoosting] = useState(false);
 
@@ -82,67 +80,33 @@ export default function BoostProductScreen() {
   const handleApplyBoost = async () => {
     if (!product || !user) return;
 
-    if (paymentSource === 'wallet_balance') {
-      if (!canPayWithWallet) {
-        Toast.show({
-          type: 'error',
-          text1: 'Insufficient Wallet Balance',
-          text2: `You need EGP ${selectedPkg.priceEGP} (Available: EGP ${walletBalance.toLocaleString()})`,
-        });
-        return;
-      }
-
-      setBoosting(true);
-      try {
-        const res = await boostProduct(product.id, user.id, selectedTier, 'wallet_balance');
-        Toast.show({
-          type: 'success',
-          text1: 'Boost Activated! ⚡🚀',
-          text2: res.message,
-        });
-        router.back();
-      } catch (err: any) {
-        Alert.alert('Boost Failed', err?.message || 'Could not apply boost');
-      } finally {
-        setBoosting(false);
-      }
+    if (!canPayWithWallet) {
+      // No card fallback to offer: boosts are wallet-balance-only (see the
+      // Payment Method section below), so the only route is topping up.
+      Alert.alert(
+        'Not enough wallet balance',
+        `This boost costs EGP ${selectedPkg.priceEGP.toLocaleString()} and your available balance is EGP ${walletBalance.toLocaleString()}. Top up your wallet, then come back.`,
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Top up wallet', onPress: () => router.push('/wallet' as any) },
+        ],
+      );
       return;
     }
 
-    // ── Paymob Online Gateway Payment ──
-    if (paymentSource === 'paymob') {
-      setBoosting(true);
-      try {
-        const session = await startPaymobCheckoutSession({
-          purpose: 'boost',
-          referenceId: product.id,
-          tier: selectedTier,
-          billingData: {
-            first_name: user?.user_metadata?.full_name?.split(' ')[0] || 'Seller',
-            last_name: user?.user_metadata?.full_name?.split(' ')[1] || 'Owner',
-            email: user?.email || 'seller@egbay.market',
-            phone_number: '+201000000000',
-            city: 'Cairo',
-            country: 'EG',
-          },
-        });
-
-        // Route to Paymob WebView — boost activation happens AFTER payment succeeds in payment.tsx
-        router.push({
-          pathname: '/payment',
-          params: {
-            paymentToken: session.paymentToken,
-            orderId: `boost_${product.id}_${Date.now()}`,
-            totalEgp: selectedPkg.priceEGP.toString(),
-            boostProductId: product.id,
-            boostTier: selectedTier,
-          },
-        } as any);
-      } catch (err: any) {
-        Alert.alert('Paymob Checkout Error', err?.message || 'Could not initiate online payment');
-      } finally {
-        setBoosting(false);
-      }
+    setBoosting(true);
+    try {
+      const res = await boostProduct(product.id, user.id, selectedTier);
+      Toast.show({
+        type: 'success',
+        text1: 'Boost Activated! ⚡🚀',
+        text2: res.message,
+      });
+      router.back();
+    } catch (err: any) {
+      Alert.alert('Boost Failed', err?.message || 'Could not apply boost');
+    } finally {
+      setBoosting(false);
     }
   };
 
@@ -261,46 +225,33 @@ export default function BoostProductScreen() {
             );
           })}
 
-          {/* Payment Method Selector */}
+          {/* Payment Method.
+              Boosts are wallet-balance-only, mirroring the web app:
+              /api/paymob/session rejects purpose: 'boost' outright because a
+              card-paid boost has no activation path on the webhook side, which
+              would take a seller's money and apply nothing. The card option
+              that used to sit here could only ever fail. */}
           <Text style={[styles.sectionHeading, { marginTop: 20 }]}>Payment Method</Text>
 
-          <TouchableOpacity
-            style={[
-              styles.paymentOptionCard,
-              paymentSource === 'wallet_balance' && styles.paymentOptionActive,
-            ]}
-            onPress={() => setPaymentSource('wallet_balance')}
-          >
-            <Wallet size={20} color={paymentSource === 'wallet_balance' ? '#2563EB' : '#64748B'} />
+          <View style={[styles.paymentOptionCard, styles.paymentOptionActive]}>
+            <Wallet size={20} color="#2563EB" />
             <View style={{ flex: 1 }}>
               <Text style={styles.paymentOptionTitle}>Deduct from Available Wallet</Text>
               <Text style={styles.paymentOptionSub}>
                 Available: <Text style={{ fontWeight: '800', color: '#0F172A' }}>EGP {walletBalance.toLocaleString()}</Text>
               </Text>
             </View>
-            <CheckCircle2
-              color={paymentSource === 'wallet_balance' ? '#2563EB' : '#CBD5E1'}
-              size={20}
-            />
-          </TouchableOpacity>
+            <CheckCircle2 color="#2563EB" size={20} />
+          </View>
 
-          <TouchableOpacity
-            style={[
-              styles.paymentOptionCard,
-              paymentSource === 'paymob' && styles.paymentOptionActive,
-            ]}
-            onPress={() => setPaymentSource('paymob')}
-          >
-            <CreditCard size={20} color={paymentSource === 'paymob' ? '#2563EB' : '#64748B'} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.paymentOptionTitle}>Paymob / Card / Vodafone Cash</Text>
-              <Text style={styles.paymentOptionSub}>Instant Egyptian Payment Gateway</Text>
-            </View>
-            <CheckCircle2
-              color={paymentSource === 'paymob' ? '#2563EB' : '#CBD5E1'}
-              size={20}
-            />
-          </TouchableOpacity>
+          {!canPayWithWallet && (
+            <TouchableOpacity style={styles.topUpHint} onPress={() => router.push('/wallet' as any)}>
+              <CreditCard size={15} color="#B45309" />
+              <Text style={styles.topUpHintText}>
+                Not enough balance for this package — top up your wallet to boost.
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
@@ -446,6 +397,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   paymentOptionActive: { borderColor: '#2563EB', backgroundColor: '#EFF6FF' },
+  topUpHint: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FFFBEB', borderRadius: 12, padding: 11,
+    borderWidth: 1, borderColor: '#FDE68A', marginTop: 8,
+  },
+  topUpHintText: { flex: 1, fontSize: 12, fontWeight: '700', color: '#92400E', lineHeight: 17 },
   paymentOptionTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
   paymentOptionSub: { fontSize: 11, color: '#64748B', marginTop: 1 },
 

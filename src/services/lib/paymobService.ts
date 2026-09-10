@@ -21,9 +21,15 @@ export interface PaymobSession {
 }
 
 interface StartSessionParams {
-  purpose: 'order' | 'boost';
+  /**
+   * Orders only. 'boost' is deliberately not representable here: the backend
+   * /api/paymob/session rejects purpose: 'boost' with "Invalid purpose",
+   * because a card-paid boost has no activation path on the webhook side and
+   * would take a seller's money and apply nothing. Boosts are wallet-balance
+   * only, via /api/boost -> purchase_boost.
+   */
+  purpose: 'order';
   referenceId: string;
-  tier?: string;
   billingData: {
     first_name: string;
     last_name: string;

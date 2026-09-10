@@ -77,17 +77,12 @@ export default function PaymentScreen() {
     paymentToken,
     orderId,
     totalEgp,
-    // Phase 2: boost activation after confirmed payment
-    boostProductId,
-    boostTier,
     // Phase 2: wallet top-up credit after confirmed payment
     topUpAmount,
   } = useLocalSearchParams<{
     paymentToken: string;
     orderId: string;
     totalEgp?: string;
-    boostProductId?: string;
-    boostTier?: string;
     topUpAmount?: string;
   }>();
   const router = useRouter();
@@ -105,8 +100,10 @@ export default function PaymentScreen() {
 
   const paymentUrl = `https://accept.paymob.com/api/acceptance/iframes/${PAYMOB_IFRAME_ID}?payment_token=${paymentToken}`;
 
+  // Boosts never reach this screen: they are wallet-balance-only, because a
+  // card-paid boost has no activation path on the webhook side. See
+  // boostService.boostProduct and web's /api/paymob/session.
   const isTopUp = !!topUpAmount;
-  const isBoost = !!boostProductId;
 
   /**
    * Ask the database what actually happened. Nothing here mutates anything --
@@ -129,17 +126,6 @@ export default function PaymentScreen() {
         return 'pending';
       }
 
-      if (isBoost) {
-        const { data, error } = await supabase
-          .from('products' as any)
-          .select('promoted_until')
-          .eq('id', boostProductId)
-          .maybeSingle();
-        if (error || !data) return 'pending';
-        const until = (data as any).promoted_until;
-        return until && new Date(until).getTime() > Date.now() ? 'confirmed' : 'pending';
-      }
-
       if (orderId) {
         const { data, error } = await supabase
           .from('orders' as any)
@@ -156,7 +142,7 @@ export default function PaymentScreen() {
       console.warn('[PaymentScreen] Verification read failed:', err);
     }
     return 'pending';
-  }, [isTopUp, isBoost, orderId, boostProductId]);
+  }, [isTopUp, orderId]);
 
   // Poll the real status while we are verifying. The copy stays truthful the
   // whole time: "confirming", never "successful", until the row says so.
@@ -211,26 +197,20 @@ export default function PaymentScreen() {
       type: 'success',
       text1: isTopUp
         ? `EGP ${Number(topUpAmount).toLocaleString()} Added to Wallet! 💳`
-        : isBoost
-          ? 'Boost Activated! 🚀'
-          : 'Payment Confirmed! 🎉',
+        : 'Payment Confirmed! 🎉',
       text2: isTopUp
         ? 'Your spendable balance has been updated.'
-        : isBoost
-          ? 'Your listing is now promoted.'
-          : 'Funds secured in Escrow. Track your order status below.',
+        : 'Funds secured in Escrow. Track your order status below.',
     });
 
     if (isTopUp) {
       router.replace('/wallet' as any);
-    } else if (isBoost) {
-      router.replace('/(tabs)');
     } else if (orderId) {
       router.replace({ pathname: '/order/[orderId]', params: { orderId } } as any);
     } else {
       router.replace('/(tabs)');
     }
-  }, [phase, isTopUp, isBoost, topUpAmount, orderId, router]);
+  }, [phase, isTopUp, topUpAmount, orderId, router]);
 
   const handleUrl = useCallback(
     (rawUrl: string): PaymobUrlOutcome => {
@@ -285,7 +265,7 @@ export default function PaymentScreen() {
     );
   }
 
-  const headerTitle = isTopUp ? 'Wallet Deposit' : isBoost ? 'Boost Payment' : 'Secure Card Checkout';
+  const headerTitle = isTopUp ? 'Wallet Deposit' : 'Secure Card Checkout';
 
   const renderStatusScreen = () => {
     if (phase === 'verifying') {
@@ -317,9 +297,7 @@ export default function PaymentScreen() {
           <Text style={styles.statusBody}>
             {isTopUp
               ? 'We could not confirm this deposit with your bank yet. If it went through, your balance will update on its own — check your wallet in a few minutes.'
-              : isBoost
-                ? 'We could not confirm this boost payment yet. Do not pay again — check your listing shortly, and contact support if it stays unpromoted.'
-                : 'We could not confirm this payment yet. Do not pay again — if it went through, your order will update on its own. You can track it in My Orders.'}
+              : 'We could not confirm this payment yet. Do not pay again — if it went through, your order will update on its own. You can track it in My Orders.'}
           </Text>
           <Text style={styles.statusWarn}>
             Do not treat this as a completed payment. Please check before retrying.
@@ -328,13 +306,13 @@ export default function PaymentScreen() {
             style={styles.primaryBtn}
             onPress={() => {
               if (isTopUp) router.replace('/wallet' as any);
-              else if (orderId && !isBoost)
+              else if (orderId)
                 router.replace({ pathname: '/order/[orderId]', params: { orderId } } as any);
               else router.replace('/(tabs)');
             }}
           >
             <Text style={styles.primaryBtnText}>
-              {isTopUp ? 'Go to Wallet' : isBoost ? 'Back to Home' : 'Track My Order'}
+              {isTopUp ? 'Go to Wallet' : 'Track My Order'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => setPhase('verifying')}>

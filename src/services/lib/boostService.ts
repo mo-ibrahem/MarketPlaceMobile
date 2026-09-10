@@ -69,49 +69,49 @@ let inMemoryPromotions: Record<string, { tier: string; until: string }> = {};
 /**
  * Apply a boost package to a product
  */
+/**
+ * Purchase a boost with wallet balance.
+ *
+ * Wallet balance is the only funding source. A card-paid boost has no
+ * activation path on the webhook side -- the shared paymob-webhook logs
+ * "Unexpected boost_ webhook (boosts are wallet-only)" and applies nothing --
+ * so /api/paymob/session rejects purpose: 'boost' outright. This mirrors that
+ * decision rather than routing a seller into a payment that delivers nothing.
+ */
 export async function boostProduct(
   productId: string,
   userId: string, // Kept for signature compatibility, backend will ignore
   packageId: 'urgent' | 'featured' | 'turbo',
-  paymentSource: 'wallet_balance' | 'paymob'
 ): Promise<{ success: boolean; message: string; promotedUntil: string }> {
   const pkg = BOOST_PACKAGES[packageId];
   if (!pkg) throw new Error('Invalid boost package selected');
 
-  if (paymentSource === 'wallet_balance') {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      const res = await fetch('https://egbay.shop/api/boost', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(session && { 'Authorization': `Bearer ${session.access_token}` })
-        },
-        body: JSON.stringify({ productId, packageId })
-      });
-      
-      const data = await res.json();
-      if (!data.success) {
-         throw new Error(data.error || 'Failed to purchase boost');
-      }
+  const { data: { session } } = await supabase.auth.getSession();
 
-      return {
-        success: true,
-        message: `Your product is now boosted with ${pkg.title}!`,
-        promotedUntil: data.promotedUntil,
-      };
-    } catch (err: any) {
-      console.warn('[BoostService] API boost error:', err);
-      throw err;
-    }
+  const res = await fetch('https://egbay.shop/api/boost', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(session && { 'Authorization': `Bearer ${session.access_token}` }),
+    },
+    body: JSON.stringify({ productId, packageId }),
+  });
+
+  // Never report a boost as applied unless the server said so.
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error('Could not reach the boost service. You have not been charged.');
+  }
+  if (!res.ok || !data?.success) {
+    throw new Error(data?.error || 'Failed to purchase boost');
   }
 
-  // Paymob flow expects the webhook to handle activation
   return {
     success: true,
-    message: `Payment initiated for ${pkg.title}`,
-    promotedUntil: '',
+    message: `Your product is now boosted with ${pkg.title}!`,
+    promotedUntil: data.promotedUntil,
   };
 }
 
