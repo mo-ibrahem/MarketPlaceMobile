@@ -25,6 +25,7 @@ import {
   Truck,
   Video,
   X,
+  Package,
   Zap,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -73,11 +74,6 @@ function getCountdownToMidnight(): string {
 
 const QUICK_SEARCHES = ['Electronics', 'iPhone 15', 'Jordan', 'PlayStation', 'Furniture', 'Toyota'];
 
-const TRENDING_SEARCHES = [
-  'iPhone 15 Pro', 'MacBook M3', 'Nike Air Jordan', 'PlayStation 5',
-  'Air Fryer', 'Sony WH-1000XM5', 'Toyota Corolla', 'Gaming PC'
-];
-
 const DEAL_BANNERS = [
   {
     key: 'b0',
@@ -95,7 +91,9 @@ const DEAL_BANNERS = [
     subKey: 'home.dealBanner1Sub',
     colors: ['#1D4ED8', '#7C3AED'] as [string, string],
     icon: Zap,
-    category: 'Electronics',
+    // Supply is the binding constraint at 9 sellers / 19 listings, so this
+    // slot pitches selling rather than a discount the catalogue cannot honour.
+    category: '__sell__',
   },
   {
     key: 'b2',
@@ -115,7 +113,13 @@ const DEAL_BANNERS = [
   },
 ];
 
-const CATEGORIES = [
+/**
+ * Category *presentation* only -- which categories are offered is derived from
+ * live stock at render time (see `categories` below), never from this list.
+ * Hardcoding the shelf meant Sports and Books were offered with zero listings
+ * while Beauty and General had real stock and no way to browse to them.
+ */
+const CATEGORY_STYLE = [
   { id: 'all',         nameKey: 'home.categories.allCategories', icon: LayoutGrid,  color: '#6366F1', bg: '#EEF2FF'  },
   { id: 'Electronics', nameKey: 'home.categories.electronics',   icon: Smartphone,  color: '#0EA5E9', bg: '#E0F2FE'  },
   { id: 'Fashion',     nameKey: 'home.categories.fashion',       icon: Shirt,        color: '#EC4899', bg: '#FCE7F3'  },
@@ -124,7 +128,15 @@ const CATEGORIES = [
   { id: 'Sports',      nameKey: 'home.categories.sports',        icon: Dumbbell,     color: '#EF4444', bg: '#FEE2E2'  },
   { id: 'Books',       nameKey: 'home.categories.books',         icon: BookOpen,     color: '#8B5CF6', bg: '#EDE9FE'  },
   { id: 'Automotive',  nameKey: 'home.categories.automotive',    icon: Car,          color: '#64748B', bg: '#F1F5F9'  },
+  { id: 'Beauty',      nameKey: 'home.categories.beauty',        icon: Sparkles,     color: '#D946EF', bg: '#FAE8FF'  },
+  { id: 'General',     nameKey: 'home.categories.general',       icon: Package,      color: '#475569', bg: '#F1F5F9'  },
 ] as const;
+
+const CATEGORY_FALLBACK: Record<string, string> = {
+  all: 'All', Electronics: 'Electronics', Fashion: 'Fashion', Home: 'Home',
+  Toys: 'Toys', Sports: 'Sports', Books: 'Books', Automotive: 'Automotive',
+  Beauty: 'Beauty', General: 'General',
+};
 
 // ─── Home Screen ─────────────────────────────────────────────────────────────
 
@@ -219,10 +231,24 @@ export default function HomeScreen() {
 
   // ── Derived data ────────────────────────────────────────────────────────────
 
-  const trending = useMemo(
-    () => [...products].sort((a, b) => Number(b.price) - Number(a.price)).slice(0, 8),
-    [products]
-  );
+  /**
+   * Categories come from what is actually in stock, sorted by count, with
+   * empties never offered. Previously this shelf was a fixed list: Sports and
+   * Books were always shown and always led to zero results, while Beauty and
+   * General had listings a shopper could not reach.
+   */
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of products) {
+      const c = (p as any).category;
+      if (c) counts.set(c, (counts.get(c) ?? 0) + 1);
+    }
+    const styled = CATEGORY_STYLE.filter(c => c.id !== 'all' && counts.has(c.id))
+      .map(c => ({ ...c, count: counts.get(c.id) ?? 0 }))
+      .sort((a, b) => b.count - a.count);
+    const all = CATEGORY_STYLE.find(c => c.id === 'all')!;
+    return [{ ...all, count: products.length }, ...styled];
+  }, [products]);
 
   const recentlyAdded = useMemo(() => {
     return [...products]
@@ -242,7 +268,7 @@ export default function HomeScreen() {
     router.push({ pathname: '/products', params: { search: q } } as any);
   };
 
-  const handleCategory = (cat: typeof CATEGORIES[number]) => {
+  const handleCategory = (cat: { id: string }) => {
     router.push(
       cat.id === 'all'
         ? ('/products' as any)
@@ -410,7 +436,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               {/* Category Story Circles */}
-              {CATEGORIES.map(cat => {
+              {categories.map(cat => {
                 const Icon = cat.icon;
                 const isSelected = selectedCategory === cat.id || (!selectedCategory && cat.id === 'all');
                 return (
@@ -436,8 +462,11 @@ export default function HomeScreen() {
                       ]}
                       numberOfLines={1}
                     >
-                      {t(cat.nameKey)}
+                      {t(cat.nameKey, { defaultValue: CATEGORY_FALLBACK[cat.id] ?? cat.id })}
                     </Text>
+                    {/* Real stock count, so the shelf never promises more than
+                        the catalogue holds. */}
+                    <Text style={styles.storyCount}>{cat.count}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -504,6 +533,8 @@ export default function HomeScreen() {
                   onPress={() => {
                     if (banner.category === '__live__') {
                       router.push('/live' as any);
+                    } else if (banner.category === '__sell__') {
+                      router.push('/(tabs)/sell' as any);
                     } else if (banner.category) {
                       router.push({ pathname: '/products', params: { category: banner.category } } as any);
                     } else {
@@ -529,7 +560,11 @@ export default function HomeScreen() {
                       </Text>
                     </View>
                     <View style={[styles.bannerCta, banner.category === '__live__' && { backgroundColor: '#EF4444' }]}>
-                      <Text style={styles.bannerCtaText}>{banner.category === '__live__' ? (isArabic ? 'بث مباشر' : 'Live') : (isArabic ? 'تصفح' : 'Shop')}</Text>
+                      <Text style={styles.bannerCtaText}>{banner.category === '__live__'
+                          ? (isArabic ? 'بث مباشر' : 'Live')
+                          : banner.category === '__sell__'
+                            ? (isArabic ? 'ابدأ البيع' : 'Start selling')
+                            : (isArabic ? 'تصفح' : 'Shop')}</Text>
                     </View>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -542,86 +577,6 @@ export default function HomeScreen() {
               ))}
             </View>
           </View>
-
-          {/* ════════════════ TRENDING SEARCHES ════════════════ */}
-          <View style={styles.sectionHeader}>
-            <View style={styles.titleRow}>
-              <Flame color="#F97316" size={18} />
-              <Text style={[styles.sectionTitle, { marginLeft: 6 }]}>{t('home.trendingSearches')}</Text>
-            </View>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.trendingSearchRow}
-          >
-            {TRENDING_SEARCHES.map(tag => (
-              <TouchableOpacity
-                key={tag}
-                style={styles.trendingSearchChip}
-                onPress={() => router.push({ pathname: '/products', params: { search: tag } } as any)}
-                activeOpacity={0.75}
-              >
-                <Search color="#64748B" size={11} style={{ marginRight: 4 }} />
-                <Text style={styles.trendingSearchText}>{tag}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* ════════════════ TRENDING NOW ════════════════ */}
-          <View style={[styles.sectionHeader, { marginTop: 8 }]}>
-            <View style={styles.titleRow}>
-              <TrendingUp color="#EF4444" size={18} />
-              <Text style={[styles.sectionTitle, { marginLeft: 6 }]}>{t('home.trendingNow')}</Text>
-            </View>
-            <TouchableOpacity onPress={() => router.push('/products' as any)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.seeAll}>{t('common.seeAll')}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {loading ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trendRow}>
-              {[1, 2, 3, 4].map(i => <SkeletonTrendCard key={i} />)}
-            </ScrollView>
-          ) : (
-            <FlatList
-              data={trending}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.trendRow}
-              keyExtractor={item => 'trend-' + item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.trendCard}
-                  onPress={() => router.push(`/products/${item.id}` as any)}
-                  activeOpacity={0.88}
-                >
-                  <Image
-                    source={{ uri: item.images?.[0] || 'https://placehold.co/300x380/334155/94a3b8?text=Item' }}
-                    style={styles.trendImage}
-                  />
-                  <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.88)']}
-                    style={styles.trendOverlay}
-                  >
-                    <Text style={styles.trendTitle} numberOfLines={2}>{item.title}</Text>
-                    <View style={styles.trendPricePill}>
-                      <Text style={styles.trendPriceText}>{formatEGP(item.price)}</Text>
-                    </View>
-                  </LinearGradient>
-                  {/* Heart button */}
-                  <TouchableOpacity style={styles.trendHeart} onPress={() => toggleWishlist(item)}>
-                    <Heart
-                      size={16}
- hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
-                      color={wishlistIds.has(item.id) ? '#EF4444' : 'white'}
-                      fill={wishlistIds.has(item.id) ? '#EF4444' : 'none'}
-                    />
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              )}
-            />
-          )}
 
           {/* ════════════════ RECENTLY ADDED ════════════════ */}
           <View style={[styles.sectionHeader, { marginTop: 8 }]}>
@@ -890,6 +845,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.5,
   },
+  storyCount: { fontSize: 11, fontWeight: '700', color: '#94A3B8', marginTop: 1 },
   storyLabel: {
     fontSize: 11,
     fontWeight: '600',
