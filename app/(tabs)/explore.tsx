@@ -393,6 +393,14 @@ export default function ProfileScreen() {
         />
         <View style={styles.chatInfo}>
           <Text style={styles.chatName}>{chat.other_user_name}</Text>
+          {/* Conversations are scoped to a listing, so the inbox has to say
+              which one -- otherwise two threads with the same seller are
+              indistinguishable. Legacy rooms have no product and show none. */}
+          {!!chat.product_title && (
+            <Text style={styles.chatProduct} numberOfLines={1}>
+              {chat.product_title}
+            </Text>
+          )}
           <Text style={styles.chatPreview} numberOfLines={1}>
             {chat.last_message ? chat.last_message : t('chat.startConversation')}
           </Text>
@@ -952,6 +960,7 @@ const styles = StyleSheet.create({
   },
   chatAvatar: { width: 52, height: 52, borderRadius: 26, marginRight: 14 },
   chatInfo: { flex: 1 },
+  chatProduct: { fontSize: 11, fontWeight: '700', color: '#2563EB', marginTop: 1 },
   chatName: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 3 },
   chatPreview: { fontSize: 13, color: '#94A3B8' },
   chatTime: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginLeft: 6 },

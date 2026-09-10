@@ -13,6 +13,11 @@ export interface ChatRoomInfo {
   other_user_id: string;
   other_user_name: string;
   other_user_avatar_url: string;
+  /** The listing this conversation is about. Null on legacy rooms opened
+   *  before conversations were scoped to items. */
+  product_id?: string | null;
+  product_title?: string;
+  product_image?: string;
   last_message?: string;
   last_message_time?: string;
 }
@@ -40,36 +45,35 @@ export const getChatRooms = async (): Promise<ChatRoomInfo[]> => {
 
   const { data: rooms, error: roomsError } = await supabase
     .from('chat_rooms')
-    .select('id, participant_ids')
+    .select('id, participant_ids, product_id')
+    // delete-for-me: rooms this user hid stay out of their inbox without
+    // touching the other side's view or the message history.
+    .not('deleted_for', 'cs', `{${user.id}}`)
     .contains('participant_ids', [user.id]);
 
   if (roomsError) {
-    console.error("Error fetching chat rooms:", roomsError);
+    console.error('Error fetching chat rooms:', roomsError);
     throw roomsError;
   }
-  if (!rooms || rooms.length === 0) {
-    return [];
-  }
+  if (!rooms || rooms.length === 0) return [];
 
-  const otherUserIds = rooms.map(room => {
-    return room.participant_ids.find((p_id: string) => p_id !== user.id);
-  }).filter(id => id);
+  const otherUserIds = rooms
+    .map(room => room.participant_ids.find((p_id: string) => p_id !== user.id))
+    .filter(Boolean) as string[];
+  const productIds = rooms.map(r => r.product_id).filter(Boolean) as string[];
 
-  if (otherUserIds.length === 0) {
-    return [];
-  }
+  const [{ data: profiles }, { data: products }] = await Promise.all([
+    // public_profiles, not user_profiles: the latter's only SELECT policy is
+    // auth.uid() = id, so reading it returns nothing for the person you are
+    // talking to -- every conversation showed as "Unknown User".
+    otherUserIds.length
+      ? supabase.from('public_profiles').select('id, full_name, avatar_url').in('id', otherUserIds)
+      : Promise.resolve({ data: [] as any[] }),
+    productIds.length
+      ? supabase.from('products').select('id, title, images').in('id', productIds)
+      : Promise.resolve({ data: [] as any[] }),
+  ]);
 
-  const { data: profiles, error: profilesError } = await supabase
-    .from('user_profiles')
-    .select('id, full_name, avatar_url')
-    .in('id', otherUserIds);
-
-  if (profilesError) {
-    console.error("Error fetching participant profiles:", profilesError);
-    throw profilesError;
-  }
-
-  // Fetch last message for each room
   const lastMessageMap: Record<string, { content: string; created_at: string }> = {};
   await Promise.all(
     rooms.map(async (room) => {
@@ -80,42 +84,79 @@ export const getChatRooms = async (): Promise<ChatRoomInfo[]> => {
           .eq('room_id', room.id)
           .order('created_at', { ascending: false })
           .limit(1);
-        if (msgs && msgs.length > 0) {
-          lastMessageMap[room.id] = msgs[0];
-        }
+        if (msgs && msgs.length > 0) lastMessageMap[room.id] = msgs[0];
       } catch {
-        // silently ignore
+        // A missing preview must not drop the conversation from the inbox.
       }
     })
   );
 
-  const chatRoomInfo = rooms.map(room => {
+  return rooms.map(room => {
     const otherUserId = room.participant_ids.find((p_id: string) => p_id !== user.id);
-    const otherUserProfile = profiles?.find(p => p.id === otherUserId);
+    const profile = (profiles as any[])?.find(p => p.id === otherUserId);
+    const product = (products as any[])?.find(p => p.id === room.product_id);
     const lastMsg = lastMessageMap[room.id];
-    
+
     return {
       room_id: room.id,
       other_user_id: otherUserId || '',
-      other_user_name: otherUserProfile?.full_name || 'Unknown User',
-      other_user_avatar_url: otherUserProfile?.avatar_url || '',
+      other_user_name: profile?.full_name || 'EgyBay User',
+      other_user_avatar_url: profile?.avatar_url || '',
+      product_id: room.product_id,
+      product_title: product?.title,
+      product_image: product?.images?.[0],
       last_message: lastMsg?.content,
       last_message_time: lastMsg?.created_at,
     };
   });
-
-  return chatRoomInfo;
 };
 
-export const getOrCreateChatRoom = async (otherUserId: string) => {
+/**
+ * One conversation per (buyer, seller, listing) -- not one per seller.
+ *
+ * Messaging a seller about a specific item opens a thread for that item, the
+ * way the web app does it. Previously this matched on participants alone, so
+ * every item a buyer asked about collapsed into a single thread with no way to
+ * tell which listing a question referred to.
+ *
+ * `maybeSingle` matters: once a buyer has more than one room with the same
+ * seller, the old `.single()` would throw on the multiple rows it found.
+ */
+export const getOrCreateChatRoom = async (otherUserId: string, productId: string) => {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("User not authenticated");
+  if (!user) throw new Error('User not authenticated');
+  if (!productId) throw new Error('A product is required to start a conversation');
+
   const participants = [user.id, otherUserId].sort();
-  const { data: existingRoom } = await supabase.from('chat_rooms').select('id').contains('participant_ids', participants).single();
+
+  const { data: existingRoom } = await supabase
+    .from('chat_rooms')
+    .select('id')
+    .contains('participant_ids', participants)
+    .eq('product_id', productId)
+    .maybeSingle();
+
   if (existingRoom) return existingRoom.id;
-  const { data: newRoom } = await supabase.from('chat_rooms').insert({ participant_ids: participants }).select('id').single();
-  if (!newRoom) throw new Error("Could not create chat room");
+
+  const { data: newRoom, error } = await supabase
+    .from('chat_rooms')
+    .insert({ participant_ids: participants, product_id: productId })
+    .select('id')
+    .single();
+
+  if (error || !newRoom) throw error || new Error('Could not create chat room');
   return newRoom.id;
+};
+
+/**
+ * Removes a room from the caller's own inbox only -- delete-for-me, not
+ * delete-for-both. Chat history can matter to an escrow dispute, so nothing
+ * here destroys data; the room resurfaces server-side if either side sends a
+ * new message.
+ */
+export const hideChatRoomForUser = async (roomId: string): Promise<void> => {
+  const { error } = await supabase.rpc('hide_chat_room_for_user' as any, { p_room_id: roomId });
+  if (error) throw error;
 };
 
 export const getChatRoomDetails = async (roomId: string): Promise<ChatRoomInfo | null> => {
@@ -124,26 +165,30 @@ export const getChatRoomDetails = async (roomId: string): Promise<ChatRoomInfo |
 
   const { data: room, error } = await supabase
     .from('chat_rooms')
-    .select('id, participant_ids')
+    .select('id, participant_ids, product_id')
     .eq('id', roomId)
-    .single();
+    .maybeSingle();
 
   if (error || !room) return null;
 
   const otherUserId = room.participant_ids.find((p_id: string) => p_id !== user.id) || '';
   if (!otherUserId) return null;
 
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('id, full_name, avatar_url')
-    .eq('id', otherUserId)
-    .single();
+  const [{ data: profile }, { data: product }] = await Promise.all([
+    supabase.from('public_profiles').select('id, full_name, avatar_url').eq('id', otherUserId).maybeSingle(),
+    room.product_id
+      ? supabase.from('products').select('id, title, images').eq('id', room.product_id).maybeSingle()
+      : Promise.resolve({ data: null as any }),
+  ]);
 
   return {
     room_id: room.id,
     other_user_id: otherUserId,
-    other_user_name: profile?.full_name || 'Egyptian Trader',
-    other_user_avatar_url: profile?.avatar_url || '',
+    other_user_name: (profile as any)?.full_name || 'EgyBay User',
+    other_user_avatar_url: (profile as any)?.avatar_url || '',
+    product_id: room.product_id,
+    product_title: (product as any)?.title,
+    product_image: (product as any)?.images?.[0],
   };
 };
 

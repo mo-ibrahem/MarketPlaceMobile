@@ -189,7 +189,7 @@ export default function ProductDetailScreen() {
       Toast.show({ type: 'info', text1: 'This is your own listing.' }); return;
     }
     try {
-      const roomId = await getOrCreateChatRoom(product.seller_id);
+      const roomId = await getOrCreateChatRoom(product.seller_id, product.id);
       router.push(`/chat/${roomId}`);
     } catch {
       Toast.show({ type: 'error', text1: 'Could not start chat.' });
@@ -215,7 +215,7 @@ export default function ProductDetailScreen() {
     }
     try {
       setIsSendingOffer(true);
-      const roomId = await getOrCreateChatRoom(product.seller_id);
+      const roomId = await getOrCreateChatRoom(product.seller_id, product.id);
       const offerMsg = `🏷️ [OFFER / عرض شراء]\nI would like to offer ${formatEGP(offerAmount)} for "${product.title}" (Listed at ${formatEGP(product.price)}).`;
       await sendMessage(roomId, offerMsg);
       setOfferModalVisible(false);

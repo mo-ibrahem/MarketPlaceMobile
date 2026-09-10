@@ -144,7 +144,12 @@ export default function ChatRoomScreen() {
             </View>
             <View>
               <Text style={styles.headerName} numberOfLines={1}>{otherName}</Text>
-              <Text style={styles.headerStatus}>🇪🇬 Active in Egypt</Text>
+              {/* Was a hardcoded "Active in Egypt" presence line, which this
+                  app cannot actually know. The listing the conversation is
+                  about is both true and more useful. */}
+              <Text style={styles.headerStatus} numberOfLines={1}>
+                {roomInfo?.product_title || '🇪🇬 EgyBay'}
+              </Text>
             </View>
           </View>
 

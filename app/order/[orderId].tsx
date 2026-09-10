@@ -37,6 +37,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../src/i18n/LanguageContext';
+import { getOrCreateChatRoom } from '../../src/services/lib/chatService';
 import { ReviewForm } from '../../src/components/ReviewForm';
 import { ReviewRow } from '../../src/components/ReviewList';
 import {
@@ -153,6 +154,8 @@ export default function OrderDetailScreen() {
 
   // Buyer — Approve delivery
   const [approving, setApproving] = useState(false);
+
+  const [openingChat, setOpeningChat] = useState(false);
 
   // Buyer — Review
   const [myReview, setMyReview] = useState<Review | null>(null);
@@ -581,12 +584,35 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {/* Chat Button */}
+        {/* Chat Button.
+            This pushed a *user id* into /chat/[roomId], which is not a room id
+            -- the screen opened on a room that does not exist. It now resolves
+            the real room for this order's listing, so the thread is the one
+            about the item that was actually bought. */}
         <TouchableOpacity
           style={s.chatBtn}
-          onPress={() => router.push(`/chat/${isBuyer ? order.seller_id : order.buyer_id}` as any)}
+          disabled={openingChat}
+          onPress={async () => {
+            if (openingChat) return;
+            setOpeningChat(true);
+            try {
+              const roomId = await getOrCreateChatRoom(
+                isBuyer ? order.seller_id : order.buyer_id,
+                order.product_id,
+              );
+              router.push(`/chat/${roomId}` as any);
+            } catch (err: any) {
+              Alert.alert('تعذّر فتح المحادثة', err?.message || 'حاول مرة أخرى');
+            } finally {
+              setOpeningChat(false);
+            }
+          }}
         >
-          <MessageCircle color="#3B82F6" size={18} />
+          {openingChat ? (
+            <ActivityIndicator size="small" color="#3B82F6" />
+          ) : (
+            <MessageCircle color="#3B82F6" size={18} />
+          )}
           <Text style={s.chatBtnText}>فتح المحادثة مع {isBuyer ? 'البائع' : 'المشتري'}</Text>
         </TouchableOpacity>
 
