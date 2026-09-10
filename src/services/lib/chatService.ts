@@ -18,6 +18,7 @@ export interface ChatRoomInfo {
   product_id?: string | null;
   product_title?: string;
   product_image?: string;
+  product_price?: number;
   last_message?: string;
   last_message_time?: string;
 }
@@ -177,7 +178,7 @@ export const getChatRoomDetails = async (roomId: string): Promise<ChatRoomInfo |
   const [{ data: profile }, { data: product }] = await Promise.all([
     supabase.from('public_profiles').select('id, full_name, avatar_url').eq('id', otherUserId).maybeSingle(),
     room.product_id
-      ? supabase.from('products').select('id, title, images').eq('id', room.product_id).maybeSingle()
+      ? supabase.from('products').select('id, title, price, images').eq('id', room.product_id).maybeSingle()
       : Promise.resolve({ data: null as any }),
   ]);
 
@@ -189,6 +190,7 @@ export const getChatRoomDetails = async (roomId: string): Promise<ChatRoomInfo |
     product_id: room.product_id,
     product_title: (product as any)?.title,
     product_image: (product as any)?.images?.[0],
+    product_price: (product as any)?.price != null ? Number((product as any).price) : undefined,
   };
 };
 

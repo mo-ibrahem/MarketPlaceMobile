@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, MessageCircle, MoreVertical, Send, ShieldCheck, Tag } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, MessageCircle, MoreVertical, Package, Send, ShieldCheck, Tag } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -145,11 +145,9 @@ export default function ChatRoomScreen() {
             <View>
               <Text style={styles.headerName} numberOfLines={1}>{otherName}</Text>
               {/* Was a hardcoded "Active in Egypt" presence line, which this
-                  app cannot actually know. The listing the conversation is
-                  about is both true and more useful. */}
-              <Text style={styles.headerStatus} numberOfLines={1}>
-                {roomInfo?.product_title || '🇪🇬 EgyBay'}
-              </Text>
+                  app has no way to know. The listing this conversation is about
+                  is shown in its own bar below instead. */}
+              <Text style={styles.headerStatus} numberOfLines={1}>🇪🇬 EgyBay</Text>
             </View>
           </View>
 
@@ -197,6 +195,37 @@ export default function ChatRoomScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Listing this conversation is about.
+            Conversations are scoped to one item, so the item stays visible for
+            context -- the name alone is easy to lose track of mid-thread.
+            Legacy rooms opened before scoping have no product and show no bar. */}
+        {!!roomInfo?.product_id && (
+          <TouchableOpacity
+            style={styles.productBar}
+            activeOpacity={0.8}
+            onPress={() => router.push(`/products/${roomInfo.product_id}` as any)}
+          >
+            {roomInfo.product_image ? (
+              <Image source={{ uri: roomInfo.product_image }} style={styles.productBarImg} />
+            ) : (
+              <View style={[styles.productBarImg, styles.productBarImgFallback]}>
+                <Package size={16} color="#94A3B8" />
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.productBarTitle} numberOfLines={1}>
+                {roomInfo.product_title || 'Listing'}
+              </Text>
+              {roomInfo.product_price != null && (
+                <Text style={styles.productBarPrice}>
+                  EGP {Number(roomInfo.product_price).toLocaleString('en-EG')}
+                </Text>
+              )}
+            </View>
+            <ChevronRight size={16} color="#CBD5E1" />
+          </TouchableOpacity>
+        )}
 
         {/* ── Safety Notice Banner ── */}
         <View style={styles.safetyBanner}>
@@ -322,6 +351,20 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
 
   // Header
+  productBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  productBarImg: { width: 38, height: 38, borderRadius: 9, backgroundColor: '#F1F5F9' },
+  productBarImgFallback: { alignItems: 'center', justifyContent: 'center' },
+  productBarTitle: { fontSize: 12.5, fontWeight: '800', color: '#0F172A' },
+  productBarPrice: { fontSize: 11.5, fontWeight: '700', color: '#2563EB', marginTop: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
