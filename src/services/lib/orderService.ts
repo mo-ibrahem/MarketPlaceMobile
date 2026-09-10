@@ -146,6 +146,53 @@ export async function confirmOrderPayment(orderId: string): Promise<void> {
 // FETCH ORDERS
 // ──────────────────────────────────────────────────────────────
 
+
+
+/**
+ * Explicit column list -- never select('*') on orders from the client.
+ *
+ * `orders` carries column-level SELECT grants: handover_pin_hash and
+ * handover_pin_encrypted are deliberately NOT readable, because a seller on an
+ * order could otherwise read the hash and brute-force the 6-digit PIN offline.
+ * Postgres denies the whole statement when a select('*') touches a column the
+ * role lacks, so `select('*')` here returned 42501 "permission denied for table
+ * orders" for every caller -- both order screens fell back to empty in-memory
+ * data and a seller with real orders saw none.
+ *
+ * courier_name, inspection_deadline and dispute_reason are not granted either
+ * and are therefore not requested; the mapping defaults them.
+ */
+const ORDER_COLUMNS =
+  'id, buyer_id, seller_id, product_id, amount, status, handover_method, ' +
+  'shipping_address, tracking_number, notes, product_snapshot, payment_id, ' +
+  'paymob_transaction_id, shipped_at, delivered_at, created_at, updated_at';
+
+/**
+ * orders.buyer_id / seller_id are FKs to auth.users, which PostgREST cannot
+ * embed from the public schema. Requesting `buyer:buyer_id(...)` made the whole
+ * query fail with PGRST200 ("Could not find a relationship between 'orders' and
+ * 'buyer_id'"), the catch swallowed it, and both order screens silently fell
+ * back to empty in-memory data -- so a seller with eleven real orders saw none.
+ *
+ * Names come from public_profiles in a second query instead, the same pattern
+ * used for reviewers and chat participants.
+ */
+async function hydrateOrderParties(
+  userIds: string[],
+): Promise<Record<string, { full_name?: string; avatar_url?: string }>> {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  if (ids.length === 0) return {};
+  const { data } = await supabase
+    .from('public_profiles' as any)
+    .select('id, full_name, avatar_url')
+    .in('id', ids);
+  const out: Record<string, { full_name?: string; avatar_url?: string }> = {};
+  for (const row of (data as any[]) || []) {
+    out[row.id] = { full_name: row.full_name, avatar_url: row.avatar_url };
+  }
+  return out;
+}
+
 /**
  * Fetch all orders for a user (as buyer OR seller)
  */
@@ -153,11 +200,16 @@ export async function getUserOrders(userId: string): Promise<MarketplaceOrder[]>
   try {
     const { data, error } = await supabase
       .from('orders' as any)
-      .select('*, products(*), buyer:buyer_id(full_name, avatar_url), seller:seller_id(full_name, avatar_url)')
+      .select(`${ORDER_COLUMNS}, products(*)`)
       .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
       .order('created_at', { ascending: false });
 
-    if (data && !error) {
+    if (error) throw error;
+
+    if (data) {
+      const parties = await hydrateOrderParties(
+        (data as any[]).flatMap(r => [r.buyer_id, r.seller_id]),
+      );
       return (data as any[]).map(row => {
         let notesData: any = {};
         try {
@@ -175,14 +227,14 @@ export async function getUserOrders(userId: string): Promise<MarketplaceOrder[]>
           meetup_pin: notesData.meetup_pin,
           shipping_address: row.shipping_address,
           tracking_number: row.tracking_number,
-          courier_name: row.courier_name || 'Bosta',
+          courier_name: 'Bosta',
           tracking_url: row.tracking_number
             ? `https://bosta.co/tracking-shipment/?trackNumber=${row.tracking_number}`
             : undefined,
-          inspection_deadline: row.inspection_deadline,
+
           product: notesData.product || row.products,
-          seller: row.seller,
-          buyer: row.buyer,
+          seller: parties[row.seller_id],
+          buyer: parties[row.buyer_id],
           created_at: row.created_at,
           updated_at: row.updated_at,
         } as MarketplaceOrder;
@@ -209,15 +261,18 @@ export async function getOrderById(orderId: string): Promise<MarketplaceOrder | 
   try {
     const { data, error } = await supabase
       .from('orders' as any)
-      .select('*, products(*), buyer:buyer_id(full_name, avatar_url), seller:seller_id(full_name, avatar_url)')
+      .select(`${ORDER_COLUMNS}, products(*)`)
       .eq('id', orderId)
       .maybeSingle();
+    if (error) throw error;
 
-    if (data && !error) {
+    if (data) {
       let notesData: any = {};
       try {
         notesData = typeof data.notes === 'string' ? JSON.parse(data.notes) : data.notes || {};
       } catch {}
+
+      const parties = await hydrateOrderParties([data.buyer_id, data.seller_id]);
 
       return {
         id: data.id,
@@ -228,17 +283,17 @@ export async function getOrderById(orderId: string): Promise<MarketplaceOrder | 
         currency: 'EGP',
         status: data.status,
         handover_method: notesData.handover_method || 'courier',
-        meetup_pin: notesData.meetup_pin || data.handover_pin || '123456',
+        meetup_pin: notesData.meetup_pin,
         shipping_address: data.shipping_address,
         tracking_number: data.tracking_number,
-        courier_name: data.courier_name || 'Bosta',
+        courier_name: 'Bosta',
         tracking_url: data.tracking_number
           ? `https://bosta.co/tracking-shipment/?trackNumber=${data.tracking_number}`
           : undefined,
-        inspection_deadline: data.inspection_deadline,
+
         product: data.products,
-        seller: data.seller,
-        buyer: data.buyer,
+        seller: parties[data.seller_id],
+        buyer: parties[data.buyer_id],
         created_at: data.created_at,
       };
     }

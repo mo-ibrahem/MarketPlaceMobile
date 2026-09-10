@@ -138,6 +138,11 @@ export default function HomeScreen() {
   // Responsive calculations
   const isTabletOrDesktop = width >= 768;
   const maxContentWidth = Math.min(width, 960);
+  // The header row is logo + location + language + bell + wishlist. At iPhone
+  // widths that overflows and silently clips the trailing icons off-screen --
+  // the notification bell among them. Below this breakpoint the location chip
+  // drops to its pin icon alone, which buys back the ~55px needed.
+  const compactHeader = width < 420;
   const bannerWidth = Math.min(width - 32, 920);
   const numColumns = width >= 900 ? 4 : width >= 600 ? 3 : 2;
 
@@ -285,7 +290,7 @@ export default function HomeScreen() {
               <TouchableOpacity onPress={() => router.push('/(tabs)' as any)} activeOpacity={0.8}>
                 <Image
                   source={require('../../assets/images/egbay_logo_header.png')}
-                  style={{ width: 125, height: 44, resizeMode: 'contain' }}
+                  style={{ width: compactHeader ? 104 : 125, height: 44, resizeMode: 'contain' }}
                 />
               </TouchableOpacity>
 
@@ -297,7 +302,7 @@ export default function HomeScreen() {
                   activeOpacity={0.8}
                 >
                   <MapPin size={12} color="#2563EB" />
-                  <Text style={styles.locationChipText}>Cairo, EG</Text>
+                  {!compactHeader && <Text style={styles.locationChipText}>Cairo, EG</Text>}
                 </TouchableOpacity>
 
                 {/* Language Switcher */}
@@ -801,6 +806,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    // Never let the action icons be the thing that gets squeezed out.
+    flexShrink: 0,
   },
   locationChip: {
     flexDirection: 'row',

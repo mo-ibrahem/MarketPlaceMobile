@@ -40,7 +40,13 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { getChatRooms, type ChatRoomInfo } from '../../src/services/lib/chatService';
-import { getUserWallet, type UserWallet } from '../../src/services/lib/walletService';
+import {
+  SELLER_TIERS,
+  getSellerTier,
+  getUserWallet,
+  type SellerTierConfig,
+  type UserWallet,
+} from '../../src/services/lib/walletService';
 import {
   productService,
   profileService,
@@ -95,6 +101,8 @@ export default function ProfileScreen() {
   const [isLoading,        setIsLoading]        = useState(true);
   const [activeTab,        setActiveTab]        = useState<TabId>('products');
   const [wallet,           setWallet]           = useState<UserWallet | null>(null);
+  const [sellerTier,       setSellerTier]       = useState<SellerTierConfig>(SELLER_TIERS[1]);
+  const [isVerifiedSeller, setIsVerifiedSeller] = useState(false);
 
   const [editProfileData, setEditProfileData] = useState({ full_name: '', phone: '' });
   const [passwordData,    setPasswordData]    = useState({ newPassword: '', confirmPassword: '' });
@@ -114,13 +122,14 @@ export default function ProfileScreen() {
     if (!user) return;
     try {
       setIsLoading(true);
-      const [profileData, products, wishlist, chats, sold, userWallet] = await Promise.all([
+      const [profileData, products, wishlist, chats, sold, userWallet, tier] = await Promise.all([
         profileService.getProfile(user.id),
         productService.getProductsBySeller(user.id),
         productService.getWishlist(),
         getChatRooms(),
         productService.getSoldCountBySeller(user.id),
         getUserWallet(user.id),
+        getSellerTier(user.id),
       ]);
       setProfile(profileData);
       setUserProducts(products);
@@ -128,6 +137,10 @@ export default function ProfileScreen() {
       setChatRooms(chats || []);
       setSoldCount(sold);
       setWallet(userWallet);
+      setSellerTier(tier);
+      // The badge tracks is_verified_seller, not the tier number -- the two can
+      // disagree, and only the flag means a human checked an ID.
+      setIsVerifiedSeller(!!(profileData as any)?.is_verified_seller);
       setEditProfileData({
         full_name: profileData?.full_name || '',
         phone:     profileData?.phone     || '',
@@ -667,23 +680,37 @@ export default function ProfileScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* ════════ SELLER TRUST TIER CARD ════════ */}
+        {/* ════════ SELLER TRUST TIER CARD ════════
+            Every field here used to be hardcoded: it told each user they were a
+            "Tier 2: Verified Trader" with a "VERIFIED" badge and an "Egyptian
+            National ID Verified" subtitle, no matter what the database said.
+            This account, for one, is tier 1 with is_verified_seller = false and
+            no verification request on file. It now reports the real tier and
+            only claims verification when the profile actually carries it. */}
         <TouchableOpacity
           style={styles.sellerTierCard}
           onPress={() => router.push('/seller-verification' as any)}
           activeOpacity={0.85}
         >
           <View style={styles.tierIconWrap}>
-            <ShieldCheck color="#10B981" size={20} />
+            <ShieldCheck color={isVerifiedSeller ? '#10B981' : '#94A3B8'} size={20} />
           </View>
           <View style={{ flex: 1 }}>
             <View style={styles.tierRow}>
-              <Text style={styles.tierTitle}>Tier 2: Verified Trader</Text>
-              <View style={styles.tierBadge}>
-                <Text style={styles.tierBadgeText}>VERIFIED 🛡️</Text>
-              </View>
+              <Text style={styles.tierTitle}>
+                Tier {sellerTier.tier}: {sellerTier.name}
+              </Text>
+              {isVerifiedSeller && (
+                <View style={styles.tierBadge}>
+                  <Text style={styles.tierBadgeText}>VERIFIED 🛡️</Text>
+                </View>
+              )}
             </View>
-            <Text style={styles.tierSub}>Egyptian National ID Verified • 100% Escrow Protection</Text>
+            <Text style={styles.tierSub}>
+              {isVerifiedSeller
+                ? 'Egyptian National ID Verified • 100% Escrow Protection'
+                : `Not verified yet • Requires ${sellerTier.kycRequirement}`}
+            </Text>
           </View>
           <ChevronRight size={16} color="#94A3B8" />
         </TouchableOpacity>
