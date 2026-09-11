@@ -61,13 +61,20 @@ export default function TabsLayout() {
           shadowOffset: { width: 0, height: -6 },
           shadowOpacity: 0.08,
           shadowRadius: 20,
-          // Was a fixed height/padding, which crowded the home indicator on
-          // devices that have one and left dead space on those that do not.
-          // 22pt icon + 11pt label + breathing room = 64 of content, then the
-          // home indicator on top of that. A fixed 68 crowded the indicator on
-          // devices that have one and clipped the label on those that do not.
-          height: 64 + insets.bottom,
-          paddingBottom: Math.max(insets.bottom, space.xs),
+          // Content is a 22pt icon plus an 11pt label (~13pt line box) plus the
+          // gap between them: about 40pt. 50 leaves a little air and keeps the
+          // floating Sell button's own label clear of the home indicator --
+          // that FAB is 56pt tall and deliberately overhangs the bar, so the
+          // bar cannot be trimmed all the way down to the other tabs' content.
+          // The indicator's inset is added on top and reserved as padding, so
+          // nothing sits underneath it.
+          //
+          // Do not add insets.bottom to the height AND also pad by more than
+          // the inset -- that was the previous bug here. A 64pt base left ~18pt
+          // of slack that rendered as dead space under the labels on a device
+          // with a home indicator.
+          height: 50 + insets.bottom,
+          paddingBottom: insets.bottom,
           paddingTop: space.xs + 2,
           backgroundColor: 'rgba(255,255,255,0.98)',
         },
