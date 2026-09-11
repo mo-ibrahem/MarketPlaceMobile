@@ -1,8 +1,7 @@
-import { Heart, MapPin, ShieldCheck, Star } from 'lucide-react-native';
+import { Heart, ShieldCheck } from 'lucide-react-native';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { color, font, radius, shadow, space, tapSlop, weight } from '../design/tokens';
-import { displayName } from '../services/lib/displayName';
 import type { Product } from '../services/lib/products';
 
 export function formatEGP(price: number | string): string {
@@ -43,8 +42,6 @@ export function ProductCard({
   /** Escrow lives on the product, not in a strip above the feed. */
   showEscrow?: boolean;
 }) {
-  const rating = item.seller?.rating_count ? item.seller : null;
-
   return (
     <TouchableOpacity
       style={[s.card, variant === 'carousel' && s.cardCarousel, !!width && { width }]}
@@ -80,28 +77,12 @@ export function ProductCard({
         )}
       </View>
 
+      {/* Title and price only. The seller line and rating row made every
+          card's text block a different height and pushed prices off a shared
+          baseline; the references show title + price and nothing else. Seller
+          and rating live on the product page, where there is room for them. */}
       <View style={s.body}>
-        <View style={s.metaRow}>
-          {rating ? (
-            <View style={s.ratingPill}>
-              <Star color={color.warning} fill={color.warning} size={11} />
-              <Text style={s.ratingText}>
-                {Number(rating.rating_avg ?? 0).toFixed(1)}
-                <Text style={s.ratingCount}> ({rating.rating_count})</Text>
-              </Text>
-            </View>
-          ) : (
-            <Text style={s.sellerName} numberOfLines={1}>
-              {displayName(item.seller?.full_name, 'Seller')}
-            </Text>
-          )}
-        </View>
-
         <Text style={s.title} numberOfLines={2}>{item.title}</Text>
-        {/* Price below the image as plain left-aligned text, the way every
-            reference does it -- not floated over the photograph in a pill,
-            where it fights the product for attention. It is also the last
-            thing in the card, so it is the last thing read. */}
         <Text style={s.price}>{formatEGP(item.price)}</Text>
       </View>
     </TouchableOpacity>
@@ -124,7 +105,7 @@ const s = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: color.surfaceAlt,
   },
-  img: { width: '100%', height: 200, backgroundColor: color.surfaceAlt },
+  img: { width: '100%', height: 190, backgroundColor: color.surfaceAlt },
 
   // Price is the single most important number on a marketplace card, and it
   // was set at 11pt -- the smallest size in the system -- inside a small pill.
@@ -176,7 +157,7 @@ const s = StyleSheet.create({
   },
   newBadgeText: { color: color.text, fontSize: font.caption2, fontWeight: weight.heavy, letterSpacing: 0.3 },
 
-  body: { paddingTop: space.sm + 2, gap: 2 },
+  body: { paddingTop: space.sm + 2, paddingHorizontal: 2, gap: 2 },
   /**
    * A fixed two-line box, not `numberOfLines` alone.
    *
