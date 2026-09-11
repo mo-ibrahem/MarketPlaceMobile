@@ -7,6 +7,7 @@ import {
   Alert,
   FlatList,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,7 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import {
@@ -38,6 +39,13 @@ function formatMessageTime(isoString: string): string {
 }
 
 export default function ChatRoomScreen() {
+  const insets = useSafeAreaInsets();
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardOpen(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardOpen(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
   const { user } = useAuth();
   const router = useRouter();
@@ -122,7 +130,19 @@ export default function ChatRoomScreen() {
   const otherInitial = otherName.charAt(0).toUpperCase();
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      {/* The KeyboardAvoidingView must be the full-height container. It used
+          to sit below the header and safety banner with a 10pt offset, so
+          when the keyboard opened it padded by (keyboard − 10) while its own
+          frame started ~120pt down the screen -- under-padding by roughly one
+          input row. Result on a real iPhone: quick-reply chips visible, the
+          text field and Send hidden behind the keyboard. As the outermost
+          view, its frame is the screen and the overlap it measures is exact. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
       <View style={{ flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' }}>
         
         {/* ── Top Header ── */}
@@ -234,11 +254,7 @@ export default function ChatRoomScreen() {
         </View>
 
         {/* ── Message List ── */}
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
-        >
+        <View style={{ flex: 1 }}>
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -323,7 +339,7 @@ export default function ChatRoomScreen() {
           </View>
 
           {/* ── Input Bar ── */}
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { paddingBottom: 10 + (keyboardOpen ? 0 : insets.bottom) }]}>
             <TextInput
               style={styles.input}
               value={newMessage}
@@ -340,8 +356,9 @@ export default function ChatRoomScreen() {
               <Send color="white" size={18} />
             </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
