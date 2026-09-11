@@ -429,6 +429,22 @@ export default function ProductDetailScreen() {
             </Reanimated.View>
           )}
 
+          {/* Talking to the seller and negotiating are both actions on a
+              *person*, so they sit with the seller rather than competing with
+              Buy in the sticky bar. */}
+          {!isOwner && (
+            <Reanimated.View entering={FadeInDown.duration(350).delay(150)} style={styles.sellerActions}>
+              <TouchableOpacity style={styles.ghostBtn} onPress={handleContact} activeOpacity={0.85}>
+                <MessageCircle size={17} color="#0F172A" />
+                <Text style={styles.ghostBtnText}>{isRTL ? 'راسل البائع' : 'Message seller'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.ghostBtn} onPress={handleOpenOfferModal} activeOpacity={0.85}>
+                <Tag size={16} color="#0F172A" />
+                <Text style={styles.ghostBtnText}>{isRTL ? 'قدّم عرضاً' : 'Make an offer'}</Text>
+              </TouchableOpacity>
+            </Reanimated.View>
+          )}
+
           {/* ── EgyBay Escrow & Money Back Guarantee Card ── */}
           <Reanimated.View entering={FadeInDown.duration(350).delay(180)}>
             <TouchableOpacity
@@ -441,11 +457,17 @@ export default function ProductDetailScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <Text style={styles.guaranteeTitle}>ضمان إيجي باي لحماية أموالك 🛡️</Text>
-                  <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '800' }}>كيف نحميك؟ ←</Text>
+                  <Text style={styles.guaranteeTitle}>
+                    {isRTL ? 'ضمان إيجي باي لحماية أموالك 🛡️' : 'EgyBay escrow protection 🛡️'}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '800' }}>
+                    {isRTL ? 'كيف نحميك؟ ←' : 'How it works →'}
+                  </Text>
                 </View>
                 <Text style={styles.guaranteeDesc}>
-                  أموالك في أمان تام ولا تُحوّل للبائع إلا بعد استلامك ومعاينتك للمنتج 100%.
+                  {isRTL
+                    ? 'أموالك في أمان تام ولا تُحوّل للبائع إلا بعد استلامك ومعاينتك للمنتج 100%.'
+                    : 'Your money is held safely and is never released to the seller until you have received and inspected the item.'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -571,7 +593,9 @@ export default function ProductDetailScreen() {
             activeOpacity={0.7}
           >
             <Flag size={14} color="#94A3B8" />
-            <Text style={styles.reportListingText}>Report this listing • الإبلاغ عن مخالفة</Text>
+            <Text style={styles.reportListingText}>
+              {isRTL ? 'الإبلاغ عن مخالفة' : 'Report this listing'}
+            </Text>
           </TouchableOpacity>
 
           {/* Bottom spacer for sticky bar */}
@@ -579,7 +603,16 @@ export default function ProductDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* ── Sticky bottom CTA bar ── */}
+      {/* ── Sticky bar: the price and the one action that matters ──
+          Previously three CTAs of near-equal weight sat here -- Chat in
+          indigo, Make an Offer in violet, Buy Now in green -- so nothing
+          dominated and the screen asked the shopper to choose between three
+          things instead of one. The price was not in the bar at all, even
+          though it is the number a buyer checks immediately before committing.
+
+          Chat and Make an Offer are not gone; they moved up beside the seller,
+          which is where they belong contextually -- you message a *person* and
+          you negotiate with a *person*. */}
       <Reanimated.View entering={FadeInUp.duration(350)} style={styles.bottomBar}>
         {isOwner ? (
           <TouchableOpacity
@@ -590,31 +623,24 @@ export default function ProductDetailScreen() {
             <Text style={styles.ctaBtnText}>Edit Listing</Text>
           </TouchableOpacity>
         ) : (
-          <View style={styles.ctaRow}>
-            {/* Chat button */}
-            <TouchableOpacity style={[styles.ctaBtn, styles.ctaContact]} onPress={handleContact}>
-              <MessageCircle size={18} color="#6366F1" />
-              <Text style={[styles.ctaBtnText, { color: '#6366F1' }]}>Chat</Text>
-            </TouchableOpacity>
+          <View style={styles.barRow}>
+            <View style={styles.barPriceWrap}>
+              <Text style={styles.barPriceLabel}>{isRTL ? 'السعر' : 'Price'}</Text>
+              <Text style={styles.barPrice} numberOfLines={1}>{formatEGP(product.price)}</Text>
+            </View>
 
-            {/* Make an Offer (eBay negotiation flow) */}
-            <TouchableOpacity style={[styles.ctaBtn, styles.ctaOffer]} onPress={handleOpenOfferModal}>
-              <Tag size={16} color="#7C3AED" />
-              <Text style={[styles.ctaBtnText, { color: '#7C3AED' }]}>{t('products.makeOffer')}</Text>
-            </TouchableOpacity>
-
-            {/* Buy Now */}
             <TouchableOpacity
-              style={[styles.ctaBtn, styles.ctaBuy, { flex: 1.5 }]}
+              style={styles.buyBtn}
               onPress={handleBuyNow}
               disabled={isBuying}
+              activeOpacity={0.9}
             >
               {isBuying ? (
                 <ActivityIndicator color="white" size="small" />
               ) : (
                 <>
                   <ShoppingBag size={18} color="white" />
-                  <Text style={styles.ctaBtnText}>Buy Now</Text>
+                  <Text style={styles.buyBtnText}>{isRTL ? 'اشترِ الآن' : 'Buy now'}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -874,7 +900,7 @@ const styles = StyleSheet.create({
   listedDate: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
 
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', lineHeight: 30, marginBottom: 8 },
-  price: { fontSize: 30, fontWeight: '800', color: '#2563EB', marginBottom: 20, letterSpacing: -0.5 },
+  price: { fontSize: 32, fontWeight: '800', color: '#0F172A', marginBottom: 20, letterSpacing: -0.9 },
 
   // Seller card
   sellerCard: {
@@ -1031,6 +1057,24 @@ const styles = StyleSheet.create({
     fontSize: 11, fontWeight: '800', color: '#64748B',
     backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2,
   },
+
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  barPriceWrap: { minWidth: 96 },
+  barPriceLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8' },
+  barPrice: { fontSize: 22, fontWeight: '800', color: '#0F172A', letterSpacing: -0.6, marginTop: 1 },
+  buyBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, height: 54, borderRadius: 999, backgroundColor: '#0F172A',
+  },
+  buyBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
+
+  sellerActions: { flexDirection: 'row', gap: 10, marginBottom: 18 },
+  ghostBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 7, height: 46, borderRadius: 999,
+    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0',
+  },
+  ghostBtnText: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
 
   // Description
   sectionLabel: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 10 },
