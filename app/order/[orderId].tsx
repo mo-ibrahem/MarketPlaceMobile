@@ -60,11 +60,13 @@ import {
 // Bosta Tracking Stepper
 // ──────────────────────────────────────────────────────────────
 
-const BOSTA_STEPS: { status: MarketplaceOrder['status'][]; label: string; label_ar: string; icon: any }[] = [
-  { status: ['escrow_secured'], label: 'Funds Secured', label_ar: 'أموال في الضمان', icon: ShieldCheck },
-  { status: ['shipped'], label: 'Dispatched to Bosta', label_ar: 'تم التسليم لبوسطة', icon: Truck },
-  { status: ['out_for_delivery'], label: 'Out for Delivery', label_ar: 'خرج للتوصيل', icon: MapPin },
-  { status: ['delivered', 'completed'], label: 'Delivered ✓', label_ar: 'تم التوصيل ✓', icon: CheckCircle2 },
+// `short` is what the four-column progress rail shows; the full label is used
+// in the "Right now" line above it, where there is room for it.
+const BOSTA_STEPS: { status: MarketplaceOrder['status'][]; label: string; label_ar: string; short: string; short_ar: string; icon: any }[] = [
+  { status: ['escrow_secured'], label: 'Funds Secured', short: 'Paid', short_ar: 'مدفوع', label_ar: 'أموال في الضمان', icon: ShieldCheck },
+  { status: ['shipped'], label: 'Dispatched to Bosta', short: 'Shipped', short_ar: 'شُحن', label_ar: 'تم التسليم لبوسطة', icon: Truck },
+  { status: ['out_for_delivery'], label: 'Out for Delivery', short: 'On the way', short_ar: 'في الطريق', label_ar: 'خرج للتوصيل', icon: MapPin },
+  { status: ['delivered', 'completed'], label: 'Delivered ✓', short: 'Delivered', short_ar: 'تم التسليم', label_ar: 'تم التوصيل ✓', icon: CheckCircle2 },
 ];
 
 const ORDER_STATUS_RANK: Record<MarketplaceOrder['status'], number> = {
@@ -78,51 +80,84 @@ const ORDER_STATUS_RANK: Record<MarketplaceOrder['status'], number> = {
   cancelled: 0,
 };
 
-function BostaStepper({ status, isRTL }: { status: MarketplaceOrder['status']; isRTL: boolean }) {
-  const currentRank = ORDER_STATUS_RANK[status] ?? 0;
+/**
+ * Order progress, rebuilt as a horizontal tracker.
+ *
+ * The old version was a vertical timeline: four 30pt circles stacked with
+ * connecting rules, each showing the label twice (Arabic above, English below),
+ * costing ~140pt of height to convey one number -- how far along the order is.
+ * It also gave equal visual weight to every step, so the one thing a buyer
+ * opens this screen to learn -- what is happening *now* -- was not emphasised.
+ *
+ * The horizontal bar states the current step once, in large type, with a
+ * four-segment progress rail underneath. Same information, a third of the
+ * height, and the current state is the loudest thing in the card.
+ */
+function OrderProgress({ status, isRTL }: { status: MarketplaceOrder['status']; isRTL: boolean }) {
+  const rank = ORDER_STATUS_RANK[status] ?? 0;
+  const current = BOSTA_STEPS[Math.min(Math.max(rank - 1, 0), BOSTA_STEPS.length - 1)];
+  const Icon = current.icon;
+  const pct = Math.round((Math.min(rank, BOSTA_STEPS.length) / BOSTA_STEPS.length) * 100);
 
   return (
     <View style={stepStyles.wrap}>
-      {BOSTA_STEPS.map((step, i) => {
-        const stepRank = i + 1;
-        const done = currentRank >= stepRank;
-        const current = currentRank === stepRank;
-        const Icon = step.icon;
-        const isLast = i === BOSTA_STEPS.length - 1;
+      <View style={stepStyles.head}>
+        <View style={stepStyles.headIcon}>
+          <Icon color="#FFFFFF" size={18} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={stepStyles.headLabel}>
+            {isRTL ? 'الحالة الآن' : 'Right now'}
+          </Text>
+          <Text style={stepStyles.headValue} numberOfLines={1}>
+            {isRTL ? current.label_ar : current.label}
+          </Text>
+        </View>
+        <Text style={stepStyles.pct}>{pct}%</Text>
+      </View>
 
-        return (
-          <View key={i} style={stepStyles.stepRow}>
-            <View style={stepStyles.leftCol}>
-              <View style={[stepStyles.iconCircle, done && stepStyles.iconCircleDone, current && stepStyles.iconCircleCurrent]}>
-                <Icon color={done ? 'white' : '#94A3B8'} size={14} />
-              </View>
-              {!isLast && <View style={[stepStyles.line, done && stepStyles.lineDone]} />}
-            </View>
-            <View style={stepStyles.stepContent}>
-              <Text style={[stepStyles.stepLabel, done && stepStyles.stepLabelDone]}>{isRTL ? step.label_ar : step.label}</Text>
-              <Text style={[stepStyles.stepSub, done && stepStyles.stepSubDone]}>{isRTL ? step.label : step.label_ar}</Text>
-            </View>
-          </View>
-        );
-      })}
+      <View style={stepStyles.rail}>
+        {BOSTA_STEPS.map((_, i) => (
+          <View
+            key={i}
+            style={[stepStyles.segment, rank >= i + 1 && stepStyles.segmentDone]}
+          />
+        ))}
+      </View>
+
+      <View style={stepStyles.ticks}>
+        {BOSTA_STEPS.map((step, i) => (
+          <Text
+            key={i}
+            style={[stepStyles.tick, rank >= i + 1 && stepStyles.tickDone]}
+            numberOfLines={1}
+          >
+            {isRTL ? step.short_ar : step.short}
+          </Text>
+        ))}
+      </View>
     </View>
   );
 }
 
 const stepStyles = StyleSheet.create({
-  wrap: { paddingLeft: 4 },
-  stepRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  leftCol: { alignItems: 'center', width: 30 },
-  iconCircle: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E2E8F0' },
-  iconCircleDone: { backgroundColor: '#3B82F6', borderColor: '#3B82F6' },
-  iconCircleCurrent: { borderColor: '#3B82F6', backgroundColor: '#EFF6FF' },
-  line: { width: 2, height: 28, backgroundColor: '#E2E8F0', marginVertical: 2 },
-  lineDone: { backgroundColor: '#3B82F6' },
-  stepContent: { paddingVertical: 6 },
-  stepLabel: { fontSize: 13, fontWeight: '700', color: '#94A3B8' },
-  stepLabelDone: { color: '#0F172A' },
-  stepSub: { fontSize: 11, color: '#CBD5E1' },
-  stepSubDone: { color: '#64748B' },
+  wrap: { gap: 14 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headIcon: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#0F172A',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headLabel: { fontSize: 12, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.2 },
+  headValue: { fontSize: 19, fontWeight: '800', color: '#0F172A', letterSpacing: -0.4, marginTop: 1 },
+  pct: { fontSize: 15, fontWeight: '800', color: '#94A3B8' },
+
+  rail: { flexDirection: 'row', gap: 5 },
+  segment: { flex: 1, height: 5, borderRadius: 999, backgroundColor: '#E2E8F0' },
+  segmentDone: { backgroundColor: '#0F172A' },
+
+  ticks: { flexDirection: 'row', gap: 5 },
+  tick: { flex: 1, fontSize: 11, fontWeight: '600', color: '#94A3B8' },
+  tickDone: { color: '#0F172A', fontWeight: '700' },
 });
 
 // ──────────────────────────────────────────────────────────────
@@ -424,7 +459,7 @@ export default function OrderDetailScreen() {
               <Text style={s.cardTitle}>{isRTL ? 'تتبع الشحنة (بوسطة مصر)' : 'Shipment tracking (Bosta Egypt)'}</Text>
             </View>
 
-            <BostaStepper status={order.status} isRTL={isRTL} />
+            <OrderProgress status={order.status} isRTL={isRTL} />
 
             {order.tracking_number ? (
               <TouchableOpacity

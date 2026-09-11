@@ -1,290 +1,336 @@
-import React, { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Bell, ChevronRight, Clock, Play, ShieldCheck, Users, Video } from 'lucide-react-native';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { Users, Clock, Video, Zap, ShieldCheck, Package, Play, ChevronRight } from 'lucide-react-native';
-import { getActiveLiveSessions, LIVE_PASSES, type LiveSession } from '../../src/services/lib/liveService';
 import { useAuth } from '../../hooks/useAuth';
-import { supabase } from '../../src/services/lib/supabase';
+import { useLanguage } from '../../src/i18n/LanguageContext';
+import { displayName } from '../../src/services/lib/displayName';
+import {
+  getActiveLiveSessions,
+  isGenuinelyLive,
+  type LiveSession,
+} from '../../src/services/lib/liveService';
 
+/**
+ * Live discovery, rebuilt.
+ *
+ * The previous screen had three structural problems, not cosmetic ones:
+ *
+ *  1. It advertised streams that were not live. `status === 'live'` is only
+ *     cleared by a clean end, so crashed broadcasts stay 'live' forever --
+ *     three of them had been "live" for over eight days and this screen listed
+ *     them. isGenuinelyLive() now requires a recent started_at.
+ *
+ *  2. It served two audiences in one scroll. A viewer looking for something to
+ *     watch had to scroll past a seller onboarding explainer and a wall of
+ *     broadcast pricing tiers. Those belong behind a seller CTA, not in a
+ *     viewer's feed.
+ *
+ *  3. Its empty state was an afterthought, when empty is the actual common
+ *     case at this stage. Nothing is live most of the time, so the screen is
+ *     designed around that: tell the viewer plainly, offer the one useful
+ *     action (get told when a stream starts), and invite sellers to fill it.
+ *
+ * It was also Arabic-only, on an app with a language switcher.
+ */
 export default function LiveDiscoveryScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
 
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchSessions = async () => {
+  const load = useCallback(async () => {
     try {
-      const data = await getActiveLiveSessions();
-      setSessions(data);
+      setSessions(await getActiveLiveSessions());
+    } catch (err) {
+      console.warn('[Live] load failed:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchSessions();
-
-    // Realtime live feed updates
-    const sub = supabase
-      .channel('mobile_live_feed')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_sessions' }, () => {
-        fetchSessions();
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(sub); };
   }, []);
 
-  const liveNow = sessions.filter(s => s.status === 'live');
+  useEffect(() => { load(); }, [load]);
+
+  const liveNow = sessions.filter(isGenuinelyLive);
   const upcoming = sessions.filter(s => s.status === 'scheduled');
 
-  const renderLiveCard = ({ item }: { item: LiveSession }) => (
+  const T = isRTL
+    ? {
+        title: 'البث المباشر',
+        sub: 'اشترِ مباشرة من التجار بضمان مالي كامل',
+        liveNow: 'يبث الآن',
+        upcoming: 'بثوث قادمة',
+        noneTitle: 'لا يوجد بث مباشر الآن',
+        noneSub: 'البث المباشر جديد على إيجي باي. سنخبرك فور بدء أول بث.',
+        notify: 'أخبرني عند بدء البث',
+        sellTitle: 'تبيع على إيجي باي؟',
+        sellSub: 'اعرض منتجاتك مباشرة وبِع بضمان مالي وشحن بوسطة.',
+        sellCta: 'ابدأ البث',
+        viewers: 'مشاهد',
+        scheduled: 'مجدول',
+      }
+    : {
+        title: 'Live',
+        sub: 'Buy directly from sellers, with full escrow protection',
+        liveNow: 'Live now',
+        upcoming: 'Scheduled',
+        noneTitle: 'Nobody is live right now',
+        noneSub: 'Live selling is new on EgyBay. We will tell you the moment the first stream starts.',
+        notify: 'Notify me when a stream starts',
+        sellTitle: 'Sell on EgyBay?',
+        sellSub: 'Show your items on camera and sell with escrow and Bosta delivery.',
+        sellCta: 'Start streaming',
+        viewers: 'watching',
+        scheduled: 'scheduled',
+      };
+
+  const renderCard = ({ item }: { item: LiveSession }) => (
     <TouchableOpacity
-      style={styles.liveCard}
-      activeOpacity={0.88}
+      style={s.card}
+      activeOpacity={0.9}
       onPress={() => router.push(`/live/${item.agora_channel}` as any)}
     >
-      <View style={styles.liveCardVideo}>
+      <View style={s.thumb}>
         {item.thumbnail_url ? (
-          <Image source={{ uri: item.thumbnail_url }} style={styles.liveCardImg} />
+          <Image source={{ uri: item.thumbnail_url }} style={s.thumbImg} />
         ) : (
-          <View style={[styles.liveCardImg, { alignItems: 'center', justifyContent: 'center' }]}>
-            <Play color="rgba(255,255,255,0.4)" size={32} />
+          <View style={[s.thumbImg, s.thumbFallback]}>
+            <Play color="rgba(255,255,255,0.35)" size={30} />
           </View>
         )}
-        {/* Live Pill */}
-        <View style={styles.livePill}>
-          <View style={styles.liveDot} />
-          <Text style={styles.livePillText}>LIVE</Text>
+
+        <View style={s.livePill}>
+          <View style={s.liveDot} />
+          <Text style={s.livePillText}>LIVE</Text>
         </View>
-        {/* Viewers */}
-        <View style={styles.viewersBadge}>
-          <Users color="white" size={10} />
-          <Text style={styles.viewersText}>{item.current_viewers}</Text>
-        </View>
-        {/* Gradient */}
-        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.liveCardGradient}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={styles.sellerAvatar}>
-              <Text style={styles.sellerAvatarText}>{item.seller?.full_name?.[0]?.toUpperCase() || 'S'}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.sellerName} numberOfLines={1}>{item.seller?.full_name || 'Seller'}</Text>
-              <Text style={styles.streamTitle} numberOfLines={1}>{item.title_ar || item.title}</Text>
-            </View>
+
+        {item.current_viewers > 0 && (
+          <View style={s.viewers}>
+            <Users color="#FFFFFF" size={11} />
+            <Text style={s.viewersText}>{item.current_viewers}</Text>
           </View>
-        </LinearGradient>
+        )}
+
+        <LinearGradient colors={['transparent', 'rgba(15,23,42,0.9)']} style={s.thumbFade} />
       </View>
+
+      <Text style={s.cardSeller} numberOfLines={1}>
+        {displayName(item.seller?.full_name, 'Seller')}
+      </Text>
+      <Text style={s.cardTitle} numberOfLines={2}>
+        {isRTL ? item.title_ar || item.title : item.title}
+      </Text>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
-      <LinearGradient colors={['#0F172A', '#1C2541']} style={styles.header}>
+    <SafeAreaView style={s.safe} edges={['top']}>
+      <View style={s.header}>
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <View style={styles.liveBadge}>
-              <View style={styles.liveDotRed} />
-              <Text style={styles.liveBadgeText}>EGYBAY LIVE — بث مباشر</Text>
-            </View>
-          </View>
-          <Text style={styles.headerTitle}>سوق البث المباشر</Text>
-          <Text style={styles.headerSub}>اشترِ مباشرة من التجار الموثوقين بضمان مالي كامل</Text>
+          <Text style={s.h1}>{T.title}</Text>
+          <Text style={s.h1sub}>{T.sub}</Text>
         </View>
-        {user && (
-          <TouchableOpacity
-            style={styles.goLiveBtn}
-            onPress={() => router.push('/live/book' as any)}
-          >
-            <Video color="white" size={15} />
-            <Text style={styles.goLiveBtnText}>ابدأ البث</Text>
-          </TouchableOpacity>
-        )}
-      </LinearGradient>
+        <View style={s.escrowChip}>
+          <ShieldCheck color="#059669" size={13} />
+          <Text style={s.escrowChipText}>{isRTL ? 'ضمان' : 'Escrow'}</Text>
+        </View>
+      </View>
 
-      <FlatList
-        data={liveNow}
-        keyExtractor={item => item.id}
-        numColumns={2}
-        columnWrapperStyle={{ gap: 10 }}
-        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 80 }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchSessions(); }} tintColor="#EF4444" />}
-        ListHeaderComponent={
-          <View>
-            {loading ? (
-              <View style={styles.center}><ActivityIndicator color="#EF4444" /></View>
-            ) : liveNow.length === 0 ? (
-              <View style={styles.emptyWrap}>
-                <View style={styles.emptyCard}>
-                  <View style={styles.emptyIcon}>
-                    <Video color="#EF4444" size={36} strokeWidth={2.5} />
-                  </View>
-                  <Text style={styles.emptyTitle}>لا توجد بثوث حية الآن</Text>
-                  <Text style={styles.emptySub}>تحقق لاحقاً أو ابدأ بثك المباشر الخاص وقم ببيع منتجاتك</Text>
-                  {user && (
-                    <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/live/book' as any)}>
-                      <Video color="white" size={16} strokeWidth={2.5} />
-                      <Text style={styles.emptyBtnText}>ابدأ بثك الآن</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
+      {loading ? (
+        <View style={s.center}><ActivityIndicator color="#0F172A" /></View>
+      ) : (
+        <FlatList
+          data={liveNow}
+          keyExtractor={i => i.id}
+          numColumns={2}
+          columnWrapperStyle={liveNow.length > 0 ? s.row : undefined}
+          contentContainerStyle={[s.list, { paddingBottom: insets.bottom + 96 }]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => { setRefreshing(true); load(); }}
+              tintColor="#0F172A"
+            />
+          }
+          renderItem={renderCard}
+          ListHeaderComponent={
+            liveNow.length > 0 ? (
+              <View style={s.sectionRow}>
+                <View style={s.liveDotLg} />
+                <Text style={s.section}>{T.liveNow} ({liveNow.length})</Text>
               </View>
-            ) : (
-              <View style={styles.sectionHeader}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' }} />
-                <Text style={styles.sectionTitle}>يبث الآن ({liveNow.length})</Text>
+            ) : null
+          }
+          ListEmptyComponent={
+            // Empty is the common case here, so it is the primary design
+            // rather than a fallback -- and it never claims a stream exists.
+            <View style={s.empty}>
+              <View style={s.emptyIcon}>
+                <Video color="#94A3B8" size={30} />
               </View>
-            )}
-
-            {/* Upcoming */}
-            {upcoming.length > 0 && (
-              <View style={{ marginBottom: 12 }}>
-                <View style={[styles.sectionHeader, { marginBottom: 8 }]}>
-                  <Clock color="#3B82F6" size={14} />
-                  <Text style={[styles.sectionTitle, { color: '#3B82F6' }]}>بثوث قادمة ({upcoming.length})</Text>
-                </View>
-                {upcoming.map(s => (
-                  <View key={s.id} style={styles.upcomingCard}>
-                    <View style={styles.upcomingIcon}>
-                      <Clock color="#3B82F6" size={18} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.upcomingTitle} numberOfLines={1}>{s.title_ar || s.title}</Text>
-                      <Text style={styles.upcomingBy}>{s.seller?.full_name || 'Seller'}</Text>
-                    </View>
-                    <View style={styles.maxViewBadge}>
-                      <Users color="#64748B" size={10} />
-                      <Text style={styles.maxViewText}>{s.max_viewers}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        }
-        renderItem={renderLiveCard}
-        ListFooterComponent={
-          <View style={styles.howCard}>
-            <Text style={styles.howTitle}>كيف يعمل EgyBay Live للبائعين؟</Text>
-            {[
-              { step: '١', text: 'احجز الباقة وادفع من محفظتك (٧٩ - ٢٩٩ ج.م)', icon: Zap, color: '#F59E0B' },
-              { step: '٢', text: 'ابدأ البث وثبّت منتجاتك على شاشة المشاهدين', icon: Video, color: '#EF4444' },
-              { step: '٣', text: 'البيع بضمان مالي كامل — أرباحك للمحفظة بعد الشحن بوسطة', icon: ShieldCheck, color: '#10B981' },
-            ].map(item => (
-              <View key={item.step} style={styles.howRow}>
-                <View style={[styles.howIcon, { backgroundColor: item.color + '20' }]}>
-                  <item.icon color={item.color} size={16} />
-                </View>
-                <Text style={styles.howText}>{item.text}</Text>
-              </View>
-            ))}
-            <View style={styles.passRow}>
-              {LIVE_PASSES.map((pass, idx) => (
-                <View key={pass.tier} style={[styles.passCard, idx === 2 && styles.passCardFeatured]}>
-                  {idx === 2 && (
-                    <View style={styles.passFeaturedBadge}>
-                      <Text style={styles.passFeaturedBadgeText}>الأكثر مبيعاً</Text>
-                    </View>
-                  )}
-                  <Text style={styles.passEmoji}>{pass.badge}</Text>
-                  <Text style={styles.passName}>{pass.name_ar}</Text>
-                  <Text style={[styles.passPrice, idx === 2 && { color: '#B45309' }]}>{pass.priceEGP} ج.م</Text>
-                  <Text style={styles.passDuration}>{pass.durationMinutes} دقيقة</Text>
-                </View>
-              ))}
-            </View>
-            {user && (
-              <TouchableOpacity style={styles.bookBtn} onPress={() => router.push('/live/book' as any)}>
-                <Video color="white" size={16} />
-                <Text style={styles.bookBtnText}>احجز بثك المباشر الآن</Text>
-                <ChevronRight color="white" size={16} />
+              <Text style={s.emptyTitle}>{T.noneTitle}</Text>
+              <Text style={s.emptySub}>{T.noneSub}</Text>
+              <TouchableOpacity style={s.notifyBtn} activeOpacity={0.85}>
+                <Bell color="#FFFFFF" size={15} />
+                <Text style={s.notifyText}>{T.notify}</Text>
               </TouchableOpacity>
-            )}
-          </View>
-        }
-      />
+            </View>
+          }
+          ListFooterComponent={
+            <View>
+              {upcoming.length > 0 && (
+                <View style={s.upcomingWrap}>
+                  <Text style={s.section}>{T.upcoming} ({upcoming.length})</Text>
+                  {upcoming.map(u => (
+                    <View key={u.id} style={s.upcomingRow}>
+                      <View style={s.upcomingIcon}>
+                        <Clock color="#64748B" size={16} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.upcomingTitle} numberOfLines={1}>
+                          {isRTL ? u.title_ar || u.title : u.title}
+                        </Text>
+                        <Text style={s.upcomingBy} numberOfLines={1}>
+                          {displayName(u.seller?.full_name, 'Seller')}
+                        </Text>
+                      </View>
+                      <Text style={s.upcomingTag}>{T.scheduled}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Seller pitch, once, at the end -- not a pricing wall halfway
+                  down a viewer's feed. Pricing lives on the booking screen,
+                  which is where someone who has decided to stream goes. */}
+              {!!user && (
+                <TouchableOpacity
+                  style={s.sellCard}
+                  activeOpacity={0.9}
+                  onPress={() => router.push('/live/book' as any)}
+                >
+                  <View style={s.sellIcon}>
+                    <Video color="#FFFFFF" size={18} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.sellTitle}>{T.sellTitle}</Text>
+                    <Text style={s.sellSub}>{T.sellSub}</Text>
+                  </View>
+                  <ChevronRight color="#94A3B8" size={18} />
+                </TouchableOpacity>
+              )}
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { padding: 18, flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 24 },
-  headerTitle: { fontSize: 22, fontWeight: '900', color: 'white' },
-  headerSub: { fontSize: 12, color: '#94A3B8', marginTop: 4, fontWeight: '500' },
-  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(239,68,68,0.2)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)' },
-  liveDotRed: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444', shadowColor: '#EF4444', shadowOffset: {width: 0, height: 0}, shadowOpacity: 0.8, shadowRadius: 4 },
-  liveBadgeText: { fontSize: 11, fontWeight: '900', color: '#EF4444', letterSpacing: 0.5 },
-  goLiveBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EF4444', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, shadowColor: '#EF4444', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.4, shadowRadius: 8, elevation: 4 },
-  goLiveBtnText: { fontSize: 13, fontWeight: '900', color: 'white' },
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  center: { paddingVertical: 60, alignItems: 'center' },
 
-  list: { padding: 12, gap: 12 },
-  center: { height: 100, alignItems: 'center', justifyContent: 'center' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  h1: { fontSize: 30, fontWeight: '800', color: '#0F172A', letterSpacing: -0.8 },
+  h1sub: { fontSize: 13, color: '#64748B', marginTop: 4, lineHeight: 18 },
+  escrowChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#ECFDF5', borderRadius: 999,
+    paddingHorizontal: 11, paddingVertical: 6, marginTop: 6,
+  },
+  escrowChipText: { fontSize: 12, fontWeight: '800', color: '#047857' },
 
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
-  sectionTitle: { fontSize: 15, fontWeight: '900', color: '#0F172A' },
+  list: { paddingHorizontal: 16 },
+  row: { gap: 14, marginBottom: 22 },
 
-  liveCard: { flex: 1 },
-  liveCardVideo: { aspectRatio: 9 / 14, borderRadius: 20, overflow: 'hidden', backgroundColor: '#0F172A', position: 'relative', shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.15, shadowRadius: 10, elevation: 5 },
-  liveCardImg: { width: '100%', height: '100%', position: 'absolute' },
-  livePill: { position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EF4444', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },
-  liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'white' },
-  livePillText: { fontSize: 11, fontWeight: '900', color: 'white', letterSpacing: 0.5 },
-  viewersBadge: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  viewersText: { fontSize: 11, color: 'white', fontWeight: '800' },
-  liveCardGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12, paddingTop: 30 },
-  sellerAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#3B82F6', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'white' },
-  sellerAvatarText: { fontSize: 12, fontWeight: '900', color: 'white' },
-  sellerName: { fontSize: 11, color: '#E2E8F0', fontWeight: '600' },
-  streamTitle: { fontSize: 13, fontWeight: '800', color: 'white', marginTop: 2 },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 },
+  liveDotLg: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' },
+  section: { fontSize: 17, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3 },
 
-  upcomingCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'white', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#EEF2FF', marginBottom: 8, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
-  upcomingIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
-  upcomingTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 2 },
-  upcomingBy: { fontSize: 12, color: '#64748B', fontWeight: '500' },
-  maxViewBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  maxViewText: { fontSize: 11, color: '#64748B', fontWeight: '700' },
+  card: { flex: 1 },
+  thumb: { borderRadius: 20, overflow: 'hidden', backgroundColor: '#0F172A' },
+  thumbImg: { width: '100%', height: 210 },
+  thumbFallback: { alignItems: 'center', justifyContent: 'center' },
+  thumbFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 70 },
+  livePill: {
+    position: 'absolute', top: 10, left: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#EF4444', borderRadius: 999,
+    paddingHorizontal: 9, paddingVertical: 4,
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFFFFF' },
+  livePillText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
+  viewers: {
+    position: 'absolute', top: 10, right: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(15,23,42,0.6)', borderRadius: 999,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  viewersText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
 
-  emptyWrap: { alignItems: 'center', paddingVertical: 10 },
-  emptyCard: { backgroundColor: 'white', width: '100%', borderRadius: 24, padding: 32, alignItems: 'center', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 4, borderWidth: 1, borderColor: '#FEF2F2' },
-  emptyIcon: { width: 72, height: 72, borderRadius: 24, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  emptyTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginBottom: 8, textAlign: 'center' },
-  emptySub: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
-  emptyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#EF4444', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 14, width: '100%', shadowColor: '#EF4444', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  emptyBtnText: { fontSize: 15, fontWeight: '900', color: 'white' },
+  cardSeller: { fontSize: 12, fontWeight: '700', color: '#94A3B8', marginTop: 9 },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: '#0F172A', lineHeight: 19, height: 38, marginTop: 1 },
 
-  howCard: { backgroundColor: 'white', borderRadius: 24, padding: 20, marginTop: 12, borderWidth: 1, borderColor: '#EEF2FF', gap: 14, shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
-  howTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A', marginBottom: 4 },
-  howRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  howIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  howText: { fontSize: 12, color: '#475569', flex: 1, fontWeight: '600', lineHeight: 18 },
-  
-  passRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  passCard: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 16, padding: 12, alignItems: 'center', gap: 2, borderWidth: 1, borderColor: '#E2E8F0', position: 'relative' },
-  passCardFeatured: { backgroundColor: '#FFFBEB', borderColor: '#FCD34D', shadowColor: '#F59E0B', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4 },
-  passFeaturedBadge: { position: 'absolute', top: -8, backgroundColor: '#F59E0B', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  passFeaturedBadgeText: { color: 'white', fontSize: 11, fontWeight: '900' },
-  passEmoji: { fontSize: 24, marginBottom: 4 },
-  passName: { fontSize: 11, fontWeight: '800', color: '#0F172A', textAlign: 'center', marginBottom: 2 },
-  passPrice: { fontSize: 15, fontWeight: '900', color: '#3B82F6' },
-  passDuration: { fontSize: 11, color: '#94A3B8', fontWeight: '600' },
-  
-  bookBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#EF4444', borderRadius: 16, padding: 14, marginTop: 8, shadowColor: '#EF4444', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  bookBtnText: { fontSize: 14, fontWeight: '900', color: 'white' },
+  empty: { alignItems: 'center', paddingTop: 40, paddingHorizontal: 24 },
+  emptyIcon: {
+    width: 72, height: 72, borderRadius: 36, backgroundColor: '#F1F5F9',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+  },
+  emptyTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A', letterSpacing: -0.4, textAlign: 'center' },
+  emptySub: { fontSize: 14, color: '#64748B', lineHeight: 20, textAlign: 'center', marginTop: 8 },
+  notifyBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#0F172A', borderRadius: 999,
+    paddingHorizontal: 22, height: 48, marginTop: 22,
+  },
+  notifyText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+
+  upcomingWrap: { marginTop: 30, gap: 10 },
+  upcomingRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#F8FAFC', borderRadius: 16, padding: 12,
+  },
+  upcomingIcon: {
+    width: 38, height: 38, borderRadius: 19, backgroundColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  upcomingTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  upcomingBy: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  upcomingTag: { fontSize: 11, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase' },
+
+  sellCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#F8FAFC', borderRadius: 20, padding: 14,
+    marginTop: 30, borderWidth: 1, borderColor: '#E2E8F0',
+  },
+  sellIcon: {
+    width: 42, height: 42, borderRadius: 21, backgroundColor: '#0F172A',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  sellTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+  sellSub: { fontSize: 12.5, color: '#64748B', lineHeight: 17, marginTop: 2 },
 });

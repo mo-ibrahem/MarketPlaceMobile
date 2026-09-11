@@ -264,6 +264,25 @@ export async function joinLiveSession(channelName: string, viewerUid: number): P
 // Discovery Feed
 // ──────────────────────────────────────────────────────────────
 
+/**
+ * A stream is only "live" if it says so AND started recently.
+ *
+ * `status` is set to 'live' when a broadcast starts and only cleared by
+ * endLiveSession(). A stream that crashed, lost the network, or was killed by
+ * the OS never gets ended, so its row stays 'live' forever. Three sessions on
+ * this project have claimed to be live for over eight days, and the Live tab
+ * advertised them in the app's primary navigation.
+ *
+ * Nothing streams for four hours, so anything older is a ghost.
+ */
+export const LIVE_STALE_AFTER_MS = 4 * 60 * 60 * 1000;
+
+export function isGenuinelyLive(session: Pick<LiveSession, 'status' | 'started_at'>): boolean {
+  if (session.status !== 'live') return false;
+  if (!session.started_at) return false;
+  return Date.now() - new Date(session.started_at).getTime() < LIVE_STALE_AFTER_MS;
+}
+
 export async function getActiveLiveSessions(): Promise<LiveSession[]> {
   const { data, error } = await supabase
     .from('live_sessions')
