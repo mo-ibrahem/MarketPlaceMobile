@@ -40,67 +40,135 @@ const STATUS_CONFIG: Record<MarketplaceOrder['status'], { label: string; label_a
   cancelled: { label: 'Cancelled', label_ar: 'ملغي', color: '#94A3B8', icon: AlertCircle },
 };
 
-function OrderCard({ order, userId, isRTL, onPress }: { order: MarketplaceOrder; userId: string; isRTL: boolean; onPress: () => void }) {
+const STEP_SHORT = {
+  escrow_secured: { en: 'Paid', ar: 'مدفوع' },
+  shipped: { en: 'Shipped', ar: 'شُحن' },
+  out_for_delivery: { en: 'On the way', ar: 'في الطريق' },
+  delivered: { en: 'Delivered', ar: 'تم التسليم' },
+} as const;
+const STEP_ORDER = ['escrow_secured', 'shipped', 'out_for_delivery', 'delivered'] as const;
+const RANK: Record<MarketplaceOrder['status'], number> = {
+  pending_payment: 0, escrow_secured: 1, shipped: 2, out_for_delivery: 3, delivered: 4, completed: 4, disputed: 1, cancelled: 0,
+};
+
+/**
+ * An order card that expands in place.
+ *
+ * The list used to be a row of chevrons: every order looked identical until
+ * you left the screen to find out what was happening to it. Tapping a card now
+ * opens the progress tracker right there -- the current step in large type, a
+ * four-segment rail, and the two actions that matter -- so a buyer scanning
+ * five orders learns the state of each without five round trips.
+ */
+function OrderCard({
+  order, userId, isRTL, expanded, onToggle, onOpen, onChat,
+}: {
+  order: MarketplaceOrder; userId: string; isRTL: boolean;
+  expanded: boolean; onToggle: () => void; onOpen: () => void; onChat: () => void;
+}) {
   const isBuyer = order.buyer_id === userId;
   const cfg = STATUS_CONFIG[order.status];
   const StatusIcon = cfg.icon;
   const image = (order.product_snapshot as any)?.images?.[0] || order.product?.images?.[0];
-  const dateStr = new Date(order.created_at).toLocaleDateString(isRTL ? 'ar-EG' : 'en-EG', {
-    day: 'numeric',
-    month: 'short',
-  });
+  const dateStr = new Date(order.created_at).toLocaleDateString(isRTL ? 'ar-EG' : 'en-EG', { day: 'numeric', month: 'short' });
+
+  const rank = RANK[order.status] ?? 0;
+  const trackable = order.status !== 'pending_payment' && order.status !== 'cancelled';
+  const pct = Math.round((Math.min(rank, 4) / 4) * 100);
+  const CurIcon = trackable ? STATUS_CONFIG[STEP_ORDER[Math.min(Math.max(rank - 1, 0), 3)]].icon : StatusIcon;
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={styles.card}>
-      {/* Product Image */}
-      <View style={styles.cardImageWrap}>
-        {image ? (
-          <Image source={{ uri: image }} style={styles.cardImage} />
-        ) : (
-          <View style={[styles.cardImage, { backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }]}>
-            <Package color="#94A3B8" size={24} />
-          </View>
-        )}
-      </View>
-
-      {/* Details */}
-      <View style={styles.cardBody}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-          <View style={[styles.roleBadge, { backgroundColor: isBuyer ? '#EFF6FF' : '#FFF7ED' }]}>
-            <Text style={[styles.roleText, { color: isBuyer ? '#3B82F6' : '#F97316' }]}>
-              {isBuyer ? (isRTL ? '🛍️ مشتري' : '🛍️ Buying') : (isRTL ? '🏷️ بائع' : '🏷️ Selling')}
-            </Text>
-          </View>
-          <Text style={styles.dateText}>{dateStr}</Text>
+    <View style={styles.card}>
+      <TouchableOpacity onPress={onToggle} activeOpacity={0.85} style={styles.cardHead} accessibilityState={{ expanded }}>
+        <View style={styles.cardImageWrap}>
+          {image ? (
+            <Image source={{ uri: image }} style={styles.cardImage} />
+          ) : (
+            <View style={[styles.cardImage, { backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }]}>
+              <Package color="#94A3B8" size={24} />
+            </View>
+          )}
         </View>
 
-        <Text style={styles.cardTitle} numberOfLines={1}>
-          {(order.product_snapshot as any)?.title || order.product?.title || (isRTL ? 'منتج' : 'Item')}
-        </Text>
-        <Text style={styles.cardAmount}>
-          {isRTL
-            ? `${order.amount.toLocaleString('ar-EG')} ج.م`
-            : `EGP ${order.amount.toLocaleString('en-EG')}`}
-        </Text>
-
-        {/* Tracking number */}
-        {order.tracking_number && (
-          <View style={styles.awbRow}>
-            <Truck color="#7C3AED" size={11} />
-            <Text style={styles.awbText}>AWB: {order.tracking_number}</Text>
+        <View style={styles.cardBody}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+            <View style={[styles.roleBadge, { backgroundColor: isBuyer ? '#EFF6FF' : '#FFF7ED' }]}>
+              <Text style={[styles.roleText, { color: isBuyer ? '#2563EB' : '#EA580C' }]}>
+                {isBuyer ? (isRTL ? 'مشتري' : 'Buying') : (isRTL ? 'بائع' : 'Selling')}
+              </Text>
+            </View>
+            <Text style={styles.dateText}>{dateStr}</Text>
           </View>
-        )}
-      </View>
-
-      {/* Status + Arrow */}
-      <View style={styles.cardRight}>
-        <View style={[styles.statusBadge, { borderColor: cfg.color + '40', backgroundColor: cfg.color + '15' }]}>
-          <StatusIcon color={cfg.color} size={11} />
-          <Text style={[styles.statusText, { color: cfg.color }]}>{isRTL ? cfg.label_ar : cfg.label}</Text>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {(order.product_snapshot as any)?.title || order.product?.title || (isRTL ? 'منتج' : 'Item')}
+          </Text>
+          <Text style={styles.cardAmount}>
+            {isRTL ? `${order.amount.toLocaleString('ar-EG')} ج.م` : `EGP ${order.amount.toLocaleString('en-EG')}`}
+          </Text>
         </View>
-        <ChevronRight color="#CBD5E1" size={16} />
-      </View>
-    </TouchableOpacity>
+
+        <View style={styles.cardRight}>
+          <View style={[styles.statusBadge, { backgroundColor: cfg.color + '18' }]}>
+            <Text style={[styles.statusText, { color: cfg.color }]}>{isRTL ? cfg.label_ar : cfg.label}</Text>
+          </View>
+          <ChevronRight color="#CBD5E1" size={16} style={{ transform: [{ rotate: expanded ? '90deg' : '0deg' }] }} />
+        </View>
+      </TouchableOpacity>
+
+      {expanded && (
+        <View style={styles.expand}>
+          {trackable ? (
+            <>
+              <View style={styles.progHead}>
+                <View style={styles.progIcon}><CurIcon color="#FFFFFF" size={18} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.progLabel}>{isRTL ? 'الحالة الآن' : 'Right now'}</Text>
+                  <Text style={styles.progValue} numberOfLines={1}>{isRTL ? cfg.label_ar : cfg.label}</Text>
+                </View>
+                <Text style={styles.progPct}>{pct}%</Text>
+              </View>
+              <View style={styles.rail}>
+                {STEP_ORDER.map((k, i) => <View key={k} style={[styles.seg, rank >= i + 1 && styles.segDone]} />)}
+              </View>
+              <View style={styles.rail}>
+                {STEP_ORDER.map((k, i) => (
+                  <Text key={k} style={[styles.tick, rank >= i + 1 && styles.tickDone]} numberOfLines={1}>
+                    {isRTL ? STEP_SHORT[k].ar : STEP_SHORT[k].en}
+                  </Text>
+                ))}
+              </View>
+            </>
+          ) : order.status === 'pending_payment' ? (
+            <View style={styles.note}>
+              <Clock color="#D97706" size={18} />
+              <Text style={[styles.noteText, { color: '#92400E' }]}>
+                {isRTL
+                  ? 'لم يتم تأكيد الدفع بعد — لم يصل أي مبلغ إلى الضمان. إذا لم يصل التأكيد، يُلغى الطلب تلقائياً.'
+                  : 'Payment not confirmed yet — nothing has reached escrow. If confirmation never arrives, this order cancels itself.'}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.note}>
+              <AlertCircle color="#94A3B8" size={18} />
+              <Text style={[styles.noteText, { color: '#64748B' }]}>
+                {isRTL ? 'تم إلغاء هذا الطلب. لا توجد أموال محتجزة.' : 'This order was cancelled. No funds are being held.'}
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.actions}>
+            <TouchableOpacity style={styles.primaryBtn} onPress={onOpen} activeOpacity={0.9}>
+              <Text style={styles.primaryBtnText}>{isRTL ? 'عرض الطلب' : 'View order'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.ghostBtn} onPress={onChat} activeOpacity={0.85}>
+              <Text style={styles.ghostBtnText}>
+                {isRTL ? (isBuyer ? 'راسل البائع' : 'راسل المشتري') : `Message ${isBuyer ? 'seller' : 'buyer'}`}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -111,6 +179,7 @@ export default function OrdersScreen() {
   const insets = useSafeAreaInsets();
 
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('all');
@@ -120,6 +189,7 @@ export default function OrdersScreen() {
     try {
       const data = await getUserOrders(user.id);
       setOrders(data);
+      setExpandedId(prev => prev ?? data.find(o => o.status !== 'pending_payment' && o.status !== 'cancelled' && o.status !== 'completed')?.id ?? null);
     } catch (err) {
       console.error('[Orders]', err);
     } finally {
@@ -156,14 +226,11 @@ export default function OrdersScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Premium Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.headerIconBox}>
-            <Package color="#3665F3" size={22} strokeWidth={2.5} />
-          </View>
-          <View>
-            <Text style={styles.headerTitle}>{isRTL ? 'سجل الطلبات' : 'Orders'}</Text>
-            <Text style={styles.headerSub}>Orders & Escrow</Text>
-          </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>{isRTL ? 'الطلبات' : 'Orders'}</Text>
+          <Text style={styles.headerSub}>
+            {isRTL ? 'كل طلب محفوظ في الضمان حتى تؤكد.' : 'Every order is held in escrow until you confirm.'}
+          </Text>
         </View>
         <TouchableOpacity style={styles.refreshBtn} onPress={onRefresh} disabled={loading || refreshing}>
           <RefreshCw color="#64748B" size={16} />
@@ -255,9 +322,12 @@ export default function OrdersScreen() {
           renderItem={({ item }) => (
             <OrderCard
             isRTL={isRTL}
+              expanded={expandedId === item.id}
+              onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
+              onOpen={() => router.push(`/order/${item.id}` as any)}
+              onChat={() => router.push(`/order/${item.id}` as any)}
               order={item}
               userId={user!.id}
-              onPress={() => router.push(`/order/${item.id}` as any)}
             />
           )}
         />
@@ -296,8 +366,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  headerTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-  headerSub: { fontSize: 12, fontWeight: '600', color: '#64748B', marginTop: 2 },
+  headerTitle: { fontSize: 30, fontWeight: '800', color: '#0F172A', letterSpacing: -1.2, lineHeight: 34 },
+  headerSub: { fontSize: 13, color: '#64748B', marginTop: 4 },
   
   refreshBtn: {
     flexDirection: 'row',
@@ -352,15 +422,31 @@ const styles = StyleSheet.create({
   list: { padding: 16, gap: 12 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  expand: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  progHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  progIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center' },
+  progLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8' },
+  progValue: { fontSize: 17, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3 },
+  progPct: { fontSize: 14, fontWeight: '800', color: '#94A3B8' },
+  rail: { flexDirection: 'row', gap: 6, marginTop: 10 },
+  seg: { flex: 1, height: 5, borderRadius: 999, backgroundColor: '#E2E8F0' },
+  segDone: { backgroundColor: '#0F172A' },
+  tick: { flex: 1, fontSize: 11, fontWeight: '600', color: '#94A3B8', marginTop: -4 },
+  tickDone: { color: '#0F172A', fontWeight: '700' },
+  note: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  noteText: { flex: 1, fontSize: 12.5, fontWeight: '600', lineHeight: 18 },
+  actions: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  primaryBtn: { flex: 1, height: 40, borderRadius: 999, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center' },
+  primaryBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  ghostBtn: { height: 40, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+  ghostBtnText: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
   card: {
     backgroundColor: 'white',
-    borderRadius: 20,
+    borderRadius: 22,
     padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.06,
@@ -371,7 +457,7 @@ const styles = StyleSheet.create({
   cardImage: { width: '100%', height: '100%' },
   cardBody: { flex: 1 },
   cardTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
-  cardAmount: { fontSize: 15, fontWeight: '900', color: '#3665F3', marginBottom: 2 },
+  cardAmount: { fontSize: 16, fontWeight: '800', color: '#0F172A', letterSpacing: -0.4, marginBottom: 2 },
   roleBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   roleText: { fontSize: 11, fontWeight: '800' },
   dateText: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
