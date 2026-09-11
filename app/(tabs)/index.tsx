@@ -25,6 +25,7 @@ import {
   Truck,
   Video,
   X,
+  ChevronRight,
   Package,
   Zap,
 } from 'lucide-react-native';
@@ -75,14 +76,6 @@ function getCountdownToMidnight(): string {
 const QUICK_SEARCHES = ['Electronics', 'iPhone 15', 'Jordan', 'PlayStation', 'Furniture', 'Toyota'];
 
 const DEAL_BANNERS = [
-  {
-    key: 'b0',
-    titleKey: 'home.dealBannerLiveTitle',
-    subKey: 'home.dealBannerLiveSub',
-    colors: ['#7F1D1D', '#B91C1C'] as [string, string],
-    icon: Video,
-    category: '__live__',
-  },
   {
     key: 'b1',
     titleKey: 'home.dealBanner1Title',
@@ -405,34 +398,17 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Row 3: Single Unified Story-Style Category & Live Rail */}
+            {/* Row 3: Category filter rail.
+                Live used to sit in here alongside Fashion/Electronics/Home,
+                which gave two different behaviours the same affordance: tapping
+                a category filters the feed in place, tapping Live navigates to
+                another section entirely. It now has its own entry point below,
+                so this rail does exactly one thing. */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.storyRailContainer}
             >
-              {/* 🔴 Live Stream Story Circle */}
-              <TouchableOpacity
-                style={styles.storyItem}
-                onPress={() => router.push('/live' as any)}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={['#EF4444', '#DC2626', '#B91C1C']}
-                  style={styles.storyCircleLive}
-                >
-                  <View style={styles.storyInnerLive}>
-                    <Video color="#EF4444" size={20} />
-                  </View>
-                  <View style={styles.storyLiveBadge}>
-                    <Text style={styles.storyLiveBadgeText}>LIVE</Text>
-                  </View>
-                </LinearGradient>
-                <Text style={[styles.storyLabel, { color: '#EF4444', fontWeight: '800' }]} numberOfLines={1}>
-                  {isArabic ? 'بث مباشر' : 'Live'}
-                </Text>
-              </TouchableOpacity>
-
               {/* Category Story Circles */}
               {categories.map(cat => {
                 const Icon = cat.icon;
@@ -488,6 +464,26 @@ export default function HomeScreen() {
               </ScrollView>
             )}
           </View>
+
+          {/* Live is navigation, not a filter, so it gets its own affordance. */}
+          <TouchableOpacity
+            style={styles.liveEntry}
+            onPress={() => router.push('/live' as any)}
+            activeOpacity={0.85}
+          >
+            <View style={styles.liveEntryIcon}>
+              <Video color="#EF4444" size={18} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.liveEntryTitle}>
+                {isArabic ? 'إيجي باي لايف' : 'EgyBay Live'}
+              </Text>
+              <Text style={styles.liveEntrySub} numberOfLines={1}>
+                {isArabic ? 'تسوق مباشرة مع التجار' : 'Shop live with sellers'}
+              </Text>
+            </View>
+            <ChevronRight color="#CBD5E1" size={18} />
+          </TouchableOpacity>
 
           {/* ════════════════ WHY EGBAY ════════════════
               Was a single non-wrapping flex row: at 390pt the three labels plus
@@ -889,6 +885,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#BFDBFE',
   },
+  liveEntry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  liveEntryIcon: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center',
+  },
+  liveEntryTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
+  liveEntrySub: { fontSize: 11, fontWeight: '600', color: '#64748B', marginTop: 1 },
   trustStrip: {
     flexDirection: 'row',
     marginHorizontal: 16,
@@ -957,11 +972,14 @@ const styles = StyleSheet.create({
   bannerDotActive: { width: 20, backgroundColor: '#3665F3' },
 
   // Section headers
+  // One page gutter everywhere: section titles, the card grid and the trust
+  // strip all previously used different values (20 / 14 / 16), so nothing on
+  // the page shared a left edge. 16 matches the HIG standard margin.
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 24,
     paddingBottom: 12,
   },
@@ -1037,7 +1055,7 @@ const styles = StyleSheet.create({
   },
 
   // Recently Added grid
-  recentGrid: { paddingHorizontal: 14, paddingBottom: 4 },
+  recentGrid: { paddingHorizontal: 16, paddingBottom: 4 },
   recentRow: { gap: 12, marginBottom: 12 },
   productCard: {
     flex: 1,
