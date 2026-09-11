@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   okBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',

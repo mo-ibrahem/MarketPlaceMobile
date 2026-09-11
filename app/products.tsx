@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 8,
     left: 8,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -819,7 +819,7 @@ const styles = StyleSheet.create({
   },
   priceDash: { width: 12, height: 2, backgroundColor: '#CBD5E1', borderRadius: 1, marginTop: 18 },
   priceApplyBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,

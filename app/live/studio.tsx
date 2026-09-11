@@ -259,7 +259,7 @@ export default function StudioScreen() {
             <TouchableOpacity onPress={toggleCam} style={[s.ctrl, !camOn && s.ctrlOff]}>
               {camOn ? <Video color="white" size={20} /> : <VideoOff color="white" size={20} />}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowProductPicker(true)} style={[s.ctrl, { backgroundColor: '#2563EB' }]}>
+            <TouchableOpacity onPress={() => setShowProductPicker(true)} style={[s.ctrl, { backgroundColor: '#0F172A' }]}>
               <Pin color="white" size={20} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowChat(!showChat)} style={s.ctrl}>
@@ -333,7 +333,7 @@ export default function StudioScreen() {
               style={{ flex: 1, backgroundColor: '#1F2937', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, fontSize: 12, color: 'white' }}
               onSubmitEditing={() => handleSendChat()}
             />
-            <TouchableOpacity onPress={() => handleSendChat()} style={{ width: 36, height: 36, backgroundColor: '#2563EB', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
+            <TouchableOpacity onPress={() => handleSendChat()} style={{ width: 36, height: 36, backgroundColor: '#0F172A', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
               <Send color="white" size={14} />
             </TouchableOpacity>
           </View>

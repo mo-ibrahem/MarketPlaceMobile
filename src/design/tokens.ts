@@ -64,7 +64,15 @@ export const radius = {
   md: 14,
   lg: 20,
   xl: 28,
+  /** Buttons and chips are fully rounded in every reference. */
   pill: 999,
+} as const;
+
+/** Chips and buttons: pill-shaped, and tall enough to clear the 44pt target. */
+export const control = {
+  height: 44,
+  chipHeight: 38,
+  paddingX: 18,
 } as const;
 
 /**
@@ -72,11 +80,23 @@ export const radius = {
  * everywhere at once -- and so it is obvious when a screen invents a colour.
  */
 export const color = {
-  // Brand
-  primary: '#2563EB',        // blue-600  (161 uses -- the real primary)
+  /**
+   * Actions are near-black, not blue.
+   *
+   * Across five reference marketplace apps, every primary action -- "Add to
+   * cart", "Continue to pay", "Shop now" -- is a near-black pill, and a
+   * saturated blue appears as a CTA in none of them. Black lets product
+   * photography supply all the colour on the screen, which is the whole point
+   * of a marketplace UI. Blue is demoted to links and selected states.
+   */
+  action: '#0F172A',
+  actionPressed: '#1E293B',
+
+  // Brand blue, now a secondary/link colour rather than the action colour.
+  primary: '#2563EB',
   primaryDark: '#1D4ED8',
-  primarySoft: '#EFF6FF',    // blue-50
-  primaryBorder: '#BFDBFE',  // blue-200
+  primarySoft: '#EFF6FF',
+  primaryBorder: '#BFDBFE',
 
   // Text
   text: '#0F172A',           // slate-900
@@ -140,12 +160,17 @@ export function tapSlop(size: number) {
  * reason the UI looked busy without looking designed.
  */
 export const shadow = {
+  /**
+   * Cards in the references carry no shadow at all -- separation comes from a
+   * neutral image ground against a white page. `card` is kept near-invisible
+   * for surfaces that genuinely need to lift off the page.
+   */
   card: {
     shadowColor: '#0F172A',
-    shadowOpacity: 0.05,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
   raised: {
     shadowColor: '#0F172A',

@@ -1008,7 +1008,7 @@ const styles = StyleSheet.create({
     padding: 3,
     justifyContent: 'center',
   },
-  togglePillActive: { backgroundColor: '#2563EB' },
+  togglePillActive: { backgroundColor: '#0F172A' },
   toggleCircle: {
     width: 20,
     height: 20,

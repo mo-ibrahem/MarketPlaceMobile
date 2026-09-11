@@ -188,7 +188,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
   },
   rowUnread: { backgroundColor: '#F8FBFF' },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2563EB', marginTop: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#0F172A', marginTop: 6 },
   title: { fontSize: 14, fontWeight: '700', color: '#475569' },
   titleUnread: { color: '#0F172A', fontWeight: '800' },
   message: { fontSize: 12.5, color: '#64748B', lineHeight: 18, marginTop: 3 },

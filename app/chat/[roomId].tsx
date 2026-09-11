@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   myMessage: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
     borderBottomRightRadius: 4,
   },
   theirMessage: {
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#2563EB',

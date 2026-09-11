@@ -80,7 +80,7 @@ const DEAL_BANNERS = [
     key: 'b1',
     titleKey: 'home.dealBanner1Title',
     subKey: 'home.dealBanner1Sub',
-    colors: ['#1D4ED8', '#2563EB'] as [string, string],
+    colors: ['#0F172A', '#1E293B'] as [string, string],
     icon: Zap,
     // Supply is the binding constraint at 9 sellers / 19 listings, so this
     // slot pitches selling rather than a discount the catalogue cannot honour.
@@ -98,7 +98,7 @@ const DEAL_BANNERS = [
     key: 'b3',
     titleKey: 'home.dealBanner3Title',
     subKey: 'home.dealBanner3Sub',
-    colors: ['#065F46', '#10B981'] as [string, string],
+    colors: ['#064E3B', '#047857'] as [string, string],
     icon: ShieldCheck,
     category: undefined,
   },
@@ -409,45 +409,32 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.storyRailContainer}
             >
-              {/* Category Story Circles */}
+              {/* Category chips.
+                  Every reference marketplace uses pill chips with a black
+                  selected state, not coloured circles. The circles carried a
+                  different pastel per category, which made the filter rail the
+                  most colourful thing on a page whose job is showing products. */}
               {categories.map(cat => {
-                const Icon = cat.icon;
-                const isSelected = selectedCategory === cat.id || (!selectedCategory && cat.id === 'all');
+                const isSelected =
+                  selectedCategory === cat.id || (!selectedCategory && cat.id === 'all');
                 return (
                   <TouchableOpacity
                     key={cat.id}
-                    style={styles.storyItem}
+                    style={[styles.catChip, isSelected && styles.catChipActive]}
                     onPress={() => handleCategory(cat)}
-                    activeOpacity={0.8}
+                    activeOpacity={0.85}
                   >
-                    <View
-                      style={[
-                        styles.storyCircle,
-                        // Was a different pastel per category -- pink, blue,
-                        // green, amber -- which made the rail the loudest thing
-                        // on a page whose job is to show product photography.
-                        // Neutral by default; the accent marks the selection.
-                        {
-                          backgroundColor: isSelected ? '#EFF6FF' : '#F8FAFC',
-                          borderColor: isSelected ? '#2563EB' : '#E2E8F0',
-                        },
-                        isSelected && styles.storyCircleSelected,
-                      ]}
-                    >
-                      <Icon color={isSelected ? '#2563EB' : '#64748B'} size={20} />
-                    </View>
                     <Text
-                      style={[
-                        styles.storyLabel,
-                        isSelected && { color: '#2563EB', fontWeight: '800' },
-                      ]}
+                      style={[styles.catChipText, isSelected && styles.catChipTextActive]}
                       numberOfLines={1}
                     >
                       {t(cat.nameKey, { defaultValue: CATEGORY_FALLBACK[cat.id] ?? cat.id })}
                     </Text>
-                    {/* Real stock count, so the shelf never promises more than
-                        the catalogue holds. */}
-                    <Text style={styles.storyCount}>{cat.count}</Text>
+                    <Text
+                      style={[styles.catChipCount, isSelected && styles.catChipCountActive]}
+                    >
+                      {cat.count}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -854,6 +841,21 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.5,
   },
+  catChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 38,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    backgroundColor: '#F1F5F9',
+    marginRight: 8,
+  },
+  catChipActive: { backgroundColor: '#0F172A' },
+  catChipText: { fontSize: 14, fontWeight: '700', color: '#334155', letterSpacing: -0.2 },
+  catChipTextActive: { color: '#FFFFFF' },
+  catChipCount: { fontSize: 12, fontWeight: '700', color: '#94A3B8' },
+  catChipCountActive: { color: 'rgba(255,255,255,0.7)' },
   storyCount: { fontSize: 11, fontWeight: '700', color: '#94A3B8', marginTop: 1 },
   storyLabel: {
     fontSize: 11,
@@ -917,10 +919,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     paddingVertical: 12,
     paddingHorizontal: 8,
-    backgroundColor: '#EFF6FF',
-    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#E2E8F0',
   },
   trustCol: { flex: 1, alignItems: 'center', gap: 3, paddingHorizontal: 2 },
   trustLabel: { fontSize: 12, fontWeight: '800', color: '#1E293B' },
@@ -1043,7 +1045,7 @@ const styles = StyleSheet.create({
   trendTitle: { color: 'white', fontSize: 13, fontWeight: '700', marginBottom: 7, lineHeight: 18 },
   trendPricePill: {
     alignSelf: 'flex-start',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -1083,7 +1085,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 8,
     left: 8,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
     borderRadius: 10,
     paddingHorizontal: 9,
     paddingVertical: 4,

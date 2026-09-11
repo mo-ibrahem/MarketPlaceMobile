@@ -513,11 +513,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  stepDotActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
+  stepDotActive: { backgroundColor: '#0F172A', borderColor: '#2563EB' },
   stepDotNum: { fontSize: 12, fontWeight: '800', color: '#64748B' },
   stepDotNumActive: { color: 'white' },
   stepLine: { width: 40, height: 2, backgroundColor: '#E2E8F0' },
-  stepLineActive: { backgroundColor: '#2563EB' },
+  stepLineActive: { backgroundColor: '#0F172A' },
 
   scrollContent: { padding: 16 },
 

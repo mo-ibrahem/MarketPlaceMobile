@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   errorText: { fontSize: 16, color: '#EF4444', fontWeight: '700', marginBottom: 16 },
-  backBtn: { backgroundColor: '#2563EB', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
+  backBtn: { backgroundColor: '#0F172A', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
   backBtnText: { color: 'white', fontWeight: '700' },
 
   header: {
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   },
   webBarTitle: { fontSize: 12, fontWeight: '700', color: 'white' },
   webBarSub: { fontSize: 11, color: '#94A3B8' },
-  webBarBtn: { backgroundColor: '#2563EB', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
+  webBarBtn: { backgroundColor: '#0F172A', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
   webBarBtnText: { fontSize: 11, fontWeight: '800', color: 'white' },
 
   loadingWrap: {

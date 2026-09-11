@@ -51,15 +51,11 @@ export function ProductCard({
           style={s.img}
         />
 
-        <View style={s.pricePill}>
-          <Text style={s.priceText}>{formatEGP(item.price)}</Text>
-        </View>
-
         {!!onToggleWishlist && (
           <TouchableOpacity style={s.heart} onPress={onToggleWishlist} hitSlop={tapSlop(32)}>
             <Heart
-              size={14}
-              color={isWishlisted ? color.danger : color.textInverse}
+              size={16}
+              color={isWishlisted ? color.danger : color.text}
               fill={isWishlisted ? color.danger : 'none'}
             />
           </TouchableOpacity>
@@ -73,62 +69,52 @@ export function ProductCard({
       </View>
 
       <View style={s.body}>
-        <Text style={s.title} numberOfLines={2}>{item.title}</Text>
-
-        {/* Rating shows the seller's real aggregate, or nothing at all. It is
-            never invented -- both cards previously hardcoded "4.9". */}
-        <View style={s.metaRow}>
-          {rating ? (
-            <View style={s.ratingPill}>
-              <Star color={color.warning} fill={color.warning} size={11} />
-              <Text style={s.ratingText}>
-                {Number(rating.rating_avg ?? 0).toFixed(1)}
-                <Text style={s.ratingCount}> ({rating.rating_count})</Text>
+        {(rating || item.seller?.full_name) && (
+          <View style={s.metaRow}>
+            {rating ? (
+              <View style={s.ratingPill}>
+                <Star color={color.warning} fill={color.warning} size={11} />
+                <Text style={s.ratingText}>
+                  {Number(rating.rating_avg ?? 0).toFixed(1)}
+                  <Text style={s.ratingCount}> ({rating.rating_count})</Text>
+                </Text>
+              </View>
+            ) : (
+              <Text style={s.sellerName} numberOfLines={1}>
+                {displayName(item.seller?.full_name, 'Seller')}
               </Text>
-            </View>
-          ) : (
-            <View />
-          )}
-          <Text style={s.condition}>{item.condition || 'Used'}</Text>
-        </View>
-
-        <View style={s.sellerRow}>
-          <View style={s.avatar}>
-            <Text style={s.avatarText}>
-              {displayName(item.seller?.full_name, 'S').charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <Text style={s.sellerName} numberOfLines={1}>
-            {displayName(item.seller?.full_name, 'Seller')}
-          </Text>
-        </View>
-
-        {!!(item as any).location && (
-          <View style={s.locationRow}>
-            <MapPin size={11} color={color.textMuted} />
-            <Text style={s.location} numberOfLines={1}>{(item as any).location}</Text>
+            )}
           </View>
         )}
+
+        <Text style={s.title} numberOfLines={2}>{item.title}</Text>
+        {/* Price below the image as plain left-aligned text, the way every
+            reference does it -- not floated over the photograph in a pill,
+            where it fights the product for attention. It is also the last
+            thing in the card, so it is the last thing read. */}
+        <Text style={s.price}>{formatEGP(item.price)}</Text>
       </View>
     </TouchableOpacity>
   );
 }
 
 const s = StyleSheet.create({
+  // The image is the card. No white frame around the photo, no border, no
+  // shadow -- separation comes from the neutral image ground against the white
+  // page, which is how all five references do it.
   card: {
     flex: 1,
-    backgroundColor: color.surface,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    // No border. The card had a 1px border, a drop shadow and a radius all
-    // separating the same edge; the shadow alone does that job and lets the
-    // product photograph meet the card edge cleanly.
-    ...shadow.card,
+    backgroundColor: 'transparent',
   },
   cardCarousel: { flex: 0, width: 180 },
 
-  imgWrap: { position: 'relative' },
-  img: { width: '100%', height: 168, backgroundColor: color.surfaceAlt },
+  imgWrap: {
+    position: 'relative',
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    backgroundColor: color.surfaceAlt,
+  },
+  img: { width: '100%', height: 200, backgroundColor: color.surfaceAlt },
 
   // Price is the single most important number on a marketplace card, and it
   // was set at 11pt -- the smallest size in the system -- inside a small pill.
@@ -148,10 +134,10 @@ const s = StyleSheet.create({
     position: 'absolute',
     right: space.sm,
     top: space.sm,
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(15,23,42,0.45)',
+    backgroundColor: color.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -167,10 +153,11 @@ const s = StyleSheet.create({
   },
   newBadgeText: { color: color.text, fontSize: font.caption2, fontWeight: weight.heavy, letterSpacing: 0.3 },
 
-  body: { padding: space.md, gap: 6 },
-  title: { fontSize: font.subhead, fontWeight: weight.semibold, color: color.text, lineHeight: 20, letterSpacing: -0.2 },
+  body: { paddingTop: space.sm + 2, gap: 3 },
+  title: { fontSize: font.subhead, fontWeight: weight.medium, color: color.textSecondary, lineHeight: 19 },
+  price: { fontSize: font.callout, fontWeight: weight.heavy, color: color.text, letterSpacing: -0.4 },
 
-  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
   ratingPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -194,7 +181,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: { fontSize: font.caption2, fontWeight: weight.heavy, color: color.primary },
-  sellerName: { flex: 1, fontSize: font.caption2, color: color.textFaint, fontWeight: weight.medium },
+  sellerName: { flex: 1, fontSize: font.caption2, color: color.textFaint, fontWeight: weight.semibold },
 
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   location: { flex: 1, fontSize: font.caption2, color: color.textMuted },
