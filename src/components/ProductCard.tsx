@@ -120,25 +120,29 @@ const s = StyleSheet.create({
     backgroundColor: color.surface,
     borderRadius: radius.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: color.border,
+    // No border. The card had a 1px border, a drop shadow and a radius all
+    // separating the same edge; the shadow alone does that job and lets the
+    // product photograph meet the card edge cleanly.
     ...shadow.card,
   },
-  cardCarousel: { flex: 0, width: 168 },
+  cardCarousel: { flex: 0, width: 180 },
 
   imgWrap: { position: 'relative' },
-  img: { width: '100%', height: 140, backgroundColor: color.surfaceAlt },
+  img: { width: '100%', height: 168, backgroundColor: color.surfaceAlt },
 
+  // Price is the single most important number on a marketplace card, and it
+  // was set at 11pt -- the smallest size in the system -- inside a small pill.
+  // It now reads as the price.
   pricePill: {
     position: 'absolute',
     left: space.sm,
     bottom: space.sm,
-    backgroundColor: color.primary,
-    paddingHorizontal: space.sm,
-    paddingVertical: space.xs,
-    borderRadius: radius.sm,
+    backgroundColor: 'rgba(15,23,42,0.82)',
+    paddingHorizontal: space.md,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
   },
-  priceText: { color: color.textInverse, fontSize: font.caption2, fontWeight: weight.heavy },
+  priceText: { color: color.textInverse, fontSize: font.subhead, fontWeight: weight.heavy, letterSpacing: -0.3 },
 
   heart: {
     position: 'absolute',
@@ -156,15 +160,15 @@ const s = StyleSheet.create({
     position: 'absolute',
     left: space.sm,
     top: space.sm,
-    backgroundColor: color.success,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     paddingHorizontal: space.sm,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: radius.sm,
   },
-  newBadgeText: { color: color.textInverse, fontSize: font.caption2, fontWeight: weight.heavy },
+  newBadgeText: { color: color.text, fontSize: font.caption2, fontWeight: weight.heavy, letterSpacing: 0.3 },
 
-  body: { padding: space.md, gap: space.xs },
-  title: { fontSize: font.footnote, fontWeight: weight.bold, color: color.text, lineHeight: 18 },
+  body: { padding: space.md, gap: 6 },
+  title: { fontSize: font.subhead, fontWeight: weight.semibold, color: color.text, lineHeight: 20, letterSpacing: -0.2 },
 
   metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   ratingPill: {

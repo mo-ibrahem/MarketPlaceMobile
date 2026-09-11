@@ -80,7 +80,7 @@ const DEAL_BANNERS = [
     key: 'b1',
     titleKey: 'home.dealBanner1Title',
     subKey: 'home.dealBanner1Sub',
-    colors: ['#1D4ED8', '#7C3AED'] as [string, string],
+    colors: ['#1D4ED8', '#2563EB'] as [string, string],
     icon: Zap,
     // Supply is the binding constraint at 9 sellers / 19 listings, so this
     // slot pitches selling rather than a discount the catalogue cannot honour.
@@ -90,7 +90,7 @@ const DEAL_BANNERS = [
     key: 'b2',
     titleKey: 'home.dealBanner2Title',
     subKey: 'home.dealBanner2Sub',
-    colors: ['#0369A1', '#0EA5E9'] as [string, string],
+    colors: ['#1E293B', '#334155'] as [string, string],
     icon: Sparkles,
     category: undefined,
   },
@@ -111,7 +111,7 @@ const DEAL_BANNERS = [
  * while Beauty and General had real stock and no way to browse to them.
  */
 const CATEGORY_STYLE = [
-  { id: 'all',         nameKey: 'home.categories.allCategories', icon: LayoutGrid,  color: '#6366F1', bg: '#EEF2FF'  },
+  { id: 'all',         nameKey: 'home.categories.allCategories', icon: LayoutGrid,  color: '#2563EB', bg: '#EFF6FF'  },
   { id: 'Electronics', nameKey: 'home.categories.electronics',   icon: Smartphone,  color: '#0EA5E9', bg: '#E0F2FE'  },
   { id: 'Fashion',     nameKey: 'home.categories.fashion',       icon: Shirt,        color: '#EC4899', bg: '#FCE7F3'  },
   { id: 'Home',        nameKey: 'home.categories.home',          icon: Home,         color: '#10B981', bg: '#D1FAE5'  },
@@ -296,7 +296,7 @@ export default function HomeScreen() {
         bounces
         contentContainerStyle={{ alignItems: 'center' }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
         }
       >
         <View style={[styles.pageWrapper, { maxWidth: maxContentWidth }]}>
@@ -423,11 +423,18 @@ export default function HomeScreen() {
                     <View
                       style={[
                         styles.storyCircle,
-                        { backgroundColor: cat.bg, borderColor: isSelected ? '#2563EB' : cat.color + '30' },
+                        // Was a different pastel per category -- pink, blue,
+                        // green, amber -- which made the rail the loudest thing
+                        // on a page whose job is to show product photography.
+                        // Neutral by default; the accent marks the selection.
+                        {
+                          backgroundColor: isSelected ? '#EFF6FF' : '#F8FAFC',
+                          borderColor: isSelected ? '#2563EB' : '#E2E8F0',
+                        },
                         isSelected && styles.storyCircleSelected,
                       ]}
                     >
-                      <Icon color={isSelected ? '#2563EB' : cat.color} size={20} />
+                      <Icon color={isSelected ? '#2563EB' : '#64748B'} size={20} />
                     </View>
                     <Text
                       style={[
@@ -810,7 +817,7 @@ const styles = StyleSheet.create({
   },
   storyCircleSelected: {
     borderWidth: 2.5,
-    borderColor: '#3665F3',
+    borderColor: '#2563EB',
     backgroundColor: '#EFF6FF',
     transform: [{ scale: 1.06 }],
   },
@@ -969,7 +976,7 @@ const styles = StyleSheet.create({
   bannerCtaText: { color: 'white', fontSize: 12.5, fontWeight: '700' },
   bannerDots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 10 },
   bannerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#CBD5E1' },
-  bannerDotActive: { width: 20, backgroundColor: '#3665F3' },
+  bannerDotActive: { width: 20, backgroundColor: '#2563EB' },
 
   // Section headers
   // One page gutter everywhere: section titles, the card grid and the trust
@@ -984,8 +991,8 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   titleRow: { flexDirection: 'row', alignItems: 'center' },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: -0.2 },
-  seeAll: { fontSize: 13, color: '#2563EB', fontWeight: '700' },
+  sectionTitle: { fontSize: 22, fontWeight: '800', color: '#0F172A', letterSpacing: -0.6 },
+  seeAll: { fontSize: 13, color: '#64748B', fontWeight: '700' },
 
   // Category grid (responsive flex basis)
   catGrid: {
@@ -1036,7 +1043,7 @@ const styles = StyleSheet.create({
   trendTitle: { color: 'white', fontSize: 13, fontWeight: '700', marginBottom: 7, lineHeight: 18 },
   trendPricePill: {
     alignSelf: 'flex-start',
-    backgroundColor: '#3665F3',
+    backgroundColor: '#2563EB',
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -1062,7 +1069,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#3665F3',
+    shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.10,
     shadowRadius: 14,
@@ -1076,11 +1083,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 8,
     left: 8,
-    backgroundColor: '#3665F3',
+    backgroundColor: '#2563EB',
     borderRadius: 10,
     paddingHorizontal: 9,
     paddingVertical: 4,
-    shadowColor: '#3665F3',
+    shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,

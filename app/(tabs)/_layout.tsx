@@ -12,7 +12,7 @@ function SellTabIcon({ label }: { label: string }) {
   return (
     <View style={styles.sellIconWrap}>
       <LinearGradient
-        colors={[color.primary, color.accentAlt]}
+        colors={[color.primary, color.primaryDark]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.fabCircle}
@@ -167,14 +167,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 3,
     borderColor: 'white',
-    shadowColor: '#3665F3',
+    shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 8,
   },
   fabText: {
-    color: '#3665F3',
+    color: '#2563EB',
     fontSize: 11,
     fontWeight: '900',
     marginTop: 4,

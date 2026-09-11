@@ -60,10 +60,10 @@ export const weight = {
 } as const;
 
 export const radius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
+  sm: 10,
+  md: 14,
+  lg: 20,
+  xl: 28,
   pill: 999,
 } as const;
 
@@ -106,9 +106,18 @@ export const color = {
   dangerDark: '#DC2626',
   dangerSoft: '#FEF2F2',
 
-  // Accents used by Live / boost surfaces
-  accent: '#6366F1',         // indigo-500
-  accentAlt: '#7C3AED',      // violet-600
+  /**
+   * One accent, deliberately.
+   *
+   * The app carried six competing blues and purples -- #2563EB (153 uses),
+   * #6366F1 (49), #7C3AED (31), #3B82F6 (31), #3665F3 (22), #5B3DDB (1) --
+   * often side by side in the same view. Nothing looked chosen, because
+   * nothing was. The brand wordmark is already four colours; the interface
+   * around it should be quiet so the logo and the product photography carry
+   * the colour.
+   */
+  accent: '#2563EB',
+  accentAlt: '#1D4ED8',
 } as const;
 
 /**
@@ -124,12 +133,18 @@ export function tapSlop(size: number) {
   return { top: pad, bottom: pad, left: pad, right: pad };
 }
 
+/**
+ * One shadow language, and nothing carries both a shadow and a border.
+ * Surfaces previously stacked a 1px border, a drop shadow and a radius, which
+ * reads as three competing separators around the same edge and is the main
+ * reason the UI looked busy without looking designed.
+ */
 export const shadow = {
   card: {
     shadowColor: '#0F172A',
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
     elevation: 2,
   },
   raised: {
