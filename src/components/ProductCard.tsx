@@ -1,4 +1,4 @@
-import { Heart, MapPin, Star } from 'lucide-react-native';
+import { Heart, MapPin, ShieldCheck, Star } from 'lucide-react-native';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { color, font, radius, shadow, space, tapSlop, weight } from '../design/tokens';
@@ -29,6 +29,8 @@ export function ProductCard({
   onToggleWishlist,
   variant = 'grid',
   width,
+  imageHeight,
+  showEscrow = false,
 }: {
   item: Product;
   isWishlisted?: boolean;
@@ -36,6 +38,10 @@ export function ProductCard({
   onToggleWishlist?: () => void;
   variant?: 'grid' | 'carousel';
   width?: number;
+  /** Masonry feeds pass alternating heights so lanes get visual rhythm. */
+  imageHeight?: number;
+  /** Escrow lives on the product, not in a strip above the feed. */
+  showEscrow?: boolean;
 }) {
   const rating = item.seller?.rating_count ? item.seller : null;
 
@@ -48,8 +54,14 @@ export function ProductCard({
       <View style={s.imgWrap}>
         <Image
           source={{ uri: item.images?.[0] || 'https://placehold.co/400x300/F1F5F9/64748B?text=Item' }}
-          style={s.img}
+          style={[s.img, !!imageHeight && { height: imageHeight }]}
         />
+        {showEscrow && (
+          <View style={s.escrowChip}>
+            <ShieldCheck size={12} color={color.successDark} />
+            <Text style={s.escrowText}>Escrow</Text>
+          </View>
+        )}
 
         {!!onToggleWishlist && (
           <TouchableOpacity style={s.heart} onPress={onToggleWishlist} hitSlop={tapSlop(32)}>
@@ -140,6 +152,19 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  escrowChip: {
+    position: 'absolute',
+    left: space.sm,
+    bottom: space.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 26,
+    paddingHorizontal: 9,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+  },
+  escrowText: { fontSize: font.caption2, fontWeight: weight.heavy, color: color.text },
   newBadge: {
     position: 'absolute',
     left: space.sm,
