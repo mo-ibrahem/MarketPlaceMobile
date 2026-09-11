@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ArrowUpRight, Bell, Plus, Search, ShieldCheck, X } from 'lucide-react-native';
-import React, { useCallback, useMemo, useState } from 'react';
+import { ArrowUpRight, Bell, Package, Plus, Search, ShieldCheck, Truck, Video, X } from 'lucide-react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Image,
   Modal,
@@ -21,6 +21,9 @@ import { useLanguage } from '../../src/i18n/LanguageContext';
 import { displayName } from '../../src/services/lib/displayName';
 import { getUnreadNotificationCount } from '../../src/services/lib/notificationService';
 import { productService, type Product } from '../../src/services/lib/products';
+import { getUserOrders, type MarketplaceOrder } from '../../src/services/lib/orderService';
+import { getActiveLiveSessions, isGenuinelyLive, type LiveSession } from '../../src/services/lib/liveService';
+import { useAuth } from '../../hooks/useAuth';
 
 /**
  * Home, rebuilt around the product instead of around the marketplace.
@@ -58,6 +61,11 @@ export default function HomeScreen() {
   const [category, setCategory] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
+  const [liveNow, setLiveNow] = useState<LiveSession | null>(null);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const heroRef = useRef<ScrollView>(null);
+  const { user } = useAuth();
 
   // ── Data ──────────────────────────────────────────────────────────────────
 
@@ -78,7 +86,22 @@ export default function HomeScreen() {
     try { setUnreadCount(await getUnreadNotificationCount()); } catch { setUnreadCount(0); }
   }, []);
 
-  useFocusEffect(useCallback(() => { loadProducts(); loadUnread(); }, [loadProducts, loadUnread]));
+  // What the hero shows depends on the viewer's state, so the home loads the
+  // two things that can change it: their orders, and whether anyone is live.
+  const loadContext = useCallback(async () => {
+    try {
+      const [o, l] = await Promise.all([
+        user ? getUserOrders(user.id) : Promise.resolve([]),
+        getActiveLiveSessions().catch(() => [] as LiveSession[]),
+      ]);
+      setOrders(o);
+      setLiveNow(l.find(isGenuinelyLive) ?? null);
+    } catch {
+      setOrders([]); setLiveNow(null);
+    }
+  }, [user]);
+
+  useFocusEffect(useCallback(() => { loadProducts(); loadUnread(); loadContext(); }, [loadProducts, loadUnread, loadContext]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -98,9 +121,27 @@ export default function HomeScreen() {
 
   // ── Derived ───────────────────────────────────────────────────────────────
 
-  // The hero is the newest listing that actually has a photograph. A hero slot
-  // with no image is worse than no hero, so it falls back to the grid.
-  const hero = useMemo(() => products.find(p => p.images?.[0]), [products]);
+  /**
+   * The hero shows the most important thing for this viewer right now, in
+   * priority order -- not simply whatever was uploaded last:
+   *   1. a stream that is genuinely live
+   *   2. an order of theirs on its way (buyer side)
+   *   3. a sale of theirs waiting to be shipped (seller side)
+   *   4. otherwise, the newest listings with photographs, swipeable
+   * That is what the top of a marketplace is for: Uber shows your ride,
+   * Amazon shows your delivery. Nothing matters more to a buyer than where
+   * their money went, and nothing matters more to supply than a seller
+   * learning they are holding someone up.
+   */
+  const incoming = useMemo(() =>
+    user ? orders.find(o => o.buyer_id === user.id && (o.status === 'shipped' || o.status === 'out_for_delivery')) : undefined,
+  [orders, user]);
+  const toShip = useMemo(() =>
+    user ? orders.find(o => o.seller_id === user.id && o.status === 'escrow_secured') : undefined,
+  [orders, user]);
+  const heroListings = useMemo(() => products.filter(p => p.images?.[0]).slice(0, 3), [products]);
+  const hero = heroListings[0];
+  const heroW = Math.min(width, 520);
 
   // Categories come from live stock: a tile per category, using that
   // category's newest photo as its cover, with a real count. Empties never
@@ -170,27 +211,95 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* ── Hero: the best listing is the page ── */}
-        {hero ? (
-          <TouchableOpacity activeOpacity={0.95} onPress={() => router.push(`/products/${hero.id}` as any)} style={[s.hero, { height: Math.min(width, 520) * 1.25 }]}>
-            <Image source={{ uri: hero.images![0] }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.8)']} locations={[0.35, 0.6, 1]} style={StyleSheet.absoluteFill} />
+        {/* ── Hero: the most important thing right now ── */}
+        {liveNow ? (
+          <TouchableOpacity activeOpacity={0.95} onPress={() => router.push(`/live/${liveNow.agora_channel}` as any)} style={[s.hero, s.heroDark, { height: heroW * 1.05 }]}>
+            {!!liveNow.thumbnail_url && <Image source={{ uri: liveNow.thumbnail_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />}
+            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.9)']} locations={[0.3, 0.6, 1]} style={StyleSheet.absoluteFill} />
             <View style={s.heroBody}>
-              <Text style={s.heroKicker}>
-                {isArabic ? 'أُضيف حديثاً' : 'Just listed'} · {tileLabel((hero as any).category ?? '')}
-              </Text>
-              <Text style={s.heroTitle} numberOfLines={2}>{hero.title}</Text>
+              <View style={s.livePill}><View style={s.liveDot} /><Text style={s.livePillText}>{isArabic ? 'مباشر الآن' : 'LIVE NOW'}</Text></View>
+              <Text style={s.heroTitle} numberOfLines={2}>{isArabic ? liveNow.title_ar || liveNow.title : liveNow.title}</Text>
+              <View style={s.heroRow}>
+                <Text style={[s.heroMeta, { flex: 1 }]} numberOfLines={1}>
+                  {displayName(liveNow.seller?.full_name, 'Seller')} · {liveNow.current_viewers} {isArabic ? 'يشاهدون' : 'watching'}
+                </Text>
+                <View style={s.heroArrow}><Video size={22} color={color.text} /></View>
+              </View>
+            </View>
+          </TouchableOpacity>
+        ) : incoming ? (
+          <TouchableOpacity activeOpacity={0.95} onPress={() => router.push(`/order/${incoming.id}` as any)} style={[s.hero, s.heroDark, { height: heroW * 0.9 }]}>
+            {!!(incoming.product?.images?.[0]) && <Image source={{ uri: incoming.product!.images[0] }} style={StyleSheet.absoluteFill} resizeMode="cover" />}
+            <LinearGradient colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
+            <View style={s.heroBody}>
+              <View style={s.statusPill}><Truck size={13} color={color.text} /><Text style={s.statusPillText}>{isArabic ? 'في الطريق إليك' : 'ON ITS WAY'}</Text></View>
+              <Text style={s.heroTitle} numberOfLines={2}>{incoming.product?.title || (isArabic ? 'طلبك' : 'Your order')}</Text>
+              <View style={s.rail}>
+                {[1, 2, 3, 4].map(i => <View key={i} style={[s.seg, (incoming.status === 'out_for_delivery' ? 3 : 2) >= i && s.segDone]} />)}
+              </View>
+              <View style={s.heroRow}>
+                <Text style={[s.heroMeta, { flex: 1 }]} numberOfLines={1}>
+                  {incoming.status === 'out_for_delivery'
+                    ? (isArabic ? 'خرج للتوصيل اليوم — أموالك في الضمان حتى تفحصه' : 'Out for delivery today — your money stays in escrow until you inspect')
+                    : (isArabic ? 'تم الشحن — سنخبرك عند الوصول' : 'Shipped — we will tell you when it arrives')}
+                </Text>
+                <View style={s.heroArrow}><ArrowUpRight size={22} color={color.text} /></View>
+              </View>
+            </View>
+          </TouchableOpacity>
+        ) : toShip ? (
+          <TouchableOpacity activeOpacity={0.95} onPress={() => router.push(`/order/${toShip.id}` as any)} style={[s.hero, { height: heroW * 0.72, backgroundColor: color.ink, justifyContent: 'flex-end' }]}>
+            <View style={s.heroBody}>
+              <View style={s.statusPill}><Package size={13} color={color.text} /><Text style={s.statusPillText}>{isArabic ? 'لديك بيع' : 'YOU MADE A SALE'}</Text></View>
+              <Text style={s.heroTitle} numberOfLines={2}>{toShip.product?.title || (isArabic ? 'طلب جديد' : 'New order')}</Text>
               <View style={s.heroRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.heroPrice}>{formatEGP(hero.price)}</Text>
-                  <Text style={s.heroMeta} numberOfLines={1}>
-                    {displayName(hero.seller?.full_name, 'Seller')} · {isArabic ? 'محفوظ في الضمان حتى الفحص' : 'held in escrow until you inspect'}
+                  <Text style={s.heroPrice}>{formatEGP(toShip.amount)}</Text>
+                  <Text style={s.heroMeta} numberOfLines={2}>
+                    {isArabic ? 'المبلغ محفوظ في الضمان. اشحن الآن ليصلك بعد التأكيد.' : 'Paid and held in escrow. Ship it now to get paid on confirmation.'}
                   </Text>
                 </View>
                 <View style={s.heroArrow}><ArrowUpRight size={22} color={color.text} /></View>
               </View>
             </View>
           </TouchableOpacity>
+        ) : heroListings.length > 0 ? (
+          <View>
+            <ScrollView
+              ref={heroRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={e => setHeroIndex(Math.round(e.nativeEvent.contentOffset.x / heroW))}
+            >
+              {heroListings.map((item, i) => (
+                <TouchableOpacity key={item.id} activeOpacity={0.95} onPress={() => router.push(`/products/${item.id}` as any)} style={[s.hero, { width: heroW, height: heroW * 1.25 }]}>
+                  <Image source={{ uri: item.images![0] }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                  <LinearGradient colors={['transparent', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.8)']} locations={[0.35, 0.6, 1]} style={StyleSheet.absoluteFill} />
+                  <View style={s.heroBody}>
+                    <Text style={s.heroKicker}>
+                      {i === 0 ? (isArabic ? 'أُضيف حديثاً' : 'Just listed') : (isArabic ? 'جديد' : 'New')} · {tileLabel((item as any).category ?? '')}
+                    </Text>
+                    <Text style={s.heroTitle} numberOfLines={2}>{item.title}</Text>
+                    <View style={s.heroRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.heroPrice}>{formatEGP(item.price)}</Text>
+                        <Text style={s.heroMeta} numberOfLines={1}>
+                          {displayName(item.seller?.full_name, 'Seller')} · {isArabic ? 'محفوظ في الضمان حتى الفحص' : 'held in escrow until you inspect'}
+                        </Text>
+                      </View>
+                      <View style={s.heroArrow}><ArrowUpRight size={22} color={color.text} /></View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {heroListings.length > 1 && (
+              <View style={s.dots}>
+                {heroListings.map((_, i) => <View key={i} style={[s.dot, heroIndex === i && s.dotOn]} />)}
+              </View>
+            )}
+          </View>
         ) : (
           <View style={{ height: insets.top + 64 }} />
         )}
@@ -343,6 +452,18 @@ const s = StyleSheet.create({
   heroPrice: { color: color.textInverse, fontSize: font.title1, fontWeight: weight.heavy, letterSpacing: -1.1, lineHeight: 32 },
   heroMeta: { color: 'rgba(255,255,255,0.7)', fontSize: font.caption, marginTop: 4 },
   heroArrow: { height: 48, width: 48, borderRadius: radius.pill, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' },
+  heroDark: { backgroundColor: color.ink },
+  livePill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, height: 28, paddingHorizontal: 11, borderRadius: radius.pill, backgroundColor: color.danger, marginBottom: 8 },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: color.textInverse },
+  livePillText: { color: color.textInverse, fontSize: font.caption2, fontWeight: weight.black, letterSpacing: 1 },
+  statusPill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, height: 28, paddingHorizontal: 11, borderRadius: radius.pill, backgroundColor: color.surface, marginBottom: 8 },
+  statusPillText: { color: color.text, fontSize: font.caption2, fontWeight: weight.black, letterSpacing: 1 },
+  rail: { flexDirection: 'row', gap: 5, marginTop: 12, marginBottom: 4 },
+  seg: { flex: 1, height: 4, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.25)' },
+  segDone: { backgroundColor: color.textInverse },
+  dots: { position: 'absolute', bottom: 12, alignSelf: 'center', flexDirection: 'row', gap: 6 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.45)' },
+  dotOn: { width: 20, backgroundColor: color.textInverse },
 
   sectionHead: { paddingHorizontal: space.lg, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: space.md },
   h2: { fontSize: font.title3, fontWeight: weight.heavy, color: color.text, letterSpacing: -0.6 },
