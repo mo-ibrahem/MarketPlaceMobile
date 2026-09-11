@@ -36,6 +36,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../src/i18n/LanguageContext';
 import { createMarketplaceOrder, confirmOrderPayment } from '../src/services/lib/orderService';
 import { startPaymobCheckoutSession } from '../src/services/lib/paymobService';
 import { productService, type Product } from '../src/services/lib/products';
@@ -48,6 +49,7 @@ export default function CheckoutScreen() {
   const { productId } = useLocalSearchParams<{ productId: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const { isRTL } = useLanguage();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -61,12 +63,21 @@ export default function CheckoutScreen() {
 
   // Form State
   const [deliveryMethod, setDeliveryMethod] = useState<'courier' | 'qr_meetup'>('courier');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'wallet' | 'instapay' | 'cod'>('card');
-  const [fullName, setFullName] = useState(user?.user_metadata?.full_name || 'Mohamed Ibrahim');
-  const [phoneNumber, setPhoneNumber] = useState('01012345678');
-  const [governorate, setGovernorate] = useState('Cairo');
-  const [city, setCity] = useState('New Cairo');
-  const [streetAddress, setStreetAddress] = useState('90th Street, Building 4');
+  /**
+   * Shipping fields start empty, not pre-filled with a developer's test data.
+   *
+   * These previously defaulted to "Mohamed Ibrahim", "01012345678", "Cairo",
+   * "New Cairo", "90th Street, Building 4" -- so every buyer's checkout opened
+   * pre-populated with a stranger's name, a fake phone number and an address
+   * that is not theirs. The validation only checks the fields are non-empty,
+   * which they always were, so a distracted buyer could ship a real order to
+   * fabricated details.
+   */
+  const [fullName, setFullName] = useState(user?.user_metadata?.full_name ?? '');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [governorate, setGovernorate] = useState('');
+  const [city, setCity] = useState('');
+  const [streetAddress, setStreetAddress] = useState('');
 
   useEffect(() => {
     async function loadData() {
@@ -100,8 +111,13 @@ export default function CheckoutScreen() {
       return;
     }
 
-    if (deliveryMethod === 'courier' && (!phoneNumber || !streetAddress || !city)) {
-      Toast.show({ type: 'error', text1: 'Please complete shipping address' });
+    if (!fullName.trim()) {
+      Toast.show({ type: 'error', text1: 'Please enter the recipient name' });
+      return;
+    }
+    if (deliveryMethod === 'courier' &&
+        (!phoneNumber.trim() || !streetAddress.trim() || !city.trim() || !governorate.trim())) {
+      Toast.show({ type: 'error', text1: 'Please complete the shipping address' });
       return;
     }
 
@@ -239,11 +255,17 @@ export default function CheckoutScreen() {
               <ShieldCheck color="#2563EB" size={26} />
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <Text style={styles.escrowTitle}>ضمان إيجي باي لحماية أموالك 🛡️</Text>
-                  <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '800' }}>كيف نحميك؟ ←</Text>
+                  <Text style={styles.escrowTitle}>
+                    {isRTL ? 'ضمان إيجي باي لحماية أموالك 🛡️' : 'EgyBay escrow protection 🛡️'}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '800' }}>
+                    {isRTL ? 'كيف نحميك؟ ←' : 'How it works →'}
+                  </Text>
                 </View>
                 <Text style={styles.escrowSub}>
-                  البائع لا يستلم جنيهاً واحداً إلا بعد استلامك ومعاينتك للمنتج والتأكيد. استرجاع فوري 100%!
+                  {isRTL
+                    ? 'البائع لا يستلم جنيهاً واحداً إلا بعد استلامك ومعاينتك للمنتج والتأكيد. استرجاع فوري 100%!'
+                    : 'The seller receives nothing until you have received the item, inspected it and confirmed. Full refund otherwise.'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -409,75 +431,35 @@ export default function CheckoutScreen() {
               </View>
             )}
 
-            {/* Payment Method Selector */}
+            {/* How the remainder is paid.
+                This was a four-option radio list -- Card, Mobile Wallets,
+                InstaPay, Cash on Delivery -- and `paymentMethod` was never read
+                anywhere. The flow branches only on the wallet toggle above and
+                otherwise always opens Paymob card checkout. So a buyer could
+                pick "Cash on Delivery -- inspect item at your door before
+                paying cash" and be handed a card form instead.
+
+                Only card remains, because only card is implemented. Offering
+                InstaPay and COD that silently become a card charge is a false
+                promise on the one screen where money moves. They come back when
+                there is a backend that honours them. */}
             {remainingDue > 0 && (
               <>
-                <Text style={styles.sectionHeading}>Select Payment Option (Remaining Due)</Text>
-                <View style={styles.paymentOptions}>
-              {/* Option 1: Card */}
-              <TouchableOpacity
-                style={[styles.payOptionCard, paymentMethod === 'card' && styles.payOptionActive]}
-                onPress={() => setPaymentMethod('card')}
-                activeOpacity={0.85}
-              >
-                <View style={styles.payIconBox}>
-                  <CreditCard size={18} color={paymentMethod === 'card' ? '#2563EB' : '#64748B'} />
+                <Text style={styles.sectionHeading}>
+                  {walletDeduction > 0 ? 'Pay the remainder' : 'Payment'}
+                </Text>
+                <View style={styles.payCard}>
+                  <View style={styles.payIconBox}>
+                    <CreditCard size={18} color="#0F172A" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.payOptionTitle}>Card — Visa / Mastercard / Meeza</Text>
+                    <Text style={styles.payOptionSub}>
+                      Secured by Paymob. Held in escrow until you confirm the item.
+                    </Text>
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.payOptionTitle}>Credit / Debit Card</Text>
-                  <Text style={styles.payOptionSub}>Visa, Mastercard, Meeza via Paymob</Text>
-                </View>
-                <View style={styles.tagPill}>
-                  <Text style={styles.tagPillText}>Instant</Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Option 2: Mobile Wallets */}
-              <TouchableOpacity
-                style={[styles.payOptionCard, paymentMethod === 'wallet' && styles.payOptionActive]}
-                onPress={() => setPaymentMethod('wallet')}
-                activeOpacity={0.85}
-              >
-                <View style={styles.payIconBox}>
-                  <Smartphone size={18} color={paymentMethod === 'wallet' ? '#2563EB' : '#64748B'} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.payOptionTitle}>Mobile Wallet (Vodafone / Orange / Etisalat)</Text>
-                  <Text style={styles.payOptionSub}>Pay with your Egyptian e-Wallet</Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Option 3: InstaPay */}
-              <TouchableOpacity
-                style={[styles.payOptionCard, paymentMethod === 'instapay' && styles.payOptionActive]}
-                onPress={() => setPaymentMethod('instapay')}
-                activeOpacity={0.85}
-              >
-                <View style={styles.payIconBox}>
-                  <Building size={18} color={paymentMethod === 'instapay' ? '#2563EB' : '#64748B'} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.payOptionTitle}>InstaPay Transfer (IPN)</Text>
-                  <Text style={styles.payOptionSub}>Direct Escrow Reference to EgyBay IPA</Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Option 4: COD */}
-              <TouchableOpacity
-                style={[styles.payOptionCard, paymentMethod === 'cod' && styles.payOptionActive]}
-                onPress={() => setPaymentMethod('cod')}
-                activeOpacity={0.85}
-              >
-                <View style={styles.payIconBox}>
-                  <Banknote size={18} color={paymentMethod === 'cod' ? '#2563EB' : '#64748B'} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.payOptionTitle}>Cash on Delivery (Courier Escrow)</Text>
-                  <Text style={styles.payOptionSub}>Inspect item at your door before paying cash</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-            </>
+              </>
             )}
 
             {/* Price Breakdown */}
@@ -544,7 +526,7 @@ export default function CheckoutScreen() {
               ) : remainingDue === 0 ? (
                 <>
                   <CheckCircle2 color="white" size={18} />
-                  <Text style={styles.payButtonText}>1-Tap Wallet Pay 🛍️</Text>
+                  <Text style={styles.payButtonText}>{isRTL ? 'ادفع من المحفظة' : 'Pay with wallet'}</Text>
                 </>
               ) : (
                 <>
@@ -680,7 +662,7 @@ const styles = StyleSheet.create({
   conditionTagText: { fontSize: 11, fontWeight: '700', color: '#475569' },
   sellerTag: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   sellerTagText: { fontSize: 11, fontWeight: '600', color: '#64748B' },
-  productPrice: { fontSize: 16, fontWeight: '900', color: '#2563EB' },
+  productPrice: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: -0.4 },
 
   sectionHeading: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginBottom: 10, marginTop: 6 },
 
@@ -733,6 +715,16 @@ const styles = StyleSheet.create({
   },
 
   paymentOptions: { gap: 8, marginBottom: 20 },
+  payCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
   payOptionCard: {
     flexDirection: 'row',
     alignItems: 'center',
