@@ -79,8 +79,6 @@ const DEAL_BANNERS = [
     key: 'b0',
     titleKey: 'home.dealBannerLiveTitle',
     subKey: 'home.dealBannerLiveSub',
-    titleFallback: 'EgyBay Live — بث مباشر',
-    subFallback: 'تسوق مباشرة مع التجار عبر البث المباشر واشترِ بضمان مالي وشحن بوسطة',
     colors: ['#7F1D1D', '#B91C1C'] as [string, string],
     icon: Video,
     category: '__live__',
@@ -491,22 +489,30 @@ export default function HomeScreen() {
             )}
           </View>
 
-          {/* ════════════════ COMPACT 1-LINE TRUST TICKER ════════════════ */}
-          <View style={styles.microTrustTicker}>
-            <View style={styles.tickerItem}>
-              <ShieldCheck color="#2563EB" size={13} />
-              <Text style={styles.tickerText}>{isArabic ? 'ضمان مالي ١٠٠٪' : '100% Escrow'}</Text>
-            </View>
-            <Text style={styles.tickerDot}>•</Text>
-            <View style={styles.tickerItem}>
-              <Truck color="#059669" size={13} />
-              <Text style={styles.tickerText}>{isArabic ? 'توصيل بوسطة لكافة المحافظات' : 'Bosta Egypt Delivery'}</Text>
-            </View>
-            <Text style={styles.tickerDot}>•</Text>
-            <View style={styles.tickerItem}>
-              <Zap color="#D97706" size={13} />
-              <Text style={styles.tickerText}>{isArabic ? 'تحويل فوري إنستاباي' : 'InstaPay Payouts'}</Text>
-            </View>
+          {/* ════════════════ WHY EGBAY ════════════════
+              Was a single non-wrapping flex row: at 390pt the three labels plus
+              icons and padding exceeded the width and "InstaPay Payouts" ran off
+              the screen. Three equal columns cannot overflow at any width, and
+              stacking the label under the icon leaves room to read it rather
+              than cramming three phrases onto one 11pt line. */}
+          <View style={styles.trustStrip}>
+            {[
+              { Icon: ShieldCheck, tint: '#2563EB',
+                label: isArabic ? 'ضمان مالي ١٠٠٪' : '100% Escrow',
+                sub:   isArabic ? 'حتى الفحص' : 'Until you inspect' },
+              { Icon: Truck, tint: '#059669',
+                label: isArabic ? 'توصيل بوسطة' : 'Bosta delivery',
+                sub:   isArabic ? 'كل المحافظات' : 'All governorates' },
+              { Icon: Zap, tint: '#D97706',
+                label: isArabic ? 'إنستاباي' : 'InstaPay',
+                sub:   isArabic ? 'تحويل للبائع' : 'Seller payouts' },
+            ].map(({ Icon, tint, label, sub }) => (
+              <View key={label} style={styles.trustCol}>
+                <Icon color={tint} size={16} />
+                <Text style={styles.trustLabel} numberOfLines={1}>{label}</Text>
+                <Text style={styles.trustSub} numberOfLines={1}>{sub}</Text>
+              </View>
+            ))}
           </View>
 
           {/* ════════════════ SINGLE HERO DEAL & LIVE CAROUSEL ════════════════ */}
@@ -553,10 +559,10 @@ export default function HomeScreen() {
                     </View>
                     <View style={styles.bannerTextWrap}>
                       <Text style={styles.bannerTitle}>
-                        {(banner as any).titleFallback ? (t(banner.titleKey) === banner.titleKey ? (banner as any).titleFallback : t(banner.titleKey)) : t(banner.titleKey)}
+                        {t(banner.titleKey)}
                       </Text>
                       <Text style={styles.bannerSub}>
-                        {(banner as any).subFallback ? (t(banner.subKey) === banner.subKey ? (banner as any).subFallback : t(banner.subKey)) : t(banner.subKey)}
+                        {t(banner.subKey)}
                       </Text>
                     </View>
                     <View style={[styles.bannerCta, banner.category === '__live__' && { backgroundColor: '#EF4444' }]}>
@@ -883,6 +889,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#BFDBFE',
   },
+  trustStrip: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  trustCol: { flex: 1, alignItems: 'center', gap: 3, paddingHorizontal: 2 },
+  trustLabel: { fontSize: 12, fontWeight: '800', color: '#1E293B' },
+  trustSub: { fontSize: 11, fontWeight: '600', color: '#64748B' },
   tickerItem: {
     flexDirection: 'row',
     alignItems: 'center',
