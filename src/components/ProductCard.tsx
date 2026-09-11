@@ -69,23 +69,21 @@ export function ProductCard({
       </View>
 
       <View style={s.body}>
-        {(rating || item.seller?.full_name) && (
-          <View style={s.metaRow}>
-            {rating ? (
-              <View style={s.ratingPill}>
-                <Star color={color.warning} fill={color.warning} size={11} />
-                <Text style={s.ratingText}>
-                  {Number(rating.rating_avg ?? 0).toFixed(1)}
-                  <Text style={s.ratingCount}> ({rating.rating_count})</Text>
-                </Text>
-              </View>
-            ) : (
-              <Text style={s.sellerName} numberOfLines={1}>
-                {displayName(item.seller?.full_name, 'Seller')}
+        <View style={s.metaRow}>
+          {rating ? (
+            <View style={s.ratingPill}>
+              <Star color={color.warning} fill={color.warning} size={11} />
+              <Text style={s.ratingText}>
+                {Number(rating.rating_avg ?? 0).toFixed(1)}
+                <Text style={s.ratingCount}> ({rating.rating_count})</Text>
               </Text>
-            )}
-          </View>
-        )}
+            </View>
+          ) : (
+            <Text style={s.sellerName} numberOfLines={1}>
+              {displayName(item.seller?.full_name, 'Seller')}
+            </Text>
+          )}
+        </View>
 
         <Text style={s.title} numberOfLines={2}>{item.title}</Text>
         {/* Price below the image as plain left-aligned text, the way every
@@ -153,11 +151,26 @@ const s = StyleSheet.create({
   },
   newBadgeText: { color: color.text, fontSize: font.caption2, fontWeight: weight.heavy, letterSpacing: 0.3 },
 
-  body: { paddingTop: space.sm + 2, gap: 3 },
-  title: { fontSize: font.subhead, fontWeight: weight.medium, color: color.textSecondary, lineHeight: 19 },
+  body: { paddingTop: space.sm + 2, gap: 2 },
+  /**
+   * A fixed two-line box, not `numberOfLines` alone.
+   *
+   * With a flexible height, a listing whose title wrapped to two lines made its
+   * card taller than its neighbour, so prices in the same row sat on different
+   * baselines and the grid looked broken. Reserving both lines always costs one
+   * empty line on short titles and buys an aligned grid, which is the trade
+   * every reference makes.
+   */
+  title: {
+    fontSize: font.subhead,
+    fontWeight: weight.medium,
+    color: color.textSecondary,
+    lineHeight: 19,
+    height: 38,
+  },
   price: { fontSize: font.callout, fontWeight: weight.heavy, color: color.text, letterSpacing: -0.4 },
 
-  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 16 },
   ratingPill: {
     flexDirection: 'row',
     alignItems: 'center',

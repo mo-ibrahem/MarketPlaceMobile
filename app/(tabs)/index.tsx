@@ -897,15 +897,18 @@ const styles = StyleSheet.create({
   liveEntry: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     marginHorizontal: 16,
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: 'white',
-    borderRadius: 16,
+    marginTop: 16,
+    marginBottom: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    // Matches the trust strip's border rather than a pink one. The red belongs
+    // on the Live icon, which is the thing that is actually about Live.
+    borderColor: '#E2E8F0',
   },
   liveEntryIcon: {
     width: 36, height: 36, borderRadius: 18,
@@ -916,8 +919,8 @@ const styles = StyleSheet.create({
   trustStrip: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginBottom: 4,
-    paddingVertical: 12,
+    marginBottom: 6,
+    paddingVertical: 16,
     paddingHorizontal: 8,
     backgroundColor: '#F8FAFC',
     borderRadius: 20,
@@ -1064,8 +1067,8 @@ const styles = StyleSheet.create({
   },
 
   // Recently Added grid
-  recentGrid: { paddingHorizontal: 16, paddingBottom: 4 },
-  recentRow: { gap: 12, marginBottom: 12 },
+  recentGrid: { paddingHorizontal: 16, paddingBottom: 8 },
+  recentRow: { gap: 14, marginBottom: 26 },
   productCard: {
     flex: 1,
     backgroundColor: 'white',
