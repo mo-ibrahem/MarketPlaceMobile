@@ -126,18 +126,20 @@ export default function HomeScreen() {
       .filter(p => !q || p.title.toLowerCase().includes(q));
   }, [products, hero, category, query]);
 
-  // Rows of two. A uniform grid, deliberately: masonry needs hundreds of items
-  // before it reads as rhythm rather than misalignment, and every reference
-  // marketplace uses equal-height cards. With ~20 listings, alternating heights
-  // put text blocks at different vertical positions and made the feed look
-  // scattered.
-  const rows = useMemo(() => {
-    const r: Product[][] = [];
-    for (let i = 0; i < feed.length; i += 2) r.push(feed.slice(i, i + 2));
-    return r;
+  // Two masonry lanes balanced by estimated height; every third card is tall.
+  const lanes = useMemo(() => {
+    const L: { item: Product; tall: boolean }[][] = [[], []];
+    const h = [0, 0];
+    feed.forEach((item, i) => {
+      const tall = i % 3 === 0;
+      const k = h[0] <= h[1] ? 0 : 1;
+      L[k].push({ item, tall });
+      h[k] += tall ? 1.3 : 1;
+    });
+    return L;
   }, [feed]);
 
-  const cardWidth = (Math.min(width, 520) - space.lg * 2 - 12) / 2;
+  const laneWidth = (Math.min(width, 520) - space.lg * 2 - 14) / 2;
   const tileLabel = (name: string) => (isArabic ? CATEGORY_LABEL_AR[name] ?? name : name);
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -234,10 +236,10 @@ export default function HomeScreen() {
           </View>
 
           {loading ? (
-            <View style={{ gap: 20 }}>
-              {[0, 1].map(r => (
-                <View key={r} style={s.row}>
-                  {[0, 1].map(c => <View key={c} style={{ width: cardWidth, height: 250, borderRadius: radius.lg, backgroundColor: color.surfaceAlt }} />)}
+            <View style={s.lanes}>
+              {[0, 1].map(l => (
+                <View key={l} style={{ width: laneWidth, gap: 20 }}>
+                  {[0, 1, 2].map(i => <View key={i} style={{ height: (i + l) % 2 ? 220 : 180, borderRadius: radius.lg, backgroundColor: color.surfaceAlt }} />)}
                 </View>
               ))}
             </View>
@@ -247,38 +249,34 @@ export default function HomeScreen() {
               <Text style={s.emptySub}>{isArabic ? 'جرّب فئة أخرى.' : 'Try another category.'}</Text>
             </View>
           ) : (
-            <View style={{ gap: 20 }}>
-              {rows.map((row, ri) => (
-                <React.Fragment key={ri}>
-                  <View style={s.row}>
-                    {row.map(item => (
+            <View style={s.lanes}>
+              {lanes.map((lane, li) => (
+                <View key={li} style={{ width: laneWidth, gap: 20 }}>
+                  {lane.map(({ item, tall }, idx) => (
+                    <React.Fragment key={item.id}>
                       <ProductCard
-                        key={item.id}
                         item={item}
-                        width={cardWidth}
+                        width={laneWidth}
+                        imageHeight={tall ? laneWidth * 1.33 : laneWidth}
                         showEscrow
                         isWishlisted={wishlistIds.has(item.id)}
                         onPress={() => router.push(`/products/${item.id}` as any)}
                         onToggleWishlist={() => toggleWishlist(item)}
                       />
-                    ))}
-                    {row.length === 1 && <View style={{ width: cardWidth }} />}
-                  </View>
-
-                  {/* The sell invitation is a full-width band after the first
-                      row -- in the feed where a scrolling seller sees it, but
-                      shaped as a band so it does not pretend to be a listing. */}
-                  {ri === 0 && (
-                    <TouchableOpacity activeOpacity={0.9} onPress={() => router.push('/(tabs)/sell' as any)} style={s.sellBand}>
-                      <View style={s.sellIcon}><Plus size={22} color={color.text} /></View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.sellTitle}>{isArabic ? 'بِع شيئاً اليوم' : 'Sell something today'}</Text>
-                        <Text style={s.sellSub}>{isArabic ? 'المشتري يدفع قبل الشحن. عمولة ٣.٥٪ فقط.' : 'Buyer pays before you ship. Just a 3.5% fee.'}</Text>
-                      </View>
-                      <ArrowUpRight size={18} color="rgba(255,255,255,0.6)" />
-                    </TouchableOpacity>
-                  )}
-                </React.Fragment>
+                      {/* "Sell" is a card in the feed, where a scrolling seller
+                          will actually see it -- not a banner above it. */}
+                      {li === 1 && idx === 0 && (
+                        <TouchableOpacity activeOpacity={0.9} onPress={() => router.push('/(tabs)/sell' as any)} style={[s.sellCard, { width: laneWidth, height: laneWidth }]}>
+                          <Plus size={28} color={color.textInverse} />
+                          <View>
+                            <Text style={s.sellTitle}>{isArabic ? 'بِع شيئاً اليوم' : 'Sell something today'}</Text>
+                            <Text style={s.sellSub}>{isArabic ? 'المشتري يدفع قبل الشحن. عمولة ٣.٥٪' : 'Buyer pays before you ship. 3.5% fee.'}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </View>
               ))}
             </View>
           )}
@@ -360,11 +358,10 @@ const s = StyleSheet.create({
   tileName: { marginTop: 8, fontSize: font.subhead - 1, fontWeight: weight.bold, color: color.textSecondary },
   tileCount: { fontSize: font.caption, fontWeight: weight.semibold, color: color.textFaint },
 
-  row: { flexDirection: 'row', gap: 12 },
-  sellBand: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 22, backgroundColor: color.ink, padding: space.lg },
-  sellIcon: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' },
-  sellTitle: { color: color.textInverse, fontSize: font.headline, fontWeight: weight.heavy, letterSpacing: -0.4 },
-  sellSub: { color: 'rgba(255,255,255,0.65)', fontSize: font.caption, marginTop: 3, lineHeight: 16 },
+  lanes: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
+  sellCard: { borderRadius: 22, backgroundColor: color.ink, padding: space.lg, justifyContent: 'space-between' },
+  sellTitle: { color: color.textInverse, fontSize: font.headline, fontWeight: weight.heavy, letterSpacing: -0.4, lineHeight: 21 },
+  sellSub: { color: 'rgba(255,255,255,0.65)', fontSize: font.caption, marginTop: 4, lineHeight: 16 },
 
   empty: { paddingVertical: 60, alignItems: 'center' },
   emptyTitle: { fontSize: font.subhead, fontWeight: weight.bold, color: color.textSecondary },

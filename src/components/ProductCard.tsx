@@ -46,162 +46,91 @@ export function ProductCard({
     <TouchableOpacity
       style={[s.card, variant === 'carousel' && s.cardCarousel, !!width && { width }]}
       onPress={onPress}
-      activeOpacity={0.88}
+      activeOpacity={0.9}
     >
+      {/* One surface holds both the photo and the text, so the card is a
+          single object. Previously the image was a rounded block and the text
+          floated beneath it on the page background; each card read as two
+          loose things, which is what made the feed look scattered. */}
       <View style={s.imgWrap}>
         <Image
           source={{ uri: item.images?.[0] || 'https://placehold.co/400x300/F1F5F9/64748B?text=Item' }}
           style={[s.img, !!imageHeight && { height: imageHeight }]}
         />
-        {showEscrow && (
-          <View style={s.escrowChip}>
-            <ShieldCheck size={12} color={color.successDark} />
-            <Text style={s.escrowText}>Escrow</Text>
-          </View>
-        )}
-
         {!!onToggleWishlist && (
           <TouchableOpacity style={s.heart} onPress={onToggleWishlist} hitSlop={tapSlop(32)}>
             <Heart
-              size={16}
+              size={15}
               color={isWishlisted ? color.danger : color.text}
               fill={isWishlisted ? color.danger : 'none'}
             />
           </TouchableOpacity>
         )}
-
-        {item.condition === 'New' && (
-          <View style={s.newBadge}>
-            <Text style={s.newBadgeText}>NEW</Text>
-          </View>
-        )}
       </View>
 
-      {/* Title and price only. The seller line and rating row made every
-          card's text block a different height and pushed prices off a shared
-          baseline; the references show title + price and nothing else. Seller
-          and rating live on the product page, where there is room for them. */}
       <View style={s.body}>
         <Text style={s.title} numberOfLines={2}>{item.title}</Text>
-        <Text style={s.price}>{formatEGP(item.price)}</Text>
+        <View style={s.footer}>
+          <Text style={s.price}>{formatEGP(item.price)}</Text>
+          {/* Condition and escrow moved off the photograph into a quiet
+              footer line, so the image carries only the heart. */}
+          <View style={s.tags}>
+            {item.condition === 'New' && <Text style={s.tag}>New</Text>}
+            {showEscrow && (
+              <View style={s.escrow}>
+                <ShieldCheck size={11} color={color.successDark} />
+              </View>
+            )}
+          </View>
+        </View>
       </View>
     </TouchableOpacity>
   );
 }
 
 const s = StyleSheet.create({
-  // The image is the card. No white frame around the photo, no border, no
-  // shadow -- separation comes from the neutral image ground against the white
-  // page, which is how all five references do it.
   card: {
-    flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: color.surfaceAlt,
+    borderRadius: radius.lg,
+    padding: 6,
+    overflow: 'hidden',
   },
-  cardCarousel: { flex: 0, width: 180 },
+  cardCarousel: { width: 180 },
 
   imgWrap: {
     position: 'relative',
-    borderRadius: radius.lg,
+    borderRadius: radius.lg - 4,
     overflow: 'hidden',
-    backgroundColor: color.surfaceAlt,
+    backgroundColor: color.border,
   },
-  img: { width: '100%', height: 190, backgroundColor: color.surfaceAlt },
-
-  // Price is the single most important number on a marketplace card, and it
-  // was set at 11pt -- the smallest size in the system -- inside a small pill.
-  // It now reads as the price.
-  pricePill: {
-    position: 'absolute',
-    left: space.sm,
-    bottom: space.sm,
-    backgroundColor: 'rgba(15,23,42,0.82)',
-    paddingHorizontal: space.md,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-  },
-  priceText: { color: color.textInverse, fontSize: font.subhead, fontWeight: weight.heavy, letterSpacing: -0.3 },
+  img: { width: '100%', height: 190 },
 
   heart: {
     position: 'absolute',
     right: space.sm,
     top: space.sm,
-    width: 34,
-    height: 34,
+    width: 32,
+    height: 32,
     borderRadius: radius.pill,
     backgroundColor: color.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  escrowChip: {
-    position: 'absolute',
-    left: space.sm,
-    bottom: space.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    height: 26,
-    paddingHorizontal: 9,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-  },
-  escrowText: { fontSize: font.caption2, fontWeight: weight.heavy, color: color.text },
-  newBadge: {
-    position: 'absolute',
-    left: space.sm,
-    top: space.sm,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    paddingHorizontal: space.sm,
-    paddingVertical: 3,
-    borderRadius: radius.sm,
-  },
-  newBadgeText: { color: color.text, fontSize: font.caption2, fontWeight: weight.heavy, letterSpacing: 0.3 },
-
-  body: { paddingTop: space.sm + 2, paddingHorizontal: 2, gap: 2 },
-  /**
-   * A fixed two-line box, not `numberOfLines` alone.
-   *
-   * With a flexible height, a listing whose title wrapped to two lines made its
-   * card taller than its neighbour, so prices in the same row sat on different
-   * baselines and the grid looked broken. Reserving both lines always costs one
-   * empty line on short titles and buys an aligned grid, which is the trade
-   * every reference makes.
-   */
+  body: { paddingHorizontal: 8, paddingTop: 10, paddingBottom: 8, gap: 4 },
   title: {
-    fontSize: font.subhead,
-    fontWeight: weight.medium,
-    color: color.textSecondary,
-    lineHeight: 19,
-    height: 38,
+    fontSize: font.subhead - 1,
+    fontWeight: weight.semibold,
+    color: color.text,
+    lineHeight: 18,
+    height: 36,
   },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   price: { fontSize: font.callout, fontWeight: weight.heavy, color: color.text, letterSpacing: -0.4 },
-
-  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 16 },
-  ratingPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: color.warningSoft,
-    paddingHorizontal: space.sm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
+  tags: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  tag: { fontSize: font.caption2, fontWeight: weight.bold, color: color.textMuted },
+  escrow: {
+    width: 20, height: 20, borderRadius: radius.pill,
+    backgroundColor: color.successSoft, alignItems: 'center', justifyContent: 'center',
   },
-  ratingText: { fontSize: font.caption2, fontWeight: weight.heavy, color: color.warningDark },
-  ratingCount: { fontSize: font.caption2, fontWeight: weight.bold, color: color.warningDark },
-  condition: { fontSize: font.caption2, fontWeight: weight.semibold, color: color.textMuted },
-
-  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  avatar: {
-    width: 20,
-    height: 20,
-    borderRadius: radius.pill,
-    backgroundColor: color.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { fontSize: font.caption2, fontWeight: weight.heavy, color: color.primary },
-  sellerName: { flex: 1, fontSize: font.caption2, color: color.textFaint, fontWeight: weight.semibold },
-
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
-  location: { flex: 1, fontSize: font.caption2, color: color.textMuted },
 });
