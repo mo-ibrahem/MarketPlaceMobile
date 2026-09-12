@@ -2,7 +2,7 @@
   "expo": {
     "name": "Egbay",
     "slug": "MarketPlaceMobile",
-    "version": "1.0.3",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/egbay.png",
     "scheme": "egbbay",
