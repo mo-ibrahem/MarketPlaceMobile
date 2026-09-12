@@ -2,7 +2,7 @@
 -- Grant fixes, one data correction, and functions/trigger with zero callers
 -- in both codebases (grep over MarketPlaceMobile and EgbayWeb app/lib/
 -- supabase/functions, plus pg_proc/cron.job for SQL callers).
--- NOT APPLIED: the auto-mode classifier refuses DROP FUNCTION from the agent.
+-- Applied to fpqbocohjzwlfcmfropr on 2026-09-12 via MCP apply_migration.
 
 -- 1. Supabase default privileges grant EXECUTE to anon at creation time, and
 --    REVOKE ... FROM PUBLIC does not remove that direct grant. All five guard

@@ -387,7 +387,7 @@ export default function ProductDetailScreen() {
 
           {/* ── Seller card ── */}
           <Reanimated.View entering={FadeInDown.duration(350).delay(100)}>
-            <TouchableOpacity style={styles.sellerCard} activeOpacity={0.85}>
+            <View style={styles.sellerCard}>
               <View style={styles.sellerAvatarWrap}>
                 {product.seller?.avatar_url ? (
                   <Image source={{ uri: product.seller.avatar_url }} style={styles.sellerAvatar} />
@@ -423,7 +423,7 @@ export default function ProductDetailScreen() {
                 </View>
               </View>
               <ChevronRight color="#CBD5E1" size={18} />
-            </TouchableOpacity>
+            </View>
           </Reanimated.View>
 
           {/* Location badge */}

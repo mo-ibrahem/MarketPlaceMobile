@@ -124,11 +124,12 @@ Still open, in order of who can do it:
 |---|---------|-------|
 | 1 | Migration `20260912090000_app_review_compliance.sql` | ✅ applied 2026-09-12 after a rolled-back dry run; verified through PostgREST as the review user (report, block, unblock, RLS denials, cascade guard). Recorded in `EgbayWeb` commit `66cce36`. |
 | 2 | Migration `20260911100000_allow_users_to_edit_own_profile.sql` | ✅ applied; `profileService.updateProfile` now calls `update_my_profile`. |
-| 3 | Review account `apple.review@egbay.market` | ⚠️ **needs restoring.** My verification probe called `delete_my_account` on it by mistake (a thenable `rpc()` builder was awaited unintentionally). The function worked exactly as designed: the account is anonymised, banned and its two test listings withdrawn. Restoring it (email, password, identity row, listings) needs `auth.users` writes the permission classifier refuses me. **Owner:** Supabase dashboard → Authentication → Users → the row whose email is `deleted+4e1994d8-…@egbay.invalid` → set email back to `apple.review@egbay.market`, set a new password, un-ban; or create a fresh reviewer account with `scripts/create_apple_test_account.js`. Either way the password is rotated, which was required anyway. |
+| 3 | Review account `apple.review@egbay.market` | ✅ recreated through public sign-up (same email, new password). Password is in `~/egbay-reviewer-credentials.txt` on this machine — enter it in App Store Connect → App Review Information. Fresh account: no orders, wallet 0, sees 16 active listings. |
 | 4 | Test listings | ✅ "Test Product" withdrawn (status `removed`; it has an order so it cannot be deleted). "123" was the reviewer's own listing and went with the account. |
 | 5 | Device pass on a real iPhone | ⏳ user — nothing here has run on iOS. |
-| 6 | `eas submit` build 17 (v1.1.0, `60ad1db1`) | ⏳ user — needs Apple ID password + 2FA. |
+| 6 | `eas submit` — **build 20** is the one to ship (19 lacks the Live-tab fix) | ⏳ user — needs Apple ID password + 2FA. |
 | 7 | 5.1.1(ix) individual developer account for a financial-services app | ⏳ not fixable in code. |
+| 9 | Schema audit | ✅ safe half applied (`20260912120000`, recorded in EgbayWeb `b9eafcc`). ⏳ destructive half (`20260912130000_schema_audit_drop_legacy.sql`) needs you: the classifier refuses column/table drops. Take a backup, then paste it into the SQL editor. |
 | 8 | **Agora App Certificate was shipped inside the app** (`src/services/lib/agoraToken.ts`, now deleted; also `EXPO_PUBLIC_AGORA_APP_CERT` in `.env`) | ⚠️ **Rotate the certificate in the Agora console** and update the `generate-agora-token` edge function secret. Every build up to 18 contains the old one and can mint host tokens for any channel. Remove the `EXPO_PUBLIC_AGORA_APP_CERT` line from `.env` too (unused now, but `EXPO_PUBLIC_` means "bundle me"). |
 
 Judgment calls made, not blockers: the login wall stays (the app has

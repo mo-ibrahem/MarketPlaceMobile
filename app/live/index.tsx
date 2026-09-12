@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Bell, ChevronRight, Clock, Play, ShieldCheck, Users, Video } from 'lucide-react-native';
+import { ChevronRight, Clock, Play, ShieldCheck, Users, Video } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -78,8 +78,7 @@ export default function LiveDiscoveryScreen() {
         liveNow: 'يبث الآن',
         upcoming: 'بثوث قادمة',
         noneTitle: 'لا يوجد بث مباشر الآن',
-        noneSub: 'البث المباشر جديد على إيجي باي. سنخبرك فور بدء أول بث.',
-        notify: 'أخبرني عند بدء البث',
+        noneSub: 'البث المباشر جديد على إيجي باي. تظهر البثوث هنا فور بدئها — عُد لاحقاً.',
         sellTitle: 'تبيع على إيجي باي؟',
         sellSub: 'اعرض منتجاتك مباشرة وبِع بضمان مالي وشحن بوسطة.',
         sellCta: 'ابدأ البث',
@@ -92,8 +91,7 @@ export default function LiveDiscoveryScreen() {
         liveNow: 'Live now',
         upcoming: 'Scheduled',
         noneTitle: 'Nobody is live right now',
-        noneSub: 'Live selling is new on EgyBay. We will tell you the moment the first stream starts.',
-        notify: 'Notify me when a stream starts',
+        noneSub: 'Live selling is new on EgyBay. Streams appear here the moment they start — check back soon.',
         sellTitle: 'Sell on EgyBay?',
         sellSub: 'Show your items on camera and sell with escrow and Bosta delivery.',
         sellCta: 'Start streaming',
@@ -187,10 +185,8 @@ export default function LiveDiscoveryScreen() {
               </View>
               <Text style={s.emptyTitle}>{T.noneTitle}</Text>
               <Text style={s.emptySub}>{T.noneSub}</Text>
-              <TouchableOpacity style={s.notifyBtn} activeOpacity={0.85}>
-                <Bell color="#FFFFFF" size={15} />
-                <Text style={s.notifyText}>{T.notify}</Text>
-              </TouchableOpacity>
+              {/* The "Notify me" button that used to sit here had no handler
+                  and no push infrastructure behind it. */}
             </View>
           }
           ListFooterComponent={

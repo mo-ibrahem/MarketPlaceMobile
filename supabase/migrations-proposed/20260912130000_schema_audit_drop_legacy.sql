@@ -50,6 +50,34 @@ ALTER TABLE public.products
 --    what the web KYC flow actually writes and the admin route reads.
 --    0 of 26 profiles have any of them set. Keeping ID-document paths on the
 --    profile row also widens the PII blast radius for no reason.
+--    delete_my_account nulls these columns, so it is redefined first.
+CREATE OR REPLACE FUNCTION public.delete_my_account()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','auth','pg_catalog' AS $$
+DECLARE v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+  UPDATE public.products SET status = 'removed', updated_at = now()
+   WHERE seller_id = v_uid AND status <> 'removed';
+  DELETE FROM public.wishlists                    WHERE user_id = v_uid;
+  DELETE FROM public.notifications                WHERE user_id = v_uid;
+  DELETE FROM public.blocked_users                WHERE blocker_id = v_uid;
+  DELETE FROM public.payout_methods               WHERE user_id = v_uid;
+  DELETE FROM public.seller_verification_requests WHERE user_id = v_uid;
+  UPDATE public.user_profiles
+     SET full_name = 'Deleted user', email = NULL, phone = NULL, address = NULL,
+         avatar_url = NULL, updated_at = now()
+   WHERE id = v_uid;
+  UPDATE auth.users
+     SET email = 'deleted+' || v_uid::text || '@egbay.invalid',
+         phone = NULL, encrypted_password = NULL, raw_user_meta_data = '{}'::jsonb,
+         email_change = NULL, email_change_token_new = NULL, email_change_token_current = NULL,
+         phone_change = NULL, recovery_token = NULL,
+         banned_until = 'infinity'::timestamptz, updated_at = now()
+   WHERE id = v_uid;
+  DELETE FROM auth.identities WHERE user_id = v_uid;
+  DELETE FROM auth.mfa_factors WHERE user_id = v_uid;
+  DELETE FROM auth.sessions    WHERE user_id = v_uid;
+END $$;
 ALTER TABLE public.user_profiles
   DROP COLUMN IF EXISTS national_id_number,
   DROP COLUMN IF EXISTS national_id_front_url,
