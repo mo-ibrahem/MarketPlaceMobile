@@ -36,7 +36,7 @@ export const reportContent = async (targetType: ReportTargetType, targetId: stri
   await requireUser();
   const trimmed = reason.trim();
   if (!trimmed) throw new Error('A reason is required');
-  const { data, error } = await supabase.rpc('report_content' as any, {
+  const { data, error } = await supabase.rpc('report_content', {
     p_target_type: targetType,
     p_target_id: targetId,
     p_reason: trimmed.slice(0, 1000),
@@ -47,13 +47,13 @@ export const reportContent = async (targetType: ReportTargetType, targetId: stri
 
 export const blockUser = async (userId: string): Promise<void> => {
   await requireUser();
-  const { error } = await supabase.rpc('block_user' as any, { p_user_id: userId });
+  const { error } = await supabase.rpc('block_user', { p_user_id: userId });
   if (error) throw error;
 };
 
 export const unblockUser = async (userId: string): Promise<void> => {
   await requireUser();
-  const { error } = await supabase.rpc('unblock_user' as any, { p_user_id: userId });
+  const { error } = await supabase.rpc('unblock_user', { p_user_id: userId });
   if (error) throw error;
 };
 
@@ -62,7 +62,7 @@ export const getBlockedUserIds = async (): Promise<Set<string>> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Set();
   const { data, error } = await supabase
-    .from('blocked_users' as any)
+    .from('blocked_users')
     .select('blocked_id')
     .eq('blocker_id', user.id);
   if (error) {
@@ -79,6 +79,6 @@ export const getBlockedUserIds = async (): Promise<Set<string>> => {
  */
 export const deleteMyAccount = async (): Promise<void> => {
   await requireUser();
-  const { error } = await supabase.rpc('delete_my_account' as any);
+  const { error } = await supabase.rpc('delete_my_account');
   if (error) throw error;
 };

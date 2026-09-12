@@ -129,6 +129,7 @@ Still open, in order of who can do it:
 | 5 | Device pass on a real iPhone | ⏳ user — nothing here has run on iOS. |
 | 6 | `eas submit` build 17 (v1.1.0, `60ad1db1`) | ⏳ user — needs Apple ID password + 2FA. |
 | 7 | 5.1.1(ix) individual developer account for a financial-services app | ⏳ not fixable in code. |
+| 8 | **Agora App Certificate was shipped inside the app** (`src/services/lib/agoraToken.ts`, now deleted; also `EXPO_PUBLIC_AGORA_APP_CERT` in `.env`) | ⚠️ **Rotate the certificate in the Agora console** and update the `generate-agora-token` edge function secret. Every build up to 18 contains the old one and can mint host tokens for any channel. Remove the `EXPO_PUBLIC_AGORA_APP_CERT` line from `.env` too (unused now, but `EXPO_PUBLIC_` means "bundle me"). |
 
 Judgment calls made, not blockers: the login wall stays (the app has
 significant account-based features — escrow, wallet, chat — which 5.1.1(v)

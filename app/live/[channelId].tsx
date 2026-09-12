@@ -188,12 +188,16 @@ export default function LiveViewerScreen() {
     if (!chatInput.trim() || !user || !session) return;
     const msg = chatInput.trim();
     setChatInput('');
-    await sendChatMessage({
-      sessionId: session.id,
-      userId: user.id,
-      username: user.user_metadata?.full_name || 'مشتري',
-      message: msg,
-    });
+    try {
+      await sendChatMessage({
+        sessionId: session.id,
+        userId: user.id,
+        username: user.user_metadata?.full_name || 'مشتري',
+        message: msg,
+      });
+    } catch {
+      setChatInput(msg); // give the text back; nothing was sent
+    }
   };
 
   const sendReaction = (emoji: string) => {
@@ -209,7 +213,7 @@ export default function LiveViewerScreen() {
         username: user.user_metadata?.full_name || 'مشتري',
         message: emoji,
         msgType: 'reaction',
-      });
+      }).catch(() => {});
     }
   };
 

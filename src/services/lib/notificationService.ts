@@ -25,7 +25,7 @@ export interface AppNotification {
  */
 export async function getRecentNotifications(limit = 30): Promise<AppNotification[]> {
   const { data, error } = await supabase
-    .from('notifications' as any)
+    .from('notifications')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -36,7 +36,7 @@ export async function getRecentNotifications(limit = 30): Promise<AppNotificatio
 /** count-only query -- never fetch rows just to count them client-side. */
 export async function getUnreadNotificationCount(): Promise<number> {
   const { count, error } = await supabase
-    .from('notifications' as any)
+    .from('notifications')
     .select('*', { count: 'exact', head: true })
     .is('read_at', null);
   if (error) throw error;
@@ -45,12 +45,12 @@ export async function getUnreadNotificationCount(): Promise<number> {
 
 export async function markNotificationsRead(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
-  const { error } = await supabase.rpc('mark_notifications_read' as any, { p_ids: ids });
+  const { error } = await supabase.rpc('mark_notifications_read', { p_ids: ids });
   if (error) throw error;
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
-  const { error } = await supabase.rpc('mark_all_notifications_read' as any);
+  const { error } = await supabase.rpc('mark_all_notifications_read');
   if (error) throw error;
 }
 

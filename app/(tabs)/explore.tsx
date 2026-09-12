@@ -129,7 +129,7 @@ export default function ProfileScreen() {
         productService.getWishlist(),
         getChatRooms(),
         productService.getSoldCountBySeller(user.id),
-        getUserWallet(user.id),
+        getUserWallet(user.id).catch(() => null),
         getSellerTier(user.id),
       ]);
       setProfile(profileData);
@@ -244,11 +244,15 @@ export default function ProfileScreen() {
   const handleDeleteProduct = async (productId: string) => {
     const doDelete = async () => {
       try {
-        await productService.deleteProduct(productId);
-        Toast.show({ type: 'success', text1: 'Listing deleted.' });
+        const outcome = await productService.deleteProduct(productId);
+        Toast.show(
+          outcome === 'deleted'
+            ? { type: 'success', text1: 'Listing deleted.' }
+            : { type: 'success', text1: 'Listing withdrawn.', text2: 'It has orders, so it was hidden rather than deleted.' },
+        );
         loadUserData();
-      } catch {
-        Toast.show({ type: 'error', text1: 'Failed to delete listing.' });
+      } catch (err: any) {
+        Toast.show({ type: 'error', text1: 'Failed to delete listing.', text2: err?.message });
       }
     };
 

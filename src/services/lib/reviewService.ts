@@ -36,9 +36,9 @@ async function hydrateReviews(reviews: Review[] | null): Promise<Review[]> {
   const productIds = [...new Set(reviews.map(r => r.product_id).filter(Boolean))] as string[];
 
   const [{ data: profiles }, { data: products }] = await Promise.all([
-    supabase.from('public_profiles' as any).select('id, full_name, avatar_url').in('id', reviewerIds),
+    supabase.from('public_profiles').select('id, full_name, avatar_url').in('id', reviewerIds),
     productIds.length
-      ? supabase.from('products' as any).select('id, title').in('id', productIds)
+      ? supabase.from('products').select('id, title').in('id', productIds)
       : Promise.resolve({ data: [] as any[] }),
   ]);
 
@@ -53,7 +53,7 @@ async function hydrateReviews(reviews: Review[] | null): Promise<Review[]> {
 /** Everything a seller has ever been reviewed for. */
 export async function getSellerReviews(sellerId: string, limit = 50): Promise<Review[]> {
   const { data, error } = await supabase
-    .from('reviews' as any)
+    .from('reviews')
     .select('*')
     .eq('seller_id', sellerId)
     .order('created_at', { ascending: false })
@@ -71,7 +71,7 @@ export async function getSellerReviews(sellerId: string, limit = 50): Promise<Re
  */
 export async function getProductReviews(productId: string, limit = 20): Promise<Review[]> {
   const { data, error } = await supabase
-    .from('reviews' as any)
+    .from('reviews')
     .select('*')
     .eq('product_id', productId)
     .order('created_at', { ascending: false })
@@ -88,7 +88,7 @@ export async function getProductReviews(productId: string, limit = 20): Promise<
  */
 export async function getSellerRating(sellerId: string): Promise<SellerRating> {
   const { data, error } = await supabase
-    .from('public_profiles' as any)
+    .from('public_profiles')
     .select('rating_avg, rating_count')
     .eq('id', sellerId)
     .maybeSingle();
@@ -104,7 +104,7 @@ export async function getSellerRatings(sellerIds: string[]): Promise<Record<stri
   const ids = [...new Set(sellerIds.filter(Boolean))];
   if (ids.length === 0) return {};
   const { data, error } = await supabase
-    .from('public_profiles' as any)
+    .from('public_profiles')
     .select('id, rating_avg, rating_count')
     .in('id', ids);
   if (error || !data) return {};
@@ -121,7 +121,7 @@ export async function getSellerRatings(sellerIds: string[]): Promise<Record<stri
 /** Whether the current user has already reviewed this order, and what they said. */
 export async function getMyReviewForOrder(orderId: string): Promise<Review | null> {
   const { data, error } = await supabase
-    .from('reviews' as any)
+    .from('reviews')
     .select('*')
     .eq('order_id', orderId)
     .maybeSingle();
@@ -159,7 +159,7 @@ export function canReviewOrder(
 }
 
 export async function submitReview(orderId: string, rating: number, comment: string): Promise<string> {
-  const { data, error } = await supabase.rpc('submit_review' as any, {
+  const { data, error } = await supabase.rpc('submit_review', {
     p_order_id: orderId,
     p_rating: rating,
     p_comment: comment || null,
@@ -169,7 +169,7 @@ export async function submitReview(orderId: string, rating: number, comment: str
 }
 
 export async function editReview(reviewId: string, rating: number, comment: string): Promise<void> {
-  const { error } = await supabase.rpc('edit_review' as any, {
+  const { error } = await supabase.rpc('edit_review', {
     p_review_id: reviewId,
     p_rating: rating,
     p_comment: comment || null,
@@ -178,7 +178,7 @@ export async function editReview(reviewId: string, rating: number, comment: stri
 }
 
 export async function respondToReview(reviewId: string, response: string): Promise<void> {
-  const { error } = await supabase.rpc('respond_to_review' as any, {
+  const { error } = await supabase.rpc('respond_to_review', {
     p_review_id: reviewId,
     p_response: response,
   });

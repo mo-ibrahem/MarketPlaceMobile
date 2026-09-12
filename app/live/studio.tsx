@@ -181,20 +181,29 @@ export default function StudioScreen() {
     if (!content.trim() || !user || !sessionId) return;
     const msg = content.trim();
     if (!customText) setChatInput('');
-    await sendChatMessage({
-      sessionId,
-      userId: user.id,
-      username: user.user_metadata?.full_name || 'Host',
-      message: msg,
-      isHost: true,
-      msgType: customText ? 'reaction' : 'chat',
-    });
+    try {
+      await sendChatMessage({
+        sessionId,
+        userId: user.id,
+        username: user.user_metadata?.full_name || 'Host',
+        message: msg,
+        isHost: true,
+        msgType: customText ? 'reaction' : 'chat',
+      });
+    } catch (err: any) {
+      if (!customText) setChatInput(msg);
+      setError(err?.message || 'تعذر إرسال الرسالة');
+    }
   };
 
   const handlePinProduct = async (product: any) => {
     if (!sessionId) return;
-    await pinProduct(sessionId, product.id, product.price);
-    setShowProductPicker(false);
+    try {
+      await pinProduct(sessionId, product.id, product.price);
+      setShowProductPicker(false);
+    } catch (err: any) {
+      setError(err?.message || 'تعذر تثبيت المنتج');
+    }
   };
 
   const studioHTML = isLive && agoraToken && session?.agora_channel

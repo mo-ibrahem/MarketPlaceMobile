@@ -224,9 +224,23 @@ export const productService = {
   },
 
   // Delete product
-  deleteProduct: async (productId: string) => {
+  /**
+   * Removes a listing. A listing that has an order cannot be deleted --
+   * orders.product_id is ON DELETE RESTRICT so paid escrow records can never
+   * vanish with the product -- so those are withdrawn instead (status
+   * 'removed'; the public SELECT policy only shows 'active'). Returns which
+   * of the two happened so the UI can say so.
+   */
+  deleteProduct: async (productId: string): Promise<'deleted' | 'withdrawn'> => {
     const { error } = await supabase.from("products").delete().eq("id", productId)
-    if (error) throw error
+    if (!error) return 'deleted'
+    if (error.code !== '23503') throw error
+    const { error: updErr } = await supabase
+      .from("products")
+      .update({ status: 'removed', updated_at: new Date().toISOString() })
+      .eq("id", productId)
+    if (updErr) throw updErr
+    return 'withdrawn'
   },
 
   // Add product to wishlist
@@ -397,7 +411,7 @@ export const profileService = {
     // path is update_my_profile, which takes exactly the user-owned fields and
     // ignores everything else -- tier, is_verified_seller, ratings cannot be
     // passed through here by construction.
-    const { error } = await supabase.rpc('update_my_profile' as any, {
+    const { error } = await supabase.rpc('update_my_profile', {
       p_full_name: updates.full_name ?? null,
       p_phone: updates.phone ?? null,
       p_avatar_url: updates.avatar_url ?? null,

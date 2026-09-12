@@ -157,60 +157,21 @@ export const SELLER_TIERS: Record<1 | 2 | 3, SellerTierConfig> = {
   },
 };
 
-// In-memory fallback state
-let inMemoryWallets: Record<string, UserWallet> = {};
-let inMemoryTransactions: WalletTransaction[] = [];
-let inMemoryPayoutMethods: Record<string, PayoutMethod[]> = {};
-let inMemorySellerTiers: Record<string, 1 | 2 | 3> = {};
-
 /**
  * Fetch or initialize a user's wallet
  */
 export async function getUserWallet(userId: string): Promise<UserWallet> {
-  try {
-    const { data, error } = await supabase
-      .from('user_wallets' as any)
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (data && !error) {
-      return data as unknown as UserWallet;
-    }
-
-    if (!data) {
-      const newWallet: Partial<UserWallet> = {
-        user_id: userId,
-        pending_balance: 0,
-        available_balance: 0,
-        currency: 'EGP',
-      };
-
-      const { data: created, error: insertError } = await supabase
-        .from('user_wallets' as any)
-        .insert(newWallet as any)
-        .select()
-        .maybeSingle();
-
-      if (created && !insertError) {
-        return created as unknown as UserWallet;
-      }
-    }
-  } catch (err) {
-    console.warn('[WalletService] Supabase fallback to memory:', err);
-  }
-
-  if (!inMemoryWallets[userId]) {
-    inMemoryWallets[userId] = {
-      id: `wallet_${userId}`,
-      user_id: userId,
-      pending_balance: 0,
-      available_balance: 0,
-      currency: 'EGP',
-      updated_at: new Date().toISOString(),
-    };
-  }
-  return inMemoryWallets[userId];
+  // Every user gets a wallet at signup (EgbayWeb 20260903120000), so a
+  // missing row is an error, not something to paper over with an in-memory
+  // zero-balance object that the screen would then present as real.
+  const { data, error } = await supabase
+    .from('user_wallets')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('Wallet not found for this account');
+  return data as unknown as UserWallet;
 }
 
 /**
@@ -222,7 +183,7 @@ export async function getSellerTier(userId: string): Promise<SellerTierConfig> {
     // `auth.uid() = id` for authenticated alone, so reading it returns nothing
     // for anyone else's seller -- and nothing at all when signed out.
     const { data, error } = await supabase
-      .from('public_profiles' as any)
+      .from('public_profiles')
       .select('tier')
       .eq('id', userId)
       .maybeSingle();
@@ -232,7 +193,7 @@ export async function getSellerTier(userId: string): Promise<SellerTierConfig> {
       return SELLER_TIERS[t] || SELLER_TIERS[1];
     }
   } catch (err) {
-    console.warn('[WalletService] getSellerTier fallback to memory:', err);
+    console.warn('[WalletService] getSellerTier read failed, assuming Tier 1:', err);
   }
 
   // Fall back to Tier 1, never Tier 2. Defaulting to "Verified Trader" on a
@@ -273,96 +234,6 @@ export async function upgradeSellerTier(_userId: string, _targetTier: 1 | 2 | 3)
 /**
  * Hold funds in Escrow for a seller with Tier-specific commission rates
  */
-export async function holdEscrowForSeller(
-  sellerId: string,
-  orderId: string,
-  totalAmount: number,
-  promotedAdRate: number = 0
-): Promise<void> {
-  const sellerTier = await getSellerTier(sellerId);
-  const baseFeePercent = sellerTier.commissionFeePercent;
-  const platformCommission = Math.round(totalAmount * (baseFeePercent + (promotedAdRate || 0)));
-  // Paymob processing fee: 2.75% + 3 EGP (same formula as web app)
-  const paymobFee = Math.round((totalAmount * 0.0275) + 3);
-  const totalFeeAmount = platformCommission + paymobFee;
-  const netAmount = totalAmount - totalFeeAmount;
-
-  // Pro merchants (Tier 3) get instant clearance upon order placement!
-  const isInstantClearance = sellerTier.tier === 3;
-
-  try {
-    const wallet = await getUserWallet(sellerId);
-    const newPending = isInstantClearance
-      ? Number(wallet.pending_balance || 0)
-      : (Number(wallet.pending_balance) || 0) + netAmount;
-    const newAvailable = isInstantClearance
-      ? (Number(wallet.available_balance) || 0) + netAmount
-      : Number(wallet.available_balance || 0);
-
-    // Direct DB mutation removed. Escrow hold is handled exclusively by the secure backend webhook.
-  } catch (err) {
-    console.warn('[WalletService] Error holding escrow, updating in-memory:', err);
-  }
-
-  const w = await getUserWallet(sellerId);
-  if (isInstantClearance) {
-    w.available_balance = (Number(w.available_balance) || 0) + netAmount;
-  } else {
-    w.pending_balance = (Number(w.pending_balance) || 0) + netAmount;
-  }
-
-  inMemoryTransactions.unshift({
-    id: `tx_${Date.now()}`,
-    order_id: orderId,
-    type: isInstantClearance ? 'escrow_release' : 'escrow_hold',
-    amount: netAmount,
-    fee_amount: totalFeeAmount,
-    status: isInstantClearance ? 'completed' : 'pending',
-    description: `Escrow Hold for Order #${orderId.slice(-6)} (Platform ${(baseFeePercent * 100).toFixed(1)}% + Paymob fees)`,
-    created_at: new Date().toISOString(),
-  });
-}
-
-/**
- * Release escrow funds into seller's available balance upon delivery/handover verification
- */
-export async function releaseEscrowToSeller(sellerId: string, orderId: string, netAmount: number): Promise<void> {
-  try {
-    const wallet = await getUserWallet(sellerId);
-    const newPending = Math.max(0, (Number(wallet.pending_balance) || 0) - netAmount);
-    const newAvailable = (Number(wallet.available_balance) || 0) + netAmount;
-
-    // Direct DB mutation removed. Escrow release is handled exclusively by the secure backend.
-  } catch (err) {
-    console.warn('[WalletService] Error releasing escrow, updating in-memory:', err);
-  }
-
-  const w = await getUserWallet(sellerId);
-  w.pending_balance = Math.max(0, (Number(w.pending_balance) || 0) - netAmount);
-  w.available_balance = (Number(w.available_balance) || 0) + netAmount;
-  inMemoryTransactions.unshift({
-    id: `tx_${Date.now()}`,
-    order_id: orderId,
-    type: 'escrow_release',
-    amount: netAmount,
-    fee_amount: 0,
-    status: 'completed',
-    description: `Escrow Released for Order #${orderId.slice(-6)}`,
-    created_at: new Date().toISOString(),
-  });
-}
-
-/**
- * Manual (non-Paymob) top-ups do not exist: /api/wallet/action rejects
- * `topup_manual` with 403. The only real deposit path is the Paymob session
- * created by /api/wallet/topup/create and verified in app/payment.tsx against
- * wallet_topups.status = 'paid'. This used to ignore the 403 and write a
- * "completed" deposit into memory.
- */
-export async function topUpUserWallet(): Promise<never> {
-  throw new Error('Manual top-ups are not available. Use a bank card.');
-}
-
 /**
  * Fetch all wallet transactions for a user
  */
@@ -372,7 +243,7 @@ export async function getWalletTransactions(userId: string): Promise<WalletTrans
   // to anyone with no history -- a transaction that never happened.
   const wallet = await getUserWallet(userId);
   const { data, error } = await supabase
-    .from('wallet_transactions' as any)
+    .from('wallet_transactions')
     .select('*')
     .eq('wallet_id', wallet.id)
     .order('created_at', { ascending: false });
@@ -385,7 +256,7 @@ export async function getWalletTransactions(userId: string): Promise<WalletTrans
  */
 export async function getPayoutMethods(userId: string): Promise<PayoutMethod[]> {
   const { data, error } = await supabase
-    .from('payout_methods' as any)
+    .from('payout_methods')
     .select('*')
     .eq('user_id', userId)
     .order('is_default', { ascending: false });
@@ -401,7 +272,7 @@ export async function addPayoutMethod(
   methodData: Omit<PayoutMethod, 'id' | 'created_at'>
 ): Promise<PayoutMethod> {
   const { data, error } = await supabase
-    .from('payout_methods' as any)
+    .from('payout_methods')
     .insert({ ...methodData, user_id: userId } as any)
     .select()
     .single();
@@ -519,26 +390,3 @@ export async function deductWalletSpendableFunds(
   };
 }
 
-/**
- * Update Payout Schedule (Daily, Weekly, Monthly) and Express Payout settings
- */
-export async function updatePayoutSchedule(
-  userId: string,
-  schedule: 'daily' | 'weekly' | 'monthly',
-  expressEnabled: boolean = true
-): Promise<{ success: boolean; message: string }> {
-  const { error } = await supabase
-    .from('user_wallets' as any)
-    .update({
-      payout_schedule: schedule,
-      express_payout_enabled: expressEnabled,
-      updated_at: new Date().toISOString(),
-    } as any)
-    .eq('user_id', userId);
-  if (error) throw error;
-
-  return {
-    success: true,
-    message: `Payout schedule updated to ${schedule.toUpperCase()}`,
-  };
-}

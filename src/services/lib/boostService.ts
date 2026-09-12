@@ -63,9 +63,6 @@ export const BOOST_PACKAGES: Record<'urgent' | 'featured' | 'turbo', BoostPackag
   },
 };
 
-// In-memory fallback
-let inMemoryPromotions: Record<string, { tier: string; until: string }> = {};
-
 /**
  * Apply a boost package to a product
  */
@@ -119,8 +116,8 @@ export async function boostProduct(
  * Check if a product has an active boost
  */
 export function getProductBoostInfo(product: any): { isPromoted: boolean; pkg?: BoostPackage; expiresAt?: string } {
-  const until = product?.promoted_until || inMemoryPromotions[product?.id]?.until;
-  const tier = (product?.promotion_tier || inMemoryPromotions[product?.id]?.tier) as 'urgent' | 'featured' | 'turbo';
+  const until = product?.promoted_until;
+  const tier = product?.promotion_tier as 'urgent' | 'featured' | 'turbo';
 
   if (until && new Date(until) > new Date() && tier && BOOST_PACKAGES[tier]) {
     return {

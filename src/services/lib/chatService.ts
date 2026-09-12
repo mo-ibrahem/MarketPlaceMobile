@@ -164,7 +164,7 @@ export const getOrCreateChatRoom = async (otherUserId: string, productId: string
  * new message.
  */
 export const hideChatRoomForUser = async (roomId: string): Promise<void> => {
-  const { error } = await supabase.rpc('hide_chat_room_for_user' as any, { p_room_id: roomId });
+  const { error } = await supabase.rpc('hide_chat_room_for_user', { p_room_id: roomId });
   if (error) throw error;
 };
 

@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { holdEscrowForSeller, releaseEscrowToSeller } from './walletService';
 
 export interface MarketplaceOrder {
   id: string;
@@ -54,7 +53,23 @@ export interface MarketplaceOrder {
 }
 
 // In-memory fallback orders
-let inMemoryOrders: Record<string, MarketplaceOrder> = {};
+// A shared helper for the /api/orders actions: the response is the truth.
+// Every mutation below used to fire the request, ignore the reply, mutate a
+// module-level cache and report success -- so a seller saw "Shipped" and a
+// buyer saw "Dispute opened" whether or not the server agreed.
+async function postOrderAction(body: Record<string, unknown>): Promise<any> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Not authenticated');
+  const res = await fetch('https://egbay.shop/api/orders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(body),
+  });
+  let json: any = null;
+  try { json = await res.json(); } catch { throw new Error('Could not reach the order service. Nothing was changed.'); }
+  if (!res.ok || !json?.success) throw new Error(json?.error || 'The order service refused the request.');
+  return json;
+}
 
 // ──────────────────────────────────────────────────────────────
 // CREATE ORDER
@@ -90,56 +105,11 @@ export async function createMarketplaceOrder(orderData: {
     created_at: new Date().toISOString(),
   };
 
-  // Direct client-side DB insert removed for security. Relying strictly on API route.
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch('https://egbay.shop/api/orders', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
-      },
-      body: JSON.stringify({
-        action: 'create',
-        orderData: newOrder,
-      }),
-    });
-    const json = await res.json();
-    if (json?.success && json?.order) {
-      // Map the backend's generated handover_pin to meetup_pin for the UI
-      json.order.meetup_pin = json.order.handover_pin;
-      inMemoryOrders[json.order.id] = json.order;
-      return json.order as MarketplaceOrder;
-    } else {
-      throw new Error(json?.error || 'Failed to create order on server');
-    }
-  } catch (apiErr) {
-    console.warn('[OrderService] /api/orders create API warning:', apiErr);
-    throw apiErr;
-  }
-}
-
-/**
- * Called after Paymob webhook confirms payment OR after 100% wallet checkout.
- * Transitions the order to escrow_secured and credits the seller's pending balance.
- */
-export async function confirmOrderPayment(orderId: string): Promise<void> {
-  const order = await getOrderById(orderId);
-  if (!order) throw new Error('Order not found: ' + orderId);
-
-  // Payment confirmation is strictly handled by backend webhooks (/api/wallet/credit)
-  // We simply wait for the webhook to update the DB, no client-side mutations.
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      // Just poll backend once to force a refresh if possible, or rely on UI reload
-      await fetch(`https://egbay.shop/api/orders?id=${orderId}`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-    }
-  } catch (e) {
-    console.warn('Silent refresh error:', e);
-  }
+  const json = await postOrderAction({ action: 'create', orderData: newOrder });
+  if (!json.order) throw new Error('Failed to create order on server');
+  // Map the backend's generated handover_pin to meetup_pin for the UI
+  json.order.meetup_pin = json.order.handover_pin;
+  return json.order as MarketplaceOrder;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -164,7 +134,7 @@ export async function confirmOrderPayment(orderId: string): Promise<void> {
  */
 const ORDER_COLUMNS =
   'id, buyer_id, seller_id, product_id, amount, status, handover_method, ' +
-  'shipping_address, tracking_number, notes, product_snapshot, payment_id, ' +
+  'shipping_address, tracking_number, notes, product_snapshot, ' +
   'paymob_transaction_id, shipped_at, delivered_at, created_at, updated_at';
 
 /**
@@ -183,7 +153,7 @@ async function hydrateOrderParties(
   const ids = [...new Set(userIds.filter(Boolean))];
   if (ids.length === 0) return {};
   const { data } = await supabase
-    .from('public_profiles' as any)
+    .from('public_profiles')
     .select('id, full_name, avatar_url')
     .in('id', ids);
   const out: Record<string, { full_name?: string; avatar_url?: string }> = {};
@@ -199,7 +169,7 @@ async function hydrateOrderParties(
 export async function getUserOrders(userId: string): Promise<MarketplaceOrder[]> {
   try {
     const { data, error } = await supabase
-      .from('orders' as any)
+      .from('orders')
       .select(`${ORDER_COLUMNS}, products(*)`)
       .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
       .order('created_at', { ascending: false });
@@ -241,26 +211,19 @@ export async function getUserOrders(userId: string): Promise<MarketplaceOrder[]>
       });
     }
   } catch (err) {
-    console.warn('[OrderService] getUserOrders fallback:', err);
+    console.warn('[OrderService] getUserOrders failed:', err);
+    throw err;
   }
-
-  // Return in-memory orders for this user
-  return Object.values(inMemoryOrders).filter(
-    o => o.buyer_id === userId || o.seller_id === userId
-  );
+  return [];
 }
 
 /**
  * Fetch Order details by ID
  */
 export async function getOrderById(orderId: string): Promise<MarketplaceOrder | null> {
-  if (inMemoryOrders[orderId]) {
-    return inMemoryOrders[orderId];
-  }
-
   try {
     const { data, error } = await supabase
-      .from('orders' as any)
+      .from('orders')
       .select(`${ORDER_COLUMNS}, products(*)`)
       .eq('id', orderId)
       .maybeSingle();
@@ -291,17 +254,17 @@ export async function getOrderById(orderId: string): Promise<MarketplaceOrder | 
           ? `https://bosta.co/tracking-shipment/?trackNumber=${data.tracking_number}`
           : undefined,
 
-        product: data.products,
+        product: (data as any).products,
         seller: parties[data.seller_id],
         buyer: parties[data.buyer_id],
         created_at: data.created_at,
       };
     }
   } catch (err) {
-    console.warn('[OrderService] Supabase getOrderById fallback:', err);
+    console.warn('[OrderService] getOrderById failed:', err);
+    throw err;
   }
-
-  return inMemoryOrders[orderId] || null;
+  return null;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -315,33 +278,12 @@ export async function updateOrderTracking(
   orderId: string,
   params: { tracking_number: string; courier_name?: string }
 ): Promise<void> {
-  const trackingUrl = `https://bosta.co/tracking-shipment/?trackNumber=${params.tracking_number}`;
-
-  if (inMemoryOrders[orderId]) {
-    inMemoryOrders[orderId].tracking_number = params.tracking_number;
-    inMemoryOrders[orderId].courier_name = params.courier_name || 'Bosta';
-    inMemoryOrders[orderId].tracking_url = trackingUrl;
-    inMemoryOrders[orderId].status = 'shipped';
-  }
-
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    await fetch('https://egbay.shop/api/orders', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
-      },
-      body: JSON.stringify({
-        action: 'update_tracking',
-        orderId,
-        tracking_number: params.tracking_number,
-        courier_name: params.courier_name || 'Bosta'
-      }),
-    });
-  } catch (err) {
-    console.warn('[OrderService] updateOrderTracking API fallback error:', err);
-  }
+  await postOrderAction({
+    action: 'update_tracking',
+    orderId,
+    tracking_number: params.tracking_number,
+    courier_name: params.courier_name || 'Bosta',
+  });
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -352,38 +294,12 @@ export async function updateOrderTracking(
  * Buyer approves receipt within 24h inspection window — releases escrow to seller
  */
 export async function approveOrderDelivery(orderId: string): Promise<{ success: boolean; message: string }> {
-  const order = await getOrderById(orderId);
-  if (!order) throw new Error('Order not found');
-
-  if (inMemoryOrders[orderId]) {
-    inMemoryOrders[orderId].status = 'completed';
-  }
-
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch('https://egbay.shop/api/orders', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
-      },
-      body: JSON.stringify({
-        action: 'release_escrow',
-        orderId
-      }),
-    });
-    const result = await res.json();
-    if (!result.success) throw new Error(result.error || 'Failed to release escrow');
-  } catch (err) {
-    console.warn('[OrderService] release_escrow API error:', err);
-    throw err;
-  }
-
-  // Reload order state if possible or rely on UI refresh
-
+  await postOrderAction({ action: 'release_escrow', orderId });
+  // The net amount is decided server-side (tier commission + Paymob fee);
+  // quoting "amount * 0.96" here was a guess presented as a fact.
   return {
     success: true,
-    message: `تم تأكيد الاستلام بنجاح. تم تحرير EGP ${(order.amount * 0.96).toLocaleString()} لحساب البائع.`,
+    message: 'تم تأكيد الاستلام. تم تحرير مبلغ الضمان لحساب البائع.',
   };
 }
 
@@ -395,38 +311,10 @@ export async function fileOrderDispute(
   reason: string,
   evidence?: string
 ): Promise<{ success: boolean; message: string }> {
-  const order = await getOrderById(orderId);
-  if (!order) throw new Error('Order not found');
-
-  if (inMemoryOrders[orderId]) {
-    inMemoryOrders[orderId].status = 'disputed';
-    inMemoryOrders[orderId].dispute_reason = reason;
-  }
-
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    await fetch('https://egbay.shop/api/orders', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
-      },
-      body: JSON.stringify({
-        action: 'dispute',
-        orderId,
-        reason,
-        notes: reason,
-        evidence
-      }),
-    });
-  } catch (err) {
-    console.warn('[OrderService] dispute API error:', err);
-  }
-
+  await postOrderAction({ action: 'dispute', orderId, reason, notes: reason, evidence });
   return {
     success: true,
-    message:
-      'تم فتح النزاع بنجاح. أموالك محفوظة في الضمان. سيراجع فريقنا الأدلة خلال ٤٨ ساعة.',
+    message: 'تم فتح النزاع. أموالك محفوظة في الضمان حتى يراجع فريقنا الحالة.',
   };
 }
 
@@ -443,40 +331,13 @@ export async function verifyMeetupPIN(
 ): Promise<{ success: boolean; message: string }> {
   const order = await getOrderById(orderId);
   if (!order) throw new Error('Order not found');
-
   if (order.status === 'completed' || order.status === 'delivered') {
     return { success: true, message: 'Order is already delivered and settled' };
   }
-
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch('https://egbay.shop/api/orders', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
-      },
-      body: JSON.stringify({
-        action: 'release_escrow',
-        orderId,
-        pin: enteredPin
-      }),
-    });
-    const result = await res.json();
-    if (!result.success) {
-       throw new Error(result.error || 'Invalid verification PIN.');
-    }
-  } catch (err) {
-    console.warn('[OrderService] release API error:', err);
-    throw err;
-  }
-
-  order.status = 'delivered';
-  inMemoryOrders[orderId] = order;
-
+  await postOrderAction({ action: 'release_escrow', orderId, pin: enteredPin });
   return {
     success: true,
-    message: `تم التحقق! تم تحرير EGP ${(order.amount * 0.96).toLocaleString()} إلى محفظة البائع`,
+    message: 'تم التحقق. تم تحرير مبلغ الضمان إلى محفظة البائع.',
   };
 }
 

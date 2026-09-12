@@ -37,7 +37,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../src/i18n/LanguageContext';
-import { createMarketplaceOrder, confirmOrderPayment } from '../src/services/lib/orderService';
+import { createMarketplaceOrder } from '../src/services/lib/orderService';
 import { startPaymobCheckoutSession } from '../src/services/lib/paymobService';
 import { productService, type Product } from '../src/services/lib/products';
 import { deductWalletSpendableFunds, getUserWallet, type UserWallet } from '../src/services/lib/walletService';
@@ -86,7 +86,7 @@ export default function CheckoutScreen() {
         const data = await productService.getProductById(productId);
         setProduct(data);
         if (user) {
-          const w = await getUserWallet(user.id);
+          const w = await getUserWallet(user.id).catch(() => null);
           setWallet(w);
         }
       } catch (err) {
@@ -102,7 +102,10 @@ export default function CheckoutScreen() {
   const itemPrice = Number(product?.price || 0);
   const totalPrice = itemPrice + deliveryFee;
   const walletBalance = Number(wallet?.available_balance || 0);
-  const walletDeduction = useWalletBalance ? Math.min(walletBalance, totalPrice) : 0;
+  // Wallet pays all or nothing: /api/paymob/session charges the full
+  // orders.amount, so a partial "split" would have shown a reduced card total
+  // while Paymob billed the whole price.
+  const walletDeduction = useWalletBalance && walletBalance >= totalPrice ? totalPrice : 0;
   const remainingDue = Math.max(0, totalPrice - walletDeduction);
 
   const handleProceedToPayment = async () => {
@@ -168,7 +171,6 @@ export default function CheckoutScreen() {
            throw new Error(walletResult.error || 'Wallet checkout failed');
         }
 
-        await confirmOrderPayment(order.id); // Triggers frontend UI refresh
         Toast.show({
           type: 'success',
           text1: 'Paid with Wallet Balance! 🛍️🎉',
