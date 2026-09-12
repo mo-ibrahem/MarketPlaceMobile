@@ -3,15 +3,12 @@ import {
   ArrowLeft,
   Banknote,
   Building,
-  Calendar,
   CheckCircle2,
   ChevronRight,
-  Clock,
   Plus,
   ShieldCheck,
   Smartphone,
   Trash2,
-  Zap,
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -32,7 +29,6 @@ import {
   addPayoutMethod,
   getPayoutMethods,
   getUserWallet,
-  updatePayoutSchedule,
   type PayoutMethod,
 } from '../src/services/lib/walletService';
 
@@ -47,8 +43,6 @@ export default function PayoutSettingsScreen() {
   const [saving, setSaving] = useState(false);
 
   // eBay Payout Schedule & Settings
-  const [payoutSchedule, setPayoutSchedule] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  const [expressPayoutEnabled, setExpressPayoutEnabled] = useState(true);
 
   // Form State
   const [type, setType] = useState<PayoutMethod['type']>('instapay_ipa');
@@ -63,12 +57,7 @@ export default function PayoutSettingsScreen() {
         getUserWallet(user.id),
       ]);
       setMethods(methodsData);
-      if ((walletData as any)?.payout_schedule) {
-        setPayoutSchedule((walletData as any).payout_schedule);
-      }
-      if ((walletData as any)?.express_payout_enabled !== undefined) {
-        setExpressPayoutEnabled((walletData as any).express_payout_enabled);
-      }
+      void walletData;
     } catch (err) {
       console.error('Error loading payout settings:', err);
     } finally {
@@ -79,32 +68,6 @@ export default function PayoutSettingsScreen() {
   useEffect(() => {
     loadData();
   }, [user]);
-
-  const handleSelectSchedule = async (newSchedule: 'daily' | 'weekly' | 'monthly') => {
-    if (!user) return;
-    setPayoutSchedule(newSchedule);
-    try {
-      await updatePayoutSchedule(user.id, newSchedule, expressPayoutEnabled);
-      Toast.show({ type: 'success', text1: `Schedule updated to ${newSchedule.toUpperCase()}! 📅` });
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleToggleExpress = async () => {
-    if (!user) return;
-    const newVal = !expressPayoutEnabled;
-    setExpressPayoutEnabled(newVal);
-    try {
-      await updatePayoutSchedule(user.id, payoutSchedule, newVal);
-      Toast.show({
-        type: 'success',
-        text1: newVal ? '⚡ Instant Express Payouts Enabled' : 'Standard Payouts Enabled',
-      });
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const handleAddMethod = async () => {
     if (!user) return;
@@ -125,10 +88,10 @@ export default function PayoutSettingsScreen() {
         account_identifier: identifier.trim(),
         account_holder_name: holderName.trim(),
         is_default: methods.length === 0,
-        is_verified: true,
+        is_verified: false,
       });
 
-      Toast.show({ type: 'success', text1: 'Payout Account Added! 🎉' });
+      Toast.show({ type: 'success', text1: 'Payout account added' });
       setModalVisible(false);
       setIdentifier('');
       await loadData();
@@ -155,7 +118,7 @@ export default function PayoutSettingsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <ArrowLeft color="#0F172A" size={22} />
         </TouchableOpacity>
-        <Text style={styles.topTitle}>Payout Settings & Schedule</Text>
+        <Text style={styles.topTitle}>Payout accounts</Text>
         <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addIconBtn}>
           <Plus color="#2563EB" size={20} />
         </TouchableOpacity>
@@ -170,89 +133,17 @@ export default function PayoutSettingsScreen() {
           <View style={styles.infoBanner}>
             <ShieldCheck color="#2563EB" size={22} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.infoBannerTitle}>Instant Egyptian Payout Channels 🇪🇬</Text>
+              <Text style={styles.infoBannerTitle}>Where your earnings go</Text>
               <Text style={styles.infoBannerSub}>
-                When escrow funds are released, you can transfer your earnings instantly to your InstaPay address or Mobile Wallet with zero delay.
+                Once escrow is released you can request a withdrawal to any account below. Requests are reviewed by our team before the transfer is made.
               </Text>
             </View>
           </View>
 
-          {/* ════════ EBAY AUTOMATED PAYOUT SCHEDULE ════════ */}
-          <Text style={styles.sectionHeading}>Automated Payout Schedule</Text>
-          <View style={styles.scheduleCard}>
-            <TouchableOpacity
-              style={[styles.scheduleOption, payoutSchedule === 'daily' && styles.scheduleOptionActive]}
-              onPress={() => handleSelectSchedule('daily')}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.scheduleIconBox, payoutSchedule === 'daily' && styles.scheduleIconBoxActive]}>
-                <Clock color={payoutSchedule === 'daily' ? '#2563EB' : '#64748B'} size={18} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.scheduleTitleRow}>
-                  <Text style={styles.scheduleTitle}>Daily Payouts</Text>
-                  <View style={styles.recommendedBadge}>
-                    <Text style={styles.recommendedBadgeText}>FASTEST</Text>
-                  </View>
-                </View>
-                <Text style={styles.scheduleSub}>Every morning at 8:00 AM for cleared balance</Text>
-              </View>
-              <CheckCircle2 color={payoutSchedule === 'daily' ? '#2563EB' : '#CBD5E1'} size={20} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.scheduleOption, payoutSchedule === 'weekly' && styles.scheduleOptionActive]}
-              onPress={() => handleSelectSchedule('weekly')}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.scheduleIconBox, payoutSchedule === 'weekly' && styles.scheduleIconBoxActive]}>
-                <Calendar color={payoutSchedule === 'weekly' ? '#2563EB' : '#64748B'} size={18} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.scheduleTitle}>Weekly Payouts</Text>
-                <Text style={styles.scheduleSub}>Every Tuesday in a single batch</Text>
-              </View>
-              <CheckCircle2 color={payoutSchedule === 'weekly' ? '#2563EB' : '#CBD5E1'} size={20} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.scheduleOption, payoutSchedule === 'monthly' && styles.scheduleOptionActive]}
-              onPress={() => handleSelectSchedule('monthly')}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.scheduleIconBox, payoutSchedule === 'monthly' && styles.scheduleIconBoxActive]}>
-                <Calendar color={payoutSchedule === 'monthly' ? '#2563EB' : '#64748B'} size={18} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.scheduleTitle}>Monthly Payouts</Text>
-                <Text style={styles.scheduleSub}>1st Tuesday of every month</Text>
-              </View>
-              <CheckCircle2 color={payoutSchedule === 'monthly' ? '#2563EB' : '#CBD5E1'} size={20} />
-            </TouchableOpacity>
-          </View>
-
-          {/* ════════ EXPRESS PAYOUT TOGGLE ════════ */}
-          <View style={styles.expressCard}>
-            <View style={styles.expressLeft}>
-              <View style={styles.expressIconBox}>
-                <Zap color="#D97706" size={20} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.expressTitle}>⚡ 24/7 Express Payouts</Text>
-                <Text style={styles.expressSub}>
-                  Instant on-demand transfers to InstaPay IPA within 30 seconds
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={[styles.togglePill, expressPayoutEnabled && styles.togglePillActive]}
-              onPress={handleToggleExpress}
-              activeOpacity={0.8}
-            hitSlop={{ top: 10, bottom: 10, left: 0, right: 0 }}
-          >
-              <View style={[styles.toggleCircle, expressPayoutEnabled && styles.toggleCircleActive]} />
-            </TouchableOpacity>
-          </View>
+          {/* The schedule picker and "express payouts within 30 seconds"
+              toggle were removed: no code reads payout_schedule or
+              express_payout_enabled and nothing fulfils payouts automatically,
+              so every option here was a promise the platform does not keep. */}
 
           {/* Accounts List */}
           <Text style={styles.sectionHeading}>Configured Accounts</Text>

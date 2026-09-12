@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getBlockedUserIds } from './moderationService';
 import { displayName } from './displayName';
 
 export interface ChatMessage {
@@ -45,7 +46,7 @@ export const getChatRooms = async (): Promise<ChatRoomInfo[]> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data: rooms, error: roomsError } = await supabase
+  let { data: rooms, error: roomsError } = await supabase
     .from('chat_rooms')
     .select('id, participant_ids, product_id')
     // delete-for-me: rooms this user hid stay out of their inbox without
@@ -58,6 +59,12 @@ export const getChatRooms = async (): Promise<ChatRoomInfo[]> => {
     throw roomsError;
   }
   if (!rooms || rooms.length === 0) return [];
+
+  // Guideline 1.2: conversations with people this user blocked stay out of
+  // the inbox. The rows remain, so unblocking brings them back.
+  const blocked = await getBlockedUserIds().catch(() => new Set<string>());
+  rooms = rooms.filter(r => !r.participant_ids.some((p: string) => p !== user.id && blocked.has(p)));
+  if (rooms.length === 0) return [];
 
   const otherUserIds = rooms
     .map(room => room.participant_ids.find((p_id: string) => p_id !== user.id))

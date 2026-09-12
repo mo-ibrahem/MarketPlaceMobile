@@ -92,9 +92,9 @@ export default function PrivacyPolicyScreen() {
 • حق الوصول والتعديل: يمكنك تعديل بياناتك الشخصية وإعلاناتك في أي وقت عبر صفحة الملف الشخصي.
 • حق نقل البيانات: يمكنك طلب نسخة كاملة من سجل معاملاتك وبياناتك المسجلة.
 • حق الحذف النهائي للحساب والبيانات:
-  ١. عبر التطبيق: الملف الشخصي ← الإعدادات ← "حذف الحساب نهائياً".
-  ٢. عبر البريد الإلكتروني: مراسلتنا على info@egbay.shop من البريد المسجل.
-  يتم مسح جميع بياناتك الشخصية ووثائقك وصورك نهائياً خلال ٧٢ ساعة من تاريخ الطلب.`,
+  ١. عبر التطبيق: الملف الشخصي ← الإعدادات ← "حذف الحساب نهائياً". يتم حذف ملفك الشخصي وإعلاناتك وبياناتك المحفوظة فوراً.
+  ٢. عبر البريد الإلكتروني: مراسلتنا على info@egbay.shop من البريد المسجل، ويتم التنفيذ خلال ٧٢ ساعة.
+  تُحتفظ سجلات الطلبات المكتملة كما يقتضي قانون التجارة المصري، لكنها تُفصل نهائياً عن أي بيانات تعريفية.`,
     },
     {
       id: 'security',
@@ -167,9 +167,9 @@ Data is shared strictly with authorized partners necessary for platform operatio
 • Right to Access & Rectify: Edit your profile details at any time in Profile Settings.
 • Right to Data Portability: Request an export of your order history.
 • Right to Permanent Erasure (Account Deletion):
-  1. In-App: Profile → Settings → "Delete Account & Purge Data".
-  2. By Email: Send a deletion request to info@egbay.shop.
-  All personal identifiers are permanently purged within 72 hours.`,
+  1. In-App: Profile → Settings → "Delete Account". Your profile, listings and saved data are removed immediately.
+  2. By Email: Send a deletion request to info@egbay.shop from your registered address; we act within 72 hours.
+  Completed order records are retained as required by Egyptian commercial law but are permanently unlinked from any personal identifiers.`,
     },
     {
       id: 'security',

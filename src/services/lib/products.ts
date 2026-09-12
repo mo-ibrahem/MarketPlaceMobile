@@ -1,4 +1,5 @@
 import { supabase } from "./supabase"
+import { getBlockedUserIds } from "./moderationService"
 
 export interface Product {
   id: string
@@ -44,9 +45,6 @@ export const productService = {
     condition: string
     location?: string
     images: string[]
-    is_promoted?: boolean
-    promoted_ad_rate?: number
-    is_promoted_on_sale?: boolean
   }) => {
     const {
       data: { user },
@@ -139,11 +137,16 @@ export const productService = {
         }
       }
 
-      const productsWithSellers = products.map((product) => ({
-        ...product,
-        seller: sellerProfiles[product.seller_id] || { full_name: "Unknown Seller" },
-        isWishlisted: wishlistedProductIds.includes(product.id),
-      }))
+      // Guideline 1.2: blocking a seller hides their listings from this viewer.
+      const blocked = await getBlockedUserIds().catch(() => new Set<string>())
+
+      const productsWithSellers = products
+        .filter((product) => !blocked.has(product.seller_id))
+        .map((product) => ({
+          ...product,
+          seller: sellerProfiles[product.seller_id] || { full_name: "Unknown Seller" },
+          isWishlisted: wishlistedProductIds.includes(product.id),
+        }))
 
       return productsWithSellers as Product[]
     }

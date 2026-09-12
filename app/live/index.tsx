@@ -16,6 +16,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { displayName } from '../../src/services/lib/displayName';
+import { DIGITAL_PURCHASES_ENABLED } from '../../src/services/lib/platformCommerce';
 import {
   getActiveLiveSessions,
   isGenuinelyLive,
@@ -219,7 +220,11 @@ export default function LiveDiscoveryScreen() {
               {/* Seller pitch, once, at the end -- not a pricing wall halfway
                   down a viewer's feed. Pricing lives on the booking screen,
                   which is where someone who has decided to stream goes. */}
-              {!!user && (
+              {/* Broadcast passes are paid digital access (3.1.1) to a
+                  one-to-many real-time service (3.1.3(d)); both require
+                  in-app purchase. The seller pitch is hidden on iOS until
+                  passes go through StoreKit. */}
+              {!!user && DIGITAL_PURCHASES_ENABLED && (
                 <TouchableOpacity
                   style={s.sellCard}
                   activeOpacity={0.9}

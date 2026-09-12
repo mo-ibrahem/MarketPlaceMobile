@@ -33,6 +33,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
+import { DIGITAL_PURCHASES_ENABLED } from '../../src/services/lib/platformCommerce';
 import {
   BOOST_PACKAGES,
   boostProduct,
@@ -109,6 +110,23 @@ export default function BoostProductScreen() {
       setBoosting(false);
     }
   };
+
+  // App Store Review Guideline 3.1.1 / 3.1.3: paid digital features must use
+  // in-app purchase. This screen sells one without StoreKit, so on iOS it
+  // must not be reachable at all, deep links included. Say so plainly.
+  if (!DIGITAL_PURCHASES_ENABLED) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', padding: 28 }}>
+        <Text style={{ fontSize: 20, fontWeight: '800', color: '#0F172A', letterSpacing: -0.4, textAlign: 'center' }}>Not available on iOS yet</Text>
+        <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 20, marginTop: 8 }}>
+          Listing boosts are not offered in the iOS app at the moment.
+        </Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 22, height: 46, paddingHorizontal: 22, borderRadius: 999, backgroundColor: '#0F172A', justifyContent: 'center' }}>
+          <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>Go back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (

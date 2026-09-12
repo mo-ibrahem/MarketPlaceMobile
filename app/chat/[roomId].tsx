@@ -20,6 +20,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
+import { blockUser, isBackendMissing, reportContent, SAFETY_EMAIL } from '../../src/services/lib/moderationService';
 import {
   getChatRoomDetails,
   getMessages,
@@ -49,7 +50,8 @@ export default function ChatRoomScreen() {
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
   const { user } = useAuth();
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [roomInfo, setRoomInfo] = useState<ChatRoomDetails | null>(null);
@@ -127,6 +129,25 @@ export default function ChatRoomScreen() {
   }
 
   const otherName = roomInfo?.other_user_name || 'Trader';
+
+  const submitReport = async (type: 'user' | 'message', targetId: string, reason: string) => {
+    try {
+      await reportContent(type, targetId, reason);
+    } catch (err: any) {
+      Alert.alert(
+        isRTL ? 'لم يتم إرسال البلاغ' : 'Report not sent',
+        isBackendMissing(err)
+          ? `Reporting is temporarily unavailable. Email ${SAFETY_EMAIL} and we will act within 24 hours.`
+          : (err?.message || 'Please try again.'),
+      );
+      return;
+    }
+    Toast.show({
+      type: 'success',
+      text1: isRTL ? 'تم إرسال البلاغ' : 'Report sent',
+      text2: isRTL ? 'سيراجعه فريق الأمان خلال ٢٤ ساعة' : 'Our safety team reviews reports within 24 hours.',
+    });
+  };
   const otherInitial = otherName.charAt(0).toUpperCase();
 
   return (
@@ -175,33 +196,53 @@ export default function ChatRoomScreen() {
               <ShieldCheck size={18} color="#10B981" />
             </View>
 
-            {/* Apple UGC: Block / Report User */}
+            {/* Guideline 1.2: report writes a content_reports row, block writes
+                blocked_users; neither claims success until the RPC resolved. */}
             <TouchableOpacity
               style={styles.moreOptionsBtn}
               hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
               onPress={() => {
+                if (!roomInfo?.other_user_id) return;
+                const otherId = roomInfo.other_user_id;
                 Alert.alert(
-                  `User Safety • أمان المستخدم (${otherName})`,
-                  'Manage interactions and reports for this user',
+                  `${otherName}`,
+                  isRTL ? 'الإبلاغ أو حظر هذا المستخدم' : 'Report or block this user',
                   [
-                    { text: 'Cancel', style: 'cancel' },
+                    { text: isRTL ? 'إلغاء' : 'Cancel', style: 'cancel' },
                     {
-                      text: '🚩 Report User • إبلاغ عن إساءة',
+                      text: isRTL ? 'إبلاغ عن إساءة' : 'Report user',
                       onPress: () =>
-                        Toast.show({
-                          type: 'success',
-                          text1: 'Report Submitted',
-                          text2: 'Our team will review this user.',
-                        }),
+                        Alert.alert(
+                          isRTL ? 'سبب الإبلاغ' : 'Why are you reporting them?',
+                          undefined,
+                          [
+                            { text: isRTL ? 'إلغاء' : 'Cancel', style: 'cancel' },
+                            ...['Harassment or abuse', 'Scam or fraud', 'Spam', 'Other'].map(reason => ({
+                              text: reason,
+                              onPress: () => submitReport('user', otherId, `${reason} (chat room ${roomId})`),
+                            })),
+                          ],
+                        ),
                     },
                     {
-                      text: '🚫 Block User • حظر المستخدم',
+                      text: isRTL ? 'حظر المستخدم' : 'Block user',
                       style: 'destructive',
-                      onPress: () => {
+                      onPress: async () => {
+                        try {
+                          await blockUser(otherId);
+                        } catch (err: any) {
+                          Alert.alert(
+                            isRTL ? 'تعذر الحظر' : 'Could not block',
+                            isBackendMissing(err)
+                              ? `Blocking is temporarily unavailable. Email ${SAFETY_EMAIL} and we will act within 24 hours.`
+                              : (err?.message || 'Please try again.'),
+                          );
+                          return;
+                        }
                         Toast.show({
                           type: 'success',
-                          text1: 'User Blocked',
-                          text2: 'You will no longer receive messages.',
+                          text1: isRTL ? 'تم حظر المستخدم' : 'User blocked',
+                          text2: isRTL ? 'لن تظهر محادثاتهم أو إعلاناتهم بعد الآن' : 'Their messages and listings are hidden from you.',
                         });
                         router.back();
                       },

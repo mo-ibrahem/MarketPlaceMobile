@@ -36,6 +36,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import { useAuth } from "../../hooks/useAuth";
 import { productService } from "../../src/services/lib/products";
+import { SELLER_TIERS, getSellerTier, type SellerTierConfig } from "../../src/services/lib/walletService";
 import { supabase } from "../../src/services/lib/supabase";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -76,6 +77,12 @@ const STEPS = [
 
 export default function SellScreen() {
   const { user } = useAuth();
+  // Real tier -- this ribbon used to hardcode "Tier 2 Verified" for everyone.
+  const [sellerTier, setSellerTier] = useState<SellerTierConfig>(SELLER_TIERS[1]);
+  useEffect(() => {
+    if (!user) return;
+    getSellerTier(user.id).then(setSellerTier).catch(() => {});
+  }, [user]);
   const router = useRouter();
   const { t } = useTranslation();
 
@@ -91,8 +98,6 @@ export default function SellScreen() {
   const [condition, setCondition] = useState("New");
   const [location,  setLocation]  = useState("");
   const [stock,     setStock]     = useState("1");
-  const [isPromotedOnSale, setIsPromotedOnSale] = useState(false);
-  const [promotedAdRate, setPromotedAdRate] = useState(0.08); // 8% default
   const [loading,   setLoading]   = useState(false);
   const [done,      setDone]      = useState(false);
 
@@ -215,9 +220,6 @@ export default function SellScreen() {
         category,
         condition,
         images: imageUrls,
-        is_promoted: isPromotedOnSale,
-        promoted_ad_rate: isPromotedOnSale ? promotedAdRate : 0,
-        is_promoted_on_sale: isPromotedOnSale,
       });
       setDone(true);
       // Reset the form after the success screen so the next visit starts fresh.
@@ -233,8 +235,6 @@ export default function SellScreen() {
         setCategory('Electronics');
         setCondition('New');
         setLocation('');
-        setIsPromotedOnSale(false);
-        setPromotedAdRate(0.08);
       }, 2400);
     } catch (err: any) {
       Toast.show({ type: "error", text1: t("common.error"), text2: err.message || t("sell.errorMessage") });
@@ -317,9 +317,9 @@ export default function SellScreen() {
       >
         <ShieldCheck size={16} color="#2563EB" />
         <Text style={styles.sellerTierRibbonText}>
-          Tier 2 Verified: <Text style={{ fontWeight: '800', color: '#1E40AF' }}>50 Listings Quota (4% Fee)</Text>
+          {sellerTier.name}: <Text style={{ fontWeight: '800', color: '#1E40AF' }}>{sellerTier.listingLimitCount >= 999999 ? "Unlimited" : sellerTier.listingLimitCount} listings · {(sellerTier.commissionFeePercent * 100).toFixed(1)}% fee</Text>
         </Text>
-        <Text style={styles.sellerTierRibbonCta}>Upgrade →</Text>
+        <Text style={styles.sellerTierRibbonCta}>Payout setup →</Text>
       </TouchableOpacity>
 
       {/* ── Scrollable content ── */}
@@ -531,64 +531,10 @@ export default function SellScreen() {
               ))}
             </View>
 
-            {/* ════════ EBAY SELL FASTER TOGGLE (0 EGP UPFRONT) ════════ */}
-            <View style={styles.sellFasterCard}>
-              <View style={styles.sellFasterTop}>
-                <View style={styles.sellFasterIconBox}>
-                  <Sparkles color="#2563EB" size={20} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.sellFasterTitle}>Promote to Sell 50% Faster ⚡</Text>
-                  <Text style={styles.sellFasterSub}>0 EGP Upfront • Pay only if item sells</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.togglePill, isPromotedOnSale && styles.togglePillActive]}
-                  hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
-                  onPress={() => setIsPromotedOnSale(!isPromotedOnSale)}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.toggleCircle, isPromotedOnSale && styles.toggleCircleActive]} />
-                </TouchableOpacity>
-              </View>
-
-              {isPromotedOnSale && (
-                <View style={styles.adRateSelectorWrap}>
-                  <Text style={styles.adRatePrompt}>Select your Ad Rate (Deducted upon sale):</Text>
-                  <View style={styles.adRatePillsRow}>
-                    {[
-                      { rate: 0.05, label: '5%', desc: 'Standard (2x views)' },
-                      { rate: 0.08, label: '8%', desc: 'Suggested (3x views)' },
-                      { rate: 0.12, label: '12%', desc: 'Turbo (5x views)' },
-                    ].map((item) => (
-                      <TouchableOpacity
-                        key={item.rate}
-                        style={[styles.adRateChip, promotedAdRate === item.rate && styles.adRateChipActive]}
-                        onPress={() => setPromotedAdRate(item.rate)}
-                      >
-                        <Text style={[styles.adRateChipLabel, promotedAdRate === item.rate && styles.adRateChipLabelActive]}>
-                          {item.label}
-                        </Text>
-                        <Text style={[styles.adRateChipDesc, promotedAdRate === item.rate && styles.adRateChipDescActive]}>
-                          {item.desc}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  {parseFloat(price) > 0 && (
-                    <View style={styles.adRateCalcBox}>
-                      <Text style={styles.adRateCalcText}>
-                        If sold for EGP {Math.round(parseFloat(price)).toLocaleString()}, ad fee is{' '}
-                        <Text style={{ fontWeight: '800', color: '#2563EB' }}>
-                          EGP {Math.round(parseFloat(price) * promotedAdRate).toLocaleString()}
-                        </Text>{' '}
-                        (deducted only after delivery).
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
+            {/* The "Promote to sell 50% faster" toggle was removed. It set
+                is_promoted on insert (the only legitimate path is purchase_boost)
+                and quoted an ad fee and view multipliers nothing in the backend
+                reads or charges. Boosts live at /boost/[productId]. */}
 
             {/* Listing summary card */}
             {(title || price) && (

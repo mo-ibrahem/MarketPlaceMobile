@@ -353,138 +353,44 @@ export async function releaseEscrowToSeller(sellerId: string, orderId: string, n
 }
 
 /**
- * Deposit / Top Up funds into user wallet (via Paymob, Vodafone Cash, InstaPay)
+ * Manual (non-Paymob) top-ups do not exist: /api/wallet/action rejects
+ * `topup_manual` with 403. The only real deposit path is the Paymob session
+ * created by /api/wallet/topup/create and verified in app/payment.tsx against
+ * wallet_topups.status = 'paid'. This used to ignore the 403 and write a
+ * "completed" deposit into memory.
  */
-export async function topUpUserWallet(
-  userId: string,
-  amount: number,
-  paymentMethod: string = 'card',
-  referenceId?: string
-): Promise<{ success: boolean; message: string; newBalance: number }> {
-  const wallet = await getUserWallet(userId);
-  const newAvailable = (Number(wallet.available_balance) || 0) + amount;
-
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    await fetch('https://www.egbay.shop/api/wallet/action', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
-      },
-      body: JSON.stringify({
-        action: 'topup_manual',
-        amount,
-        paymentMethod
-      })
-    });
-  } catch (err) {
-    console.warn('[WalletService] Supabase fallback topup:', err);
-  }
-
-  inMemoryWallets[userId] = {
-    ...wallet,
-    available_balance: newAvailable,
-  };
-
-  inMemoryTransactions.unshift({
-    id: `tx_topup_${Date.now()}`,
-    type: 'top_up',
-    amount: amount,
-    fee_amount: 0,
-    status: 'completed',
-    description: `Wallet Deposit via ${paymentMethod === 'vodafone_cash' ? 'Vodafone Cash' : paymentMethod === 'instapay' ? 'InstaPay' : 'Card'}`,
-    created_at: new Date().toISOString(),
-  });
-
-  return {
-    success: true,
-    message: `EGP ${amount.toLocaleString()} added to your wallet!`,
-    newBalance: newAvailable,
-  };
+export async function topUpUserWallet(): Promise<never> {
+  throw new Error('Manual top-ups are not available. Use a bank card.');
 }
 
 /**
  * Fetch all wallet transactions for a user
  */
 export async function getWalletTransactions(userId: string): Promise<WalletTransaction[]> {
-  try {
-    const { data, error } = await supabase
-      .from('wallet_transactions' as any)
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (data && !error && data.length > 0) {
-      return data as unknown as WalletTransaction[];
-    }
-  } catch (err) {
-    console.warn('[WalletService] Supabase fallback for transactions:', err);
-  }
-
-  return inMemoryTransactions.length > 0
-    ? inMemoryTransactions
-    : [
-        {
-          id: 'tx_demo_1',
-          type: 'escrow_release',
-          amount: 2450,
-          fee_amount: 125,
-          status: 'completed',
-          description: 'Payment released: Apple AirPods Pro 2',
-          created_at: new Date(Date.now() - 86400000).toISOString(),
-        },
-        {
-          id: 'tx_demo_2',
-          type: 'payout',
-          amount: 2000,
-          fee_amount: 0,
-          status: 'completed',
-          description: 'Payout to InstaPay (mo@instapay)',
-          created_at: new Date(Date.now() - 172800000).toISOString(),
-        },
-      ];
+  // RLS scopes this to the caller; an empty wallet is an empty list. The old
+  // fallback showed a demo "Payment released: Apple AirPods Pro 2, EGP 2,450"
+  // to anyone with no history -- a transaction that never happened.
+  const wallet = await getUserWallet(userId);
+  const { data, error } = await supabase
+    .from('wallet_transactions' as any)
+    .select('*')
+    .eq('wallet_id', wallet.id)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return ((data as unknown as WalletTransaction[]) ?? []);
 }
 
 /**
  * Fetch user's registered payout methods (InstaPay, Vodafone Cash, Bank)
  */
 export async function getPayoutMethods(userId: string): Promise<PayoutMethod[]> {
-  try {
-    const { data, error } = await supabase
-      .from('payout_methods' as any)
-      .select('*')
-      .eq('user_id', userId)
-      .order('is_default', { ascending: false });
-
-    if (data && !error && data.length > 0) {
-      return data as unknown as PayoutMethod[];
-    }
-  } catch (err) {
-    console.warn('[WalletService] Supabase fallback for payout methods:', err);
-  }
-
-  return inMemoryPayoutMethods[userId] || [
-    {
-      id: 'pm_default_1',
-      user_id: userId,
-      type: 'instapay_ipa',
-      account_identifier: 'seller.egbay@instapay',
-      account_holder_name: 'Verified Seller',
-      is_default: true,
-      is_verified: true,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'pm_default_2',
-      user_id: userId,
-      type: 'vodafone_cash',
-      account_identifier: '01098765432',
-      account_holder_name: 'Vodafone Cash Wallet',
-      is_default: false,
-      is_verified: true,
-      created_at: new Date().toISOString(),
-    },
-  ];
+  const { data, error } = await supabase
+    .from('payout_methods' as any)
+    .select('*')
+    .eq('user_id', userId)
+    .order('is_default', { ascending: false });
+  if (error) throw error;
+  return ((data as unknown as PayoutMethod[]) ?? []);
 }
 
 /**
@@ -494,31 +400,13 @@ export async function addPayoutMethod(
   userId: string,
   methodData: Omit<PayoutMethod, 'id' | 'created_at'>
 ): Promise<PayoutMethod> {
-  const newMethod: PayoutMethod = {
-    ...methodData,
-    id: `pm_${Date.now()}`,
-    created_at: new Date().toISOString(),
-  };
-
-  try {
-    const { data, error } = await supabase
-      .from('payout_methods' as any)
-      .insert(newMethod as any)
-      .select()
-      .maybeSingle();
-
-    if (data && !error) {
-      return data as unknown as PayoutMethod;
-    }
-  } catch (err) {
-    console.warn('[WalletService] Fallback saving payout method to memory:', err);
-  }
-
-  if (!inMemoryPayoutMethods[userId]) {
-    inMemoryPayoutMethods[userId] = [];
-  }
-  inMemoryPayoutMethods[userId].push(newMethod);
-  return newMethod;
+  const { data, error } = await supabase
+    .from('payout_methods' as any)
+    .insert({ ...methodData, user_id: userId } as any)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as unknown as PayoutMethod;
 }
 
 /**
@@ -601,43 +489,33 @@ export async function deductWalletSpendableFunds(
     throw new Error(`Insufficient wallet balance. Available: EGP ${available.toLocaleString()}`);
   }
 
-  const newAvailable = available - amount;
-
+  // The backend runs checkout_with_wallet(p_user_id, p_order_id) and is the
+  // only thing that moves the balance. A failed call is a failed deduction --
+  // this used to swallow the error and report the purchase as applied.
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch('https://egbay.shop/api/wallet/action', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(session && { 'Authorization': `Bearer ${session.access_token}` })
+    },
+    body: JSON.stringify({ action: 'deduct_spendable', amount, orderId, itemTitle })
+  });
+  let data: any = null;
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    await fetch('https://egbay.shop/api/wallet/action', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(session && { 'Authorization': `Bearer ${session.access_token}` })
-      },
-      body: JSON.stringify({
-        action: 'deduct_spendable',
-        amount,
-        orderId,
-        itemTitle
-      })
-    });
-  } catch (err) {
-    console.warn('[WalletService] Fallback updating spendable funds in memory:', err);
+    data = await res.json();
+  } catch {
+    throw new Error('Could not reach the wallet service. Your balance has not been changed.');
+  }
+  if (!res.ok || !data?.success) {
+    throw new Error(data?.error || 'Wallet payment failed. Your balance has not been changed.');
   }
 
-  wallet.available_balance = newAvailable;
-  inMemoryTransactions.unshift({
-    id: `tx_spend_${Date.now()}`,
-    order_id: orderId,
-    type: 'fee_deduction',
-    amount: amount,
-    fee_amount: 0,
-    status: 'completed',
-    description: `Purchase: ${itemTitle || 'Marketplace Item'} (Wallet Checkout)`,
-    created_at: new Date().toISOString(),
-  });
-
+  const remaining = Number(data.remainingBalance ?? available - amount);
   return {
     success: true,
     message: `Applied EGP ${amount.toLocaleString()} from Wallet`,
-    remainingBalance: newAvailable,
+    remainingBalance: remaining,
   };
 }
 
@@ -649,18 +527,15 @@ export async function updatePayoutSchedule(
   schedule: 'daily' | 'weekly' | 'monthly',
   expressEnabled: boolean = true
 ): Promise<{ success: boolean; message: string }> {
-  try {
-    await supabase
-      .from('user_wallets' as any)
-      .update({
-        payout_schedule: schedule,
-        express_payout_enabled: expressEnabled,
-        updated_at: new Date().toISOString(),
-      } as any)
-      .eq('user_id', userId);
-  } catch (err) {
-    console.warn('[WalletService] Fallback saving schedule in memory:', err);
-  }
+  const { error } = await supabase
+    .from('user_wallets' as any)
+    .update({
+      payout_schedule: schedule,
+      express_payout_enabled: expressEnabled,
+      updated_at: new Date().toISOString(),
+    } as any)
+    .eq('user_id', userId);
+  if (error) throw error;
 
   return {
     success: true,

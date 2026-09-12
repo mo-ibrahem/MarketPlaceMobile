@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   ArrowUpRight,
   Award,
-  Banknote,
   Building,
   CheckCircle2,
   ChevronRight,
@@ -48,7 +47,6 @@ import {
   getUserWallet,
   getWalletTransactions,
   requestPayout,
-  topUpUserWallet,
   upgradeSellerTier,
   SELLER_TIERS,
   type PayoutMethod,
@@ -56,6 +54,7 @@ import {
   type UserWallet,
   type WalletTransaction,
 } from '../src/services/lib/walletService';
+import { DIGITAL_PURCHASES_ENABLED } from '../src/services/lib/platformCommerce';
 import { supabase } from '../src/services/lib/supabase';
 export default function WalletScreen() {
   const router = useRouter();
@@ -73,7 +72,6 @@ export default function WalletScreen() {
   // Top Up Modal state
   const [topUpModalVisible, setTopUpModalVisible] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('');
-  const [topUpMethod, setTopUpMethod] = useState<'card' | 'vodafone_cash' | 'instapay'>('card');
   const [toppingUp, setToppingUp] = useState(false);
 
   // Withdrawal Modal state
@@ -159,46 +157,40 @@ export default function WalletScreen() {
       return;
     }
 
-    if (topUpMethod === 'card') {
-      setToppingUp(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch('https://egbay.shop/api/wallet/topup/create', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token || ''}`
-          },
-          body: JSON.stringify({ amount }),
-        });
+    // Card via Paymob is the only deposit path that exists; the Vodafone Cash /
+    // InstaPay options here quoted a placeholder number and promised a credit
+    // "within 1 hour" that nothing fulfils.
+    setToppingUp(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('https://egbay.shop/api/wallet/topup/create', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token || ''}`
+        },
+        body: JSON.stringify({ amount }),
+      });
 
-        const data = await res.json();
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to start payment session');
-        }
-
-        setTopUpModalVisible(false);
-        setTopUpAmount('');
-        router.push({
-          pathname: '/payment',
-          params: {
-            paymentToken: data.paymentToken,
-            orderId: data.topupId, // Pass topup ID to check status
-            topUpAmount: amount.toString(),
-          },
-        } as any);
-      } catch (err: any) {
-        Alert.alert('Deposit Error', err?.message || 'Could not start payment. Try again.');
-      } finally {
-        setToppingUp(false);
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to start payment session');
       }
-    } else {
-      // Vodafone Cash / InstaPay — manual transfer (full integration in Phase 4)
-      Alert.alert(
-        topUpMethod === 'vodafone_cash' ? 'Vodafone Cash Deposit' : 'InstaPay Deposit',
-        `To deposit EGP ${amount.toLocaleString()}, transfer to:\n\nVodafone Cash: 01098765432\nInstaPay IPA: egbay@instapay\n\nSend your receipt to support@egbay.market and we will credit your wallet within 1 hour.`,
-        [{ text: 'Got It', onPress: () => setTopUpModalVisible(false) }],
-      );
+
+      setTopUpModalVisible(false);
+      setTopUpAmount('');
+      router.push({
+        pathname: '/payment',
+        params: {
+          paymentToken: data.paymentToken,
+          orderId: data.topupId, // Pass topup ID to check status
+          topUpAmount: amount.toString(),
+        },
+      } as any);
+    } catch (err: any) {
+      Alert.alert('Deposit Error', err?.message || 'Could not start payment. Try again.');
+    } finally {
+      setToppingUp(false);
     }
   };
 
@@ -331,14 +323,19 @@ export default function WalletScreen() {
 
             {/* Action Buttons */}
             <View style={styles.heroActionsRow}>
-              <TouchableOpacity
-                style={styles.topUpHeroBtn}
-                onPress={() => setTopUpModalVisible(true)}
-                activeOpacity={0.85}
-              >
-                <Plus color="white" size={16} />
-                <Text style={styles.topUpHeroBtnText}>Add Funds</Text>
-              </TouchableOpacity>
+              {/* Wallet balance on mobile only buys boosts and live passes
+                  (digital), so card deposits on iOS would be in-app currency
+                  sold outside IAP (Guideline 3.1.1). Payouts stay. */}
+              {DIGITAL_PURCHASES_ENABLED && (
+                <TouchableOpacity
+                  style={styles.topUpHeroBtn}
+                  onPress={() => setTopUpModalVisible(true)}
+                  activeOpacity={0.85}
+                >
+                  <Plus color="white" size={16} />
+                  <Text style={styles.topUpHeroBtnText}>Add Funds</Text>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={[styles.withdrawHeroBtn, available <= 0 && { opacity: 0.6 }]}
@@ -417,7 +414,7 @@ export default function WalletScreen() {
               <Smartphone color="#2563EB" size={20} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.payoutBannerTitle}>Instant InstaPay & Wallet Payouts</Text>
+              <Text style={styles.payoutBannerTitle}>Payout accounts</Text>
               <Text style={styles.payoutBannerSub}>
                 {payoutMethods.length > 0
                   ? `Default: ${payoutMethods[0].account_identifier} (${payoutMethods[0].type.toUpperCase()})`
@@ -505,7 +502,9 @@ export default function WalletScreen() {
           ) : (
             <View style={styles.txList}>
               {filteredTransactions.map((tx) => {
-                const isPositive = tx.type === 'escrow_release' || tx.type === 'deposit';
+                // Real rows use 'top_up' (see wallet_topups webhook); a deposit was
+                // rendering as "-EGP 30,000" because only 'deposit' was treated as money in.
+                const isPositive = tx.type === 'escrow_release' || tx.type === 'deposit' || tx.type === 'top_up';
                 const isPending = tx.type === 'escrow_hold';
                 return (
                   <View key={tx.id} style={styles.txCard}>
@@ -583,7 +582,7 @@ export default function WalletScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Add Funds to Wallet 💳</Text>
             <Text style={styles.modalSub}>
-              Top up instantly with Egyptian Card, Vodafone Cash, or InstaPay.
+              Deposit with an Egyptian bank card. Funds appear once Paymob confirms the payment.
             </Text>
 
             {/* Amount Input */}
@@ -611,55 +610,13 @@ export default function WalletScreen() {
               ))}
             </View>
 
-            {/* Payment Method Selector */}
-            <Text style={[styles.modalInputLabel, { marginTop: 14, marginBottom: 8 }]}>
-              Select Payment Method
-            </Text>
-
-            <TouchableOpacity
-              style={[
-                styles.pmOptionCard,
-                topUpMethod === 'card' && styles.pmOptionActive,
-              ]}
-              onPress={() => setTopUpMethod('card')}
-            >
-              <CreditCard size={18} color={topUpMethod === 'card' ? '#2563EB' : '#64748B'} />
+            <View style={styles.pmOptionCard}>
+              <CreditCard size={18} color="#2563EB" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.pmOptionName}>Bank Card (Visa / Mastercard / Meeza)</Text>
-                <Text style={styles.pmOptionId}>Instant Online Debit / Credit</Text>
+                <Text style={styles.pmOptionId}>Secure checkout by Paymob</Text>
               </View>
-              {topUpMethod === 'card' && <CheckCircle2 color="#2563EB" size={18} />}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.pmOptionCard,
-                topUpMethod === 'vodafone_cash' && styles.pmOptionActive,
-              ]}
-              onPress={() => setTopUpMethod('vodafone_cash')}
-            >
-              <Smartphone size={18} color={topUpMethod === 'vodafone_cash' ? '#2563EB' : '#64748B'} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.pmOptionName}>Vodafone Cash / Orange / Etisalat</Text>
-                <Text style={styles.pmOptionId}>Mobile Wallet PIN Verification</Text>
-              </View>
-              {topUpMethod === 'vodafone_cash' && <CheckCircle2 color="#2563EB" size={18} />}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.pmOptionCard,
-                topUpMethod === 'instapay' && styles.pmOptionActive,
-              ]}
-              onPress={() => setTopUpMethod('instapay')}
-            >
-              <Banknote size={18} color={topUpMethod === 'instapay' ? '#2563EB' : '#64748B'} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.pmOptionName}>InstaPay Transfer</Text>
-                <Text style={styles.pmOptionId}>Instant 24/7 Bank Transfer</Text>
-              </View>
-              {topUpMethod === 'instapay' && <CheckCircle2 color="#2563EB" size={18} />}
-            </TouchableOpacity>
+            </View>
 
             {/* Modal Buttons */}
             <View style={styles.modalBtnRow}>

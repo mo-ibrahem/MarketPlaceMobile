@@ -46,6 +46,8 @@ import Reanimated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimate
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import { getProductBoostInfo } from '../../src/services/lib/boostService';
+import { DIGITAL_PURCHASES_ENABLED } from '../../src/services/lib/platformCommerce';
+import { isBackendMissing, reportContent, SAFETY_EMAIL } from '../../src/services/lib/moderationService';
 import { getOrCreateChatRoom, sendMessage } from '../../src/services/lib/chatService';
 import { productService, type Product } from '../../src/services/lib/products';
 import { useLanguage } from '../../src/i18n/LanguageContext';
@@ -334,8 +336,11 @@ export default function ProductDetailScreen() {
             );
           })()}
 
-          {/* Owner Boost CTA Card */}
-          {user?.id === product.seller_id && (
+          {/* Owner Boost CTA Card.
+              Hidden on iOS: a boost is a paid digital feature and 3.1.3(g)
+              requires in-app purchase for it. Until boosts go through
+              StoreKit, iOS must not offer -- or point at -- buying one. */}
+          {DIGITAL_PURCHASES_ENABLED && user?.id === product.seller_id && (
             <TouchableOpacity
               style={styles.ownerBoostBanner}
               onPress={() => router.push(`/boost/${product.id}` as any)}
@@ -560,33 +565,37 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {/* ── Report Listing (Apple UGC Guideline 1.2) ── */}
+          {/* Guideline 1.2: writes a content_reports row; no "submitted" toast
+              unless the RPC actually resolved. */}
           <TouchableOpacity
             style={styles.reportListingBtn}
             onPress={() => {
+              const send = async (reason: string) => {
+                try {
+                  await reportContent('listing', product.id, reason);
+                } catch (err: any) {
+                  Alert.alert(
+                    isRTL ? 'لم يتم إرسال البلاغ' : 'Report not sent',
+                    isBackendMissing(err)
+                      ? `Reporting is temporarily unavailable. Email ${SAFETY_EMAIL} and we will act within 24 hours.`
+                      : (err?.message || 'Please try again.'),
+                  );
+                  return;
+                }
+                Toast.show({
+                  type: 'success',
+                  text1: isRTL ? 'تم إرسال البلاغ' : 'Report sent',
+                  text2: isRTL ? 'سيراجعه فريق الأمان خلال ٢٤ ساعة' : 'Our safety team reviews reports within 24 hours.',
+                });
+              };
               Alert.alert(
-                'Report Listing • الإبلاغ عن الإعلان',
-                'Why are you reporting this item? (لماذا تبلغ عن هذا الإعلان؟)',
+                isRTL ? 'الإبلاغ عن الإعلان' : 'Report this listing',
+                isRTL ? 'ما سبب البلاغ؟' : 'Why are you reporting it?',
                 [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Prohibited / Fake Item',
-                    onPress: () =>
-                      Toast.show({
-                        type: 'success',
-                        text1: 'Report Submitted',
-                        text2: 'Our safety team will inspect this listing.',
-                      }),
-                  },
-                  {
-                    text: 'Scam / Inappropriate Content',
-                    onPress: () =>
-                      Toast.show({
-                        type: 'success',
-                        text1: 'Report Submitted',
-                        text2: 'Our safety team will inspect this listing.',
-                      }),
-                  },
+                  { text: isRTL ? 'إلغاء' : 'Cancel', style: 'cancel' },
+                  { text: 'Prohibited or counterfeit item', onPress: () => send('Prohibited or counterfeit item') },
+                  { text: 'Scam or misleading', onPress: () => send('Scam or misleading') },
+                  { text: 'Inappropriate content', onPress: () => send('Inappropriate content') },
                 ]
               );
             }}

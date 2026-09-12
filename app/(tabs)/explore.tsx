@@ -54,6 +54,7 @@ import {
   type UserProfile,
 } from '../../src/services/lib/products';
 import { auth, supabase } from '../../src/services/lib/supabase';
+import { deleteMyAccount, isBackendMissing, SAFETY_EMAIL } from '../../src/services/lib/moderationService';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -269,42 +270,37 @@ export default function ProfileScreen() {
   };
 
   const handleDeleteAccount = async () => {
+    // Guideline 5.1.1(v): deletion must be real and in-app. The RPC either
+    // removes the account or throws; nothing is claimed on a thrown error.
     const doDelete = async () => {
       try {
-        if (user) {
-          await supabase.from('profiles').delete().eq('id', user.id);
-        }
-        await auth.signOut();
-        Toast.show({ type: 'success', text1: 'Account Deleted Successfully' });
-        router.replace('/login');
+        await deleteMyAccount();
       } catch (err: any) {
-        if (Platform.OS === 'web') {
-          window.alert(err?.message || 'Failed to delete account');
-        } else {
-          Alert.alert('Error', err?.message || 'Failed to delete account');
-        }
+        const msg = isBackendMissing(err)
+          ? `In-app deletion is temporarily unavailable. Email ${SAFETY_EMAIL} from your registered address and we will delete your account within 72 hours.`
+          : (err?.message || 'Failed to delete account');
+        if (Platform.OS === 'web') window.alert(msg);
+        else Alert.alert('Account not deleted', msg);
+        return;
       }
+      await auth.signOut();
+      Toast.show({ type: 'success', text1: 'Account deleted', text2: 'Your personal data has been removed.' });
+      router.replace('/login');
     };
 
+    const body =
+      'This permanently removes your profile, listings, saved items and notifications, and you will not be able to sign in again. ' +
+      'Completed order records are kept as required by Egyptian commercial law but are no longer linked to any personal data.';
+
     if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to permanently delete your EgyBay account? This action cannot be undone.')) {
-        await doDelete();
-      }
+      if (window.confirm(body)) await doDelete();
       return;
     }
 
-    Alert.alert(
-      'Delete Account • حذف الحساب',
-      'Are you sure you want to permanently delete your EgyBay account? This action cannot be undone and will erase all your listings and profile data.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Permanently',
-          style: 'destructive',
-          onPress: doDelete,
-        },
-      ]
-    );
+    Alert.alert('Delete Account • حذف الحساب', body, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete Permanently', style: 'destructive', onPress: doDelete },
+    ]);
   };
 
   // ── Loading / guard ──────────────────────────────────────────────────────────
