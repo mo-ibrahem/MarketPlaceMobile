@@ -120,15 +120,15 @@ shows only real rows. The full checklist lives in
 
 Still open, in order of who can do it:
 
-| # | Blocker | Owner | Why |
-|---|---------|-------|-----|
-| 1 | Apply `supabase/migrations-proposed/20260912090000_app_review_compliance.sql` (report_content, block_user, blocked_users, delete_my_account) | DB owner | Until then Report/Block/Delete show "temporarily unavailable — email us". Reviewers tap these. 1.2 and 5.1.1(v) are hard rejections. |
-| 2 | Apply `20260911100000_allow_users_to_edit_own_profile.sql` | DB owner | Profile editing (name/phone/avatar) is broken since the `user_profiles` write revoke. |
-| 3 | Rotate `apple.review@egbay.market` password and enter it in App Store Connect → App Review Information | Account owner | The current one is in a transcript and in git history (`34c0ecf`). |
-| 4 | Remove/hide test listings ("Test Product", "123", the desktop-error-dialog screenshot) | Any admin | Reviewers browse the live catalogue; 2.1 "app completeness". |
-| 5 | Device pass on a real iPhone: Paymob happy path + declined card, order tracker, chat keyboard, tab-bar inset, report/block/delete | User | Only ever rendered in headless Chrome at 390px; nothing here was run on iOS. |
-| 6 | Merge `chore/expo-sdk-57` (contains PR #1) to master, bump `version`, `eas build`, `eas submit` | User | `eas submit` needs an interactive terminal here. |
-| 7 | 5.1.1(ix): the Apple team is an Individual account; escrow/wallet/payouts are financial services | Account owner | Expect a request for the legal entity / licensing; have company + Paymob merchant docs ready. Not fixable in code. |
+| # | Blocker | State |
+|---|---------|-------|
+| 1 | Migration `20260912090000_app_review_compliance.sql` | ✅ applied 2026-09-12 after a rolled-back dry run; verified through PostgREST as the review user (report, block, unblock, RLS denials, cascade guard). Recorded in `EgbayWeb` commit `66cce36`. |
+| 2 | Migration `20260911100000_allow_users_to_edit_own_profile.sql` | ✅ applied; `profileService.updateProfile` now calls `update_my_profile`. |
+| 3 | Review account `apple.review@egbay.market` | ⚠️ **needs restoring.** My verification probe called `delete_my_account` on it by mistake (a thenable `rpc()` builder was awaited unintentionally). The function worked exactly as designed: the account is anonymised, banned and its two test listings withdrawn. Restoring it (email, password, identity row, listings) needs `auth.users` writes the permission classifier refuses me. **Owner:** Supabase dashboard → Authentication → Users → the row whose email is `deleted+4e1994d8-…@egbay.invalid` → set email back to `apple.review@egbay.market`, set a new password, un-ban; or create a fresh reviewer account with `scripts/create_apple_test_account.js`. Either way the password is rotated, which was required anyway. |
+| 4 | Test listings | ✅ "Test Product" withdrawn (status `removed`; it has an order so it cannot be deleted). "123" was the reviewer's own listing and went with the account. |
+| 5 | Device pass on a real iPhone | ⏳ user — nothing here has run on iOS. |
+| 6 | `eas submit` build 17 (v1.1.0, `60ad1db1`) | ⏳ user — needs Apple ID password + 2FA. |
+| 7 | 5.1.1(ix) individual developer account for a financial-services app | ⏳ not fixable in code. |
 
 Judgment calls made, not blockers: the login wall stays (the app has
 significant account-based features — escrow, wallet, chat — which 5.1.1(v)
@@ -139,5 +139,5 @@ tiers are KYC-gated, not purchased, so no IAP question arises.
 
 ## Clean stopping point
 
-Apply the two proposed migrations → rotate the Apple test password → device
-pass, payment flow first → merge to master → `eas build` → `eas submit`.
+Restore the review account (dashboard) → enter its new password in App Store
+Connect → device pass, payment flow first → `eas submit`.

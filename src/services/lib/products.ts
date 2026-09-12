@@ -392,18 +392,18 @@ export const profileService = {
 
   // This replaces the buggy 'upsertProfile' function
   updateProfile: async (userId: string, updates: Partial<UserProfile>) => {
-    // Writes go to the base table, never through public_profiles: that view is
-    // SELECT-only for clients (its write grants were the privilege-escalation
-    // hole revoked in 20260910120000), and user_profiles has a proper
-    // `auth.uid() = id` UPDATE policy.
-    const { data, error } = await supabase
-      .from("user_profiles")
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq("id", userId)
-      .select()
-      .single();
-      
-    if (error) throw error;
-    return data;
+    // Clients have no UPDATE grant on user_profiles or public_profiles any
+    // more (20260910120000 closed the self-verification hole). The only write
+    // path is update_my_profile, which takes exactly the user-owned fields and
+    // ignores everything else -- tier, is_verified_seller, ratings cannot be
+    // passed through here by construction.
+    const { error } = await supabase.rpc('update_my_profile' as any, {
+      p_full_name: updates.full_name ?? null,
+      p_phone: updates.phone ?? null,
+      p_avatar_url: updates.avatar_url ?? null,
+    })
+    if (error) throw error
+    return profileService.getProfile(userId)
   },
+
 };

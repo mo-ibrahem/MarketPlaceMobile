@@ -8,7 +8,7 @@
 -- report offensive content" and "the ability to block abusive users". Mobile
 -- has Report and Block buttons that show a toast and record nothing.
 --
--- NOT APPLIED from the mobile repo; belongs in the EgbayWeb migration history.
+-- Applied to fpqbocohjzwlfcmfropr on 2026-09-12 via MCP apply_migration.
 
 -- ── Reports ─────────────────────────────────────────────────────────────────
 
@@ -78,12 +78,22 @@ GRANT EXECUTE ON FUNCTION public.unblock_user(uuid) TO authenticated;
 
 -- ── Account deletion ────────────────────────────────────────────────────────
 --
--- Orders are financial records on an escrow marketplace and reference
--- auth.users; they must survive. So "deletion" here is: remove every piece of
--- personal data and every listing, then remove the auth identity where the
--- database allows it and otherwise anonymise and permanently ban it. Either
--- way the person can no longer sign in and nothing identifying remains -- which
--- is what 5.1.1(v) and the privacy policy promise.
+-- Checked against the live schema before writing this:
+--   products.seller_id  -> auth.users ON DELETE CASCADE
+--   orders.product_id   -> products   ON DELETE CASCADE
+--   payments.product_id -> products   ON DELETE CASCADE
+--   user_wallets.user_id, payments.buyer_id/seller_id -> auth.users CASCADE
+--   orders.buyer_id/seller_id, wallet_topups.user_id  -> auth.users RESTRICT
+--
+-- So `DELETE FROM auth.users` would either be refused (orders exist) or, via
+-- products, silently cascade-delete completed orders, payments and the
+-- wallet. Neither is acceptable on an escrow marketplace. The auth row is
+-- therefore never deleted: it is anonymised, stripped of every credential and
+-- permanently banned, and every session is revoked -- the person cannot sign
+-- in and nothing identifying remains, which is what 5.1.1(v) and the privacy
+-- policy promise. Listings are withdrawn (status = 'removed'; the public
+-- SELECT policy only shows 'active') rather than deleted, for the same
+-- cascade reason.
 
 CREATE OR REPLACE FUNCTION public.delete_my_account()
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','auth','pg_catalog' AS $$
@@ -91,32 +101,52 @@ DECLARE v_uid uuid := auth.uid();
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
 
-  -- Listings, saved items, notifications, block list, reports made.
-  DELETE FROM public.products        WHERE seller_id = v_uid;
-  DELETE FROM public.wishlists       WHERE user_id   = v_uid;
-  DELETE FROM public.notifications   WHERE user_id   = v_uid;
-  DELETE FROM public.blocked_users   WHERE blocker_id = v_uid;
-  DELETE FROM public.payout_methods  WHERE user_id   = v_uid;
+  -- Listings off the market; wishlists/notifications/payout accounts/blocks/
+  -- ID-verification uploads gone.
+  UPDATE public.products SET status = 'removed', updated_at = now()
+   WHERE seller_id = v_uid AND status <> 'removed';
+  DELETE FROM public.wishlists                    WHERE user_id = v_uid;
+  DELETE FROM public.notifications                WHERE user_id = v_uid;
+  DELETE FROM public.blocked_users                WHERE blocker_id = v_uid;
+  DELETE FROM public.payout_methods               WHERE user_id = v_uid;
+  DELETE FROM public.seller_verification_requests WHERE user_id = v_uid;
 
-  -- Profile: keep the row (orders and reviews reference the id) but strip it.
+  -- Profile row stays (orders and reviews point at the id) but holds no PII.
   UPDATE public.user_profiles
-  SET full_name = 'Deleted user', email = NULL, phone = NULL, avatar_url = NULL,
-      updated_at = now()
-  WHERE id = v_uid;
+     SET full_name = 'Deleted user', email = NULL, phone = NULL, address = NULL,
+         avatar_url = NULL, national_id_number = NULL,
+         national_id_front_url = NULL, national_id_back_url = NULL,
+         updated_at = now()
+   WHERE id = v_uid;
 
-  -- Auth identity: delete outright when nothing references it, otherwise
-  -- anonymise and ban so the account is unusable and holds no PII.
-  BEGIN
-    DELETE FROM auth.users WHERE id = v_uid;
-  EXCEPTION WHEN foreign_key_violation THEN
-    UPDATE auth.users
-    SET email = 'deleted+' || v_uid::text || '@egbay.invalid',
-        phone = NULL,
-        encrypted_password = '',
-        raw_user_meta_data = '{}'::jsonb,
-        banned_until = 'infinity'
-    WHERE id = v_uid;
-  END;
+  -- Auth identity: anonymise, remove credentials, ban, revoke every session.
+  UPDATE auth.users
+     SET email = 'deleted+' || v_uid::text || '@egbay.invalid',
+         phone = NULL,
+         encrypted_password = NULL,
+         raw_user_meta_data = '{}'::jsonb,
+         email_change = NULL, email_change_token_new = NULL, email_change_token_current = NULL,
+         phone_change = NULL, recovery_token = NULL,
+         banned_until = 'infinity'::timestamptz,
+         updated_at = now()
+   WHERE id = v_uid;
+  DELETE FROM auth.identities WHERE user_id = v_uid;
+  DELETE FROM auth.mfa_factors WHERE user_id = v_uid;
+  DELETE FROM auth.sessions    WHERE user_id = v_uid;   -- cascades refresh_tokens
 END $$;
 REVOKE ALL ON FUNCTION public.delete_my_account() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.delete_my_account() TO authenticated;
+
+-- ── Guard found on the way ──────────────────────────────────────────────────
+--
+-- products has a "Seller DELETE" RLS policy and orders.product_id cascades,
+-- so a seller deleting a listing deleted every order placed on it -- paid
+-- escrow included. A listing with an order is now undeletable (the app can
+-- withdraw it by status instead); payments follow the same rule.
+
+ALTER TABLE public.orders   DROP CONSTRAINT IF EXISTS orders_product_id_fkey;
+ALTER TABLE public.orders   ADD  CONSTRAINT orders_product_id_fkey
+  FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE RESTRICT;
+ALTER TABLE public.payments DROP CONSTRAINT IF EXISTS payments_product_id_fkey;
+ALTER TABLE public.payments ADD  CONSTRAINT payments_product_id_fkey
+  FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE RESTRICT;
