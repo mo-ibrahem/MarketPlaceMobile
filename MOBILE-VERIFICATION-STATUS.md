@@ -109,7 +109,35 @@ committed in `34c0ecf` and remains recoverable from any existing clone or fork.
 
 ---
 
+## 6. App Store submission — what blocks it (2026-09-12)
+
+The App Store Review Guidelines were read in full and applied in commit
+`ef8946e`. What the code now does on iOS: boosts, live-pass booking and wallet
+deposits are hidden (3.1.1 / 3.1.3(g)); Report, Block and Delete Account call
+real RPCs and refuse to claim success otherwise (1.2, 5.1.1(v)); the wallet
+shows only real rows. The full checklist lives in
+`.claude/skills/egbay-release/SKILL.md`.
+
+Still open, in order of who can do it:
+
+| # | Blocker | Owner | Why |
+|---|---------|-------|-----|
+| 1 | Apply `supabase/migrations-proposed/20260912090000_app_review_compliance.sql` (report_content, block_user, blocked_users, delete_my_account) | DB owner | Until then Report/Block/Delete show "temporarily unavailable — email us". Reviewers tap these. 1.2 and 5.1.1(v) are hard rejections. |
+| 2 | Apply `20260911100000_allow_users_to_edit_own_profile.sql` | DB owner | Profile editing (name/phone/avatar) is broken since the `user_profiles` write revoke. |
+| 3 | Rotate `apple.review@egbay.market` password and enter it in App Store Connect → App Review Information | Account owner | The current one is in a transcript and in git history (`34c0ecf`). |
+| 4 | Remove/hide test listings ("Test Product", "123", the desktop-error-dialog screenshot) | Any admin | Reviewers browse the live catalogue; 2.1 "app completeness". |
+| 5 | Device pass on a real iPhone: Paymob happy path + declined card, order tracker, chat keyboard, tab-bar inset, report/block/delete | User | Only ever rendered in headless Chrome at 390px; nothing here was run on iOS. |
+| 6 | Merge `chore/expo-sdk-57` (contains PR #1) to master, bump `version`, `eas build`, `eas submit` | User | `eas submit` needs an interactive terminal here. |
+| 7 | 5.1.1(ix): the Apple team is an Individual account; escrow/wallet/payouts are financial services | Account owner | Expect a request for the legal entity / licensing; have company + Paymob merchant docs ready. Not fixable in code. |
+
+Judgment calls made, not blockers: the login wall stays (the app has
+significant account-based features — escrow, wallet, chat — which 5.1.1(v)
+allows); live *viewing* stays on iOS (nothing is sold to the viewer);
+tiers are KYC-gated, not purchased, so no IAP question arises.
+
+---
+
 ## Clean stopping point
 
-Rotate the Apple test password → get a device up → walk the six screens above,
-payment flow first → then merge PR #1.
+Apply the two proposed migrations → rotate the Apple test password → device
+pass, payment flow first → merge to master → `eas build` → `eas submit`.
