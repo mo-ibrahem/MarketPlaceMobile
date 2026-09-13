@@ -1147,48 +1147,12 @@ export type Database = {
         }
         Returns: undefined
       }
-      deduct_wallet_balance: {
-        Args: {
-          p_amount: number
-          p_item_title: string
-          p_order_id: string
-          p_user_id: string
-        }
-        Returns: Json
-      }
       delete_my_account: { Args: never; Returns: undefined }
       edit_review: {
         Args: { p_comment?: string; p_rating: number; p_review_id: string }
         Returns: undefined
       }
       expire_promoted_products: { Args: never; Returns: undefined }
-      get_products_with_details: {
-        Args: { current_user_id: string }
-        Returns: {
-          category: string
-          condition: string
-          created_at: string
-          description: string
-          id: string
-          images: string[]
-          iswishlisted: boolean
-          price: number
-          seller: Json
-          seller_id: string
-          status: string
-          title: string
-          updated_at: string
-        }[]
-      }
-      get_user_chat_rooms: {
-        Args: never
-        Returns: {
-          other_user_avatar_url: string
-          other_user_id: string
-          other_user_name: string
-          room_id: string
-        }[]
-      }
       hide_chat_room_for_user: {
         Args: { p_room_id: string }
         Returns: undefined
@@ -1197,12 +1161,9 @@ export type Database = {
         Args: { p_product_id: string }
         Returns: undefined
       }
+      live_passes_are_free: { Args: never; Returns: boolean }
       mark_all_notifications_read: { Args: never; Returns: undefined }
       mark_notifications_read: { Args: { p_ids: string[] }; Returns: undefined }
-      pay_order_with_wallet: {
-        Args: { p_order_id: string; p_user_id: string }
-        Returns: Json
-      }
       process_paymob_order_payment: {
         Args: {
           p_amount_cents: number
@@ -1225,12 +1186,10 @@ export type Database = {
         Args: { p_package_id: string; p_product_id: string; p_user_id: string }
         Returns: Json
       }
-      release_escrow:
-        | { Args: { p_order_id: string; p_user_id: string }; Returns: Json }
-        | {
-            Args: { p_order_id: string; p_pin: string; p_user_id: string }
-            Returns: Json
-          }
+      release_escrow: {
+        Args: { p_order_id: string; p_user_id: string }
+        Returns: Json
+      }
       report_content: {
         Args: { p_reason: string; p_target_id: string; p_target_type: string }
         Returns: string

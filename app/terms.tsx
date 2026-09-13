@@ -198,8 +198,8 @@ Sellers must dispatch sold items via our integrated courier partner within 48 ho
   // untouched: it has nothing to do with payments.
   // Reused verbatim except renumbered: it's item 4 of 7 in the full terms
   // but item 3 of 4 here.
-  const prohibitedAr = { ...arSectionsFull.find(s => s.id === 'prohibited')!, title: '٣. قائمة السلع والمواد المحظورة قانوناً' };
-  const prohibitedEn = { ...enSectionsFull.find(s => s.id === 'prohibited')!, title: '3. Prohibited & Illegal Goods Policy' };
+  const prohibitedAr = { ...arSectionsFull.find(s => s.id === 'prohibited')!, title: '٤. قائمة السلع والمواد المحظورة قانوناً' };
+  const prohibitedEn = { ...enSectionsFull.find(s => s.id === 'prohibited')!, title: '4. Prohibited & Illegal Goods Policy' };
 
   const arSectionsClassifieds = [
     {
@@ -216,10 +216,18 @@ Sellers must dispatch sold items via our integrated courier partner within 48 ho
 
 إيجي باي ليست طرفاً في هذا الاتفاق ولا تتحمل مسؤولية أي خسارة مالية أو نزاع ينشأ عنه. راجع صفحة "نصائح الأمان" داخل التطبيق قبل إتمام أي صفقة.`,
     },
+    {
+      id: 'live',
+      title: '٣. البث المباشر (EgyBay Live)',
+      content: `• يمكن للبائعين عرض منتجاتهم في بث مباشر داخل التطبيق. البث مجاني حالياً؛ سنُعلم المستخدمين قبل أي تغيير في ذلك.
+• يُحظر بث أي محتوى خادع أو غير لائق أو مخالف للآداب العامة أو يعرض سلعاً محظورة، ويُنهى البث ويُوقف الحساب عند المخالفة.
+• المشاهدون يمكنهم الإبلاغ عن أي بث من زر الإبلاغ داخل شاشة البث.
+• الاتفاق على أي سلعة تُعرض في البث يتم عبر الدردشة وخارج التطبيق، كما في باقي الإعلانات.`,
+    },
     prohibitedAr,
     {
       id: 'liability',
-      title: '٤. إخلاء المسؤولية',
+      title: '٥. إخلاء المسؤولية',
       content: `تقدم إيجي باي أدوات الإعلان والتواصل فقط. جميع الاتفاقات المالية وعمليات التسليم تتم بالكامل خارج التطبيق وعلى مسؤولية طرفي الصفقة.`,
     },
   ];
@@ -239,10 +247,18 @@ EgyBay acts strictly as an intermediary technology platform connecting buyers an
 
 EgyBay is not a party to that agreement and is not responsible for any financial loss or dispute arising from it. See the in-app "Safety tips" page before completing a deal.`,
     },
+    {
+      id: 'live',
+      title: '3. Live Streaming (EgyBay Live)',
+      content: `• Sellers may show their items in a live stream inside the app. Streaming is free at the moment; users will be told before that changes.
+• Deceptive, inappropriate or indecent content, or the display of prohibited goods, is not allowed on a stream and ends it and the account.
+• Viewers can report any stream from the report button on the stream screen.
+• Any deal on an item shown in a stream is agreed in chat and completed outside the app, exactly like every other listing.`,
+    },
     prohibitedEn,
     {
       id: 'liability',
-      title: '4. Limitation of Liability',
+      title: '5. Limitation of Liability',
       content: `EgyBay provides listing and messaging tools only. All financial agreements and handovers take place entirely outside the app and at the parties' own risk.`,
     },
   ];

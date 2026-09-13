@@ -17,7 +17,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import {
-  Mic, MicOff, Video, VideoOff, PhoneOff, Users,
+  Mic, MicOff, Video, VideoOff, PhoneOff, Users, SwitchCamera,
   MessageSquare, Send, Pin, X, ShoppingBag, AlertCircle
 } from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
@@ -30,7 +30,7 @@ import {
 import { productService } from '../../src/services/lib/products';
 import { supabase } from '../../src/services/lib/supabase';
 import NotAvailableYet from '../../src/components/NotAvailableYet';
-import { PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
+import { LIVE_ENABLED } from '../../src/services/lib/platformCommerce';
 
 // Agora Studio runs via WebView since react-native-agora requires native rebuild
 // The WebView loads a self-contained Agora WebRTC host page
@@ -53,31 +53,50 @@ function buildStudioHTML(appId: string, token: string, channel: string, uid: num
 <div id="status">جاري الاتصال...</div>
 <script src="https://cdn.agora.io/sdk/release/AgoraRTC_N.js"></script>
 <script>
-const client = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
+// h264, not vp8: on iOS the phone encodes H.264 in hardware and VP8 in
+// software. VP8 was a hot phone, dropped frames and a flat battery.
+const client = AgoraRTC.createClient({ mode: 'live', codec: 'h264' });
 const appId = ${inlineScriptValue(appId)};
 const token = ${inlineScriptValue(token)};
 const channel = ${inlineScriptValue(channel)};
 const uid = ${inlineScriptValue(uid)};
 let localVideoTrack, localAudioTrack;
+const status = (t) => { document.getElementById('status').textContent = t; };
+client.on('connection-state-change', (cur) => {
+  if (cur === 'RECONNECTING') status('⚠️ إعادة الاتصال...');
+  else if (cur === 'CONNECTED' && localVideoTrack) status('🔴 LIVE');
+  else if (cur === 'DISCONNECTED') status('انقطع الاتصال');
+  window.ReactNativeWebView.postMessage('STATE:' + cur);
+});
+// Two quality layers so a viewer on a weak connection gets a smaller
+// picture instead of a frozen one (the viewer opts into the fallback).
+client.enableDualStream().catch(() => {});
 async function start() {
   try {
     await client.setClientRole('host');
     await client.join(appId, channel, token, uid);
-    [localAudioTrack, localVideoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+    [localAudioTrack, localVideoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
+      { AEC: true, ANS: true, AGC: true },
+      { facingMode: 'user', encoderConfig: { width: 720, height: 1280, frameRate: 24, bitrateMin: 600, bitrateMax: 1800 }, optimizationMode: 'motion' }
+    );
     const video = document.getElementById('local-video');
     const stream = new MediaStream([localVideoTrack.getMediaStreamTrack(), localAudioTrack.getMediaStreamTrack()]);
     video.srcObject = stream;
     await client.publish([localAudioTrack, localVideoTrack]);
-    document.getElementById('status').textContent = '🔴 LIVE';
+    status('🔴 LIVE');
     window.ReactNativeWebView.postMessage('LIVE_STARTED');
   } catch (e) {
-    document.getElementById('status').textContent = 'Error: ' + e.message;
+    status('Error: ' + e.message);
     window.ReactNativeWebView.postMessage('ERROR:' + e.message);
   }
 }
 window.addEventListener('message', (e) => {
   if (e.data === 'TOGGLE_MIC') localAudioTrack?.setEnabled(!localAudioTrack?.enabled);
   if (e.data === 'TOGGLE_CAM') localVideoTrack?.setEnabled(!localVideoTrack?.enabled);
+  if (e.data === 'FLIP_CAM' && localVideoTrack) {
+    const cur = localVideoTrack.getMediaStreamTrack().getSettings().facingMode;
+    localVideoTrack.setDevice({ facingMode: cur === 'environment' ? 'user' : 'environment' }).catch(() => {});
+  }
   if (e.data === 'END') { client.leave(); }
 });
 start();
@@ -111,8 +130,8 @@ export default function StudioScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    // Classifieds mode: nothing here can be reached, so don't even fetch.
-    if (!PAYMENTS_ENABLED) return;
+    // Live is off in this build: nothing here can be reached, so don't even fetch.
+    if (!LIVE_ENABLED) return;
     if (!sessionId || !user) return;
     (async () => {
       const { data } = await supabase.from('live_sessions').select('*').eq('id', sessionId).single();
@@ -218,9 +237,8 @@ export default function StudioScreen() {
     ? buildStudioHTML(AGORA_APP_ID, agoraToken, session.agora_channel, hostUid)
     : null;
 
-  // Classifieds mode: live broadcasting does not exist right now (see
-  // PLAN-CLASSIFIEDS-MODE.md).
-  if (!PAYMENTS_ENABLED) {
+  // Live is off in this build (LIVE_ENABLED).
+  if (!LIVE_ENABLED) {
     return <NotAvailableYet />;
   }
 
@@ -231,12 +249,21 @@ export default function StudioScreen() {
         {studioHTML ? (
           <WebView
             ref={webViewRef}
-            source={{ html: studioHTML }}
+            // baseUrl gives the page a real https origin. Inline HTML alone
+            // is an opaque origin, and WebKit only exposes getUserMedia to
+            // secure contexts -- without this the host has no camera at all.
+            source={{ html: studioHTML, baseUrl: 'https://egbay.shop' }}
             style={{ flex: 1 }}
             allowsInlineMediaPlayback
             mediaPlaybackRequiresUserAction={false}
+            // The OS already asked for camera/mic (NSCameraUsageDescription,
+            // NSMicrophoneUsageDescription); do not ask a second time inside
+            // the web view.
+            mediaCapturePermissionGrantType="grant"
             onMessage={(e) => {
-              if (e.nativeEvent.data === 'LIVE_STARTED') setIsLive(true);
+              const d = e.nativeEvent.data;
+              if (d === 'LIVE_STARTED') setIsLive(true);
+              else if (d.startsWith('ERROR:')) setError(d.slice(6));
             }}
           />
         ) : (
@@ -281,6 +308,9 @@ export default function StudioScreen() {
             </TouchableOpacity>
             <TouchableOpacity onPress={toggleCam} style={[s.ctrl, !camOn && s.ctrlOff]}>
               {camOn ? <Video color="white" size={20} /> : <VideoOff color="white" size={20} />}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => webViewRef.current?.postMessage('FLIP_CAM')} style={s.ctrl} accessibilityLabel="Switch camera">
+              <SwitchCamera color="white" size={20} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowProductPicker(true)} style={[s.ctrl, { backgroundColor: '#0F172A' }]}>
               <Pin color="white" size={20} />

@@ -64,3 +64,16 @@ export const PHYSICAL_CHECKOUT_ENABLED = true;
  * entirely) -- there is no branch to merge back.
  */
 export const PAYMENTS_ENABLED = process.env.EXPO_PUBLIC_PAYMENTS_ENABLED === 'true';
+
+/**
+ * Live selling, independently of payments. Live came back before payments
+ * did: the platform absorbs the Agora cost for now and a pass is free (a
+ * server setting, `live_passes_are_free()`, which the booking screen reads
+ * so it never claims "free" on its own authority). A free pass is not a
+ * purchase, so the iOS in-app-purchase rule (DIGITAL_PURCHASES_ENABLED)
+ * does not apply to it; it applies again the day passes cost money.
+ *
+ * Same build-time mechanism as PAYMENTS_ENABLED: set per profile in
+ * eas.json, fails closed when unset.
+ */
+export const LIVE_ENABLED = process.env.EXPO_PUBLIC_LIVE_ENABLED === 'true';

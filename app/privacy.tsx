@@ -206,8 +206,9 @@ Data is shared strictly with authorized partners necessary for platform operatio
 • بيانات الحساب المشفرة عبر Supabase Authentication بنظام حماية Row-Level Security.
 • عنوان البروتوكول (IP) ونوع الجهاز لضمان أمان الحساب ومنع الاختراق.
 
-ج. بيانات الإعلانات والدردشة:
+ج. بيانات الإعلانات والدردشة والبث:
 • عناوين الإعلانات، الصور، الأسعار، ورسائل المحادثة بين المشترين والبائعين.
+• عند البث المباشر: الصوت والصورة أثناء البث (لا يتم تخزينهما)، ورسائل دردشة البث.
 
 لا تقوم إيجي باي حالياً بجمع أو معالجة أي بيانات دفع أو حسابات بنكية، لأن التطبيق لا يُجري أي عملية دفع بين المستخدمين.`,
     },
@@ -252,8 +253,9 @@ B. Authentication & Security Data:
 • Passwords securely hashed via Supabase Auth with Row-Level Security (RLS).
 • Session tokens, device IP address for fraud prevention.
 
-C. Listings & Chat Data:
+C. Listings, Chat & Live Data:
 • Listing titles, photos, prices, and messages exchanged between buyers and sellers.
+• When you go live: your camera and microphone during the stream (not recorded), and the stream's chat messages.
 
 EgyBay does not currently collect or process any payment or bank account data, because the app does not run any payment between users.`,
     },

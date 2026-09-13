@@ -137,6 +137,20 @@ export async function generateAgoraToken(channelName: string, uid: number, role:
   return data.token as string;
 }
 
+/**
+ * Whether a live pass currently costs the seller nothing. This is a server
+ * setting (private.platform_settings, read through live_passes_are_free()),
+ * not a client assumption: the booking screen shows "free for now" only
+ * because the database said so, and starts showing prices the moment the
+ * operator flips the row -- no rebuild. Fails closed: an error means "not
+ * free", so the screen never promises what the RPC would then refuse.
+ */
+export async function getLivePassesAreFree(): Promise<boolean> {
+  const { data, error } = await supabase.rpc('live_passes_are_free');
+  if (error) return false;
+  return data === true;
+}
+
 // ──────────────────────────────────────────────────────────────
 // Session Management
 // ──────────────────────────────────────────────────────────────
