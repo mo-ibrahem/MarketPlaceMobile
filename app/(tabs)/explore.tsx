@@ -284,14 +284,14 @@ export default function ProfileScreen() {
       await auth.signOut();
       Toast.show({ type: 'success',
         text1: deletionStatus === 'complete' ? 'Account deleted' : 'Deletion requested',
-        text2: deletionStatus === 'complete' ? 'Your account and uploaded content have been removed.' : 'Access is disabled. Cleanup will continue automatically; contact support if it remains pending.',
+        text2: deletionStatus === 'complete' ? 'Your account and uploaded content have been removed.' : 'Access is disabled. Cleanup finishes automatically within a few minutes.',
       });
       router.replace('/login');
     };
 
     const body =
-      'This permanently deletes your account, listings, uploaded images and conversations. You will lose access immediately. ' +
-      'If cleanup cannot finish now, it will continue automatically. This cannot be undone.';
+      'This permanently deletes your account, listings, uploaded images and the messages you sent. You lose access immediately. ' +
+      'Records of completed transactions are kept as Egyptian commercial law requires, but are no longer linked to you. This cannot be undone.';
 
     if (Platform.OS === 'web') {
       if (window.confirm(body)) await doDelete();

@@ -59,7 +59,7 @@ const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222
  }
  for(const id of [A,B,C])await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2)",[id,id+'@example.invalid']);
  for(const name of ['20260913190000_classifieds_security.sql','20260913190100_guard_rpcs_and_delete_data.sql','20260913190200_cleanup_queue.sql'])
-   await db.exec(fs.readFileSync('supabase/migrations/'+name,'utf8'));
+   await db.exec(fs.readFileSync('supabase/migrations-proposed/'+name,'utf8'));
  await test('Anonymous public names mask legacy email fallback',async()=>{
    const r=await as('anon',null,'SELECT full_name FROM public.public_profiles');
    assert.equal(r.rows.length,3);assert.ok(r.rows.every(r=>!r.full_name.includes('@')));
@@ -87,11 +87,16 @@ const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222
  await as('authenticated',A,'SELECT public.unblock_user($1)',[B]);
  await test('Unblocking restores sending',()=>as('authenticated',B,'INSERT INTO public.messages(room_id,sender_id,content) VALUES($1,$2,$3)',[room,B,'restored']));
  await test('Live mutations remain denied',()=>denied('authenticated',A,"INSERT INTO public.live_sessions(seller_id,title,pass_tier,pass_price_egp,max_viewers) VALUES($1,'test','flash',10,5)",[A]));
- await test('Server booking is also disabled',()=>denied('service_role',null,"SELECT public.require_commerce_enabled()"));
- await test('Users cannot enable commerce or inspect worker credentials',async()=>{
-   await denied('authenticated',A,'UPDATE private.launch_settings SET payments_enabled=true');
+ await test('Users cannot inspect worker credentials',async()=>{
    await denied('authenticated',A,'SELECT * FROM private.worker_credentials');
    await denied('authenticated',A,'SELECT public.authorize_cleanup_worker($1)',['x'.repeat(72)]);
+ });
+ await test('Client may update live session labels/status but not price, channel or charge',async()=>{
+   await db.query("INSERT INTO public.live_sessions(id,seller_id,title,pass_tier,pass_price_egp,max_viewers,agora_channel) VALUES('00000000-0000-4000-8000-00000000aaaa',$1,'s','flash',10,5,'ch')",[A]);
+   await as('authenticated',A,"UPDATE public.live_sessions SET status='live',started_at=now() WHERE id='00000000-0000-4000-8000-00000000aaaa'");
+   await denied('authenticated',A,"UPDATE public.live_sessions SET pass_price_egp=0 WHERE id='00000000-0000-4000-8000-00000000aaaa'");
+   await denied('authenticated',A,"UPDATE public.live_sessions SET agora_channel='hijack' WHERE id='00000000-0000-4000-8000-00000000aaaa'");
+   await denied('authenticated',A,"UPDATE public.live_sessions SET wallet_charge_id='x' WHERE id='00000000-0000-4000-8000-00000000aaaa'");
  });
  await test('Wrong currency rejected inside payment RPC',()=>denied('service_role',null,"SELECT public.process_paymob_order_payment($1,123,500,'USD')",[room]));
  await test('Reporting private messages requires room membership',async()=>{
@@ -99,16 +104,15 @@ const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222
    await denied('authenticated',C,"SELECT public.report_content('message',$1,'abuse')",[msg]);
    assert.ok((await as('authenticated',A,"SELECT public.report_content('message',$1,'abuse')",[msg])).rows[0].report_content);
  });
- await test('Test financial history is cleaned without leaving auth foreign keys',async()=>{
-   await db.exec('UPDATE private.launch_settings SET payments_enabled=true,financial_records_are_test_data=false');
-   const product=(await db.query("INSERT INTO public.products(title,description,category,price,seller_id,stock) VALUES('test','test','Other',100,$1,1) RETURNING id",[B])).rows[0].id;
-   const order=(await db.query('INSERT INTO public.orders(product_id,buyer_id,seller_id,amount) VALUES($1,$2,$3,100) RETURNING id',[product,A,B])).rows[0].id;
+ let soldProduct, order;
+ await test('Payment RPC is idempotent and validates currency',async()=>{
+   soldProduct=(await db.query("INSERT INTO public.products(title,description,category,price,seller_id,stock,images) VALUES('test','test','Other',100,$1,1,'{\"https://x/product-images/b.jpg\"}') RETURNING id",[B])).rows[0].id;
+   order=(await db.query('INSERT INTO public.orders(product_id,buyer_id,seller_id,amount,shipping_address,notes) VALUES($1,$2,$3,100,$4,$5) RETURNING id',[soldProduct,A,B,{full_name:'A Person',phone:'0100'},'ring twice'])).rows[0].id;
    await as('service_role',null,"SELECT public.process_paymob_order_payment($1,555,10000,'EGP')",[order]);
    await db.query("UPDATE public.orders SET status='completed' WHERE id=$1",[order]);
    await as('service_role',null,"SELECT public.process_paymob_order_payment($1,555,10000,'EGP')",[order]);
    assert.equal((await db.query('SELECT count(*)::int n FROM public.wallet_transactions WHERE paymob_transaction_id=555')).rows[0].n,1);
    await denied('service_role',null,"SELECT public.process_paymob_order_payment($1,555,10000,'USD')",[order]);
-   await db.exec('UPDATE private.launch_settings SET payments_enabled=false,financial_records_are_test_data=true');
  });
  await as('service_role',null,'SELECT public.begin_account_deletion($1)',[A]);
  await test('Stale JWT cannot read private messages',async()=>assert.equal((await as('authenticated',A,'SELECT * FROM public.messages')).rows.length,0));
@@ -116,12 +120,40 @@ const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222
  await test('Stale JWT cannot upload storage objects',()=>denied('authenticated',A,"INSERT INTO storage.objects(bucket_id,name,owner_id) VALUES('product-images','x',$1)",[A]));
  await test('Pending deletion profile is no longer public',async()=>assert.equal((await as('anon',null,'SELECT * FROM public.public_profiles WHERE id=$1',[A])).rows.length,0));
  await as('service_role',null,'SELECT * FROM public.claim_account_deletions($1)',[A]);
- await test('Account cleanup is retryable and permits real auth deletion',async()=>{
+ await test('Account cleanup is retryable, scrubs the person, keeps the marketplace record',async()=>{
+   const bBefore=(await db.query('SELECT available_balance,pending_balance FROM public.user_wallets WHERE user_id=$1',[B])).rows[0];
+   const bMsgsBefore=(await db.query('SELECT count(*)::int n FROM public.messages WHERE sender_id=$1',[B])).rows[0].n;
    await as('service_role',null,'SELECT public.purge_account_data($1)',[A]);
    await as('service_role',null,'SELECT public.purge_account_data($1)',[A]);
-   await db.query('DELETE FROM auth.users WHERE id=$1',[A]);
+   // The other party: untouched.
    assert.equal((await db.query('SELECT * FROM auth.users WHERE id=$1',[B])).rows.length,1);
-   assert.equal((await db.query('SELECT * FROM public.messages WHERE sender_id=$1',[A])).rows.length,0);
+   assert.deepEqual((await db.query('SELECT available_balance,pending_balance FROM public.user_wallets WHERE user_id=$1',[B])).rows[0],bBefore);
+   assert.equal((await db.query('SELECT count(*)::int n FROM public.messages WHERE sender_id=$1',[B])).rows[0].n,bMsgsBefore);
+   assert.ok((await db.query("SELECT content FROM public.messages WHERE sender_id=$1",[B])).rows.every(r=>r.content!=='[Message deleted]'));
+   // The record of the transaction: kept, de-identified.
+   const o=(await db.query('SELECT status,shipping_address,notes,buyer_id FROM public.orders WHERE id=$1',[order])).rows[0];
+   assert.equal(o.status,'completed'); assert.equal(o.shipping_address,null); assert.equal(o.notes,null); assert.equal(o.buyer_id,A);
+   assert.equal((await db.query('SELECT count(*)::int n FROM public.wallet_transactions WHERE paymob_transaction_id=555')).rows[0].n,1);
+   assert.equal((await db.query('SELECT status FROM public.products WHERE id=$1',[soldProduct])).rows[0].status,'active'); // B's listing, not A's
+   // The person: gone from everything that identifies them, and locked out.
+   const msgs=(await db.query('SELECT content FROM public.messages WHERE sender_id=$1',[A])).rows;
+   assert.ok(msgs.length>0 && msgs.every(r=>r.content==='[Message deleted]'));
+   const prof=(await db.query('SELECT full_name,email,phone,avatar_url FROM public.user_profiles WHERE id=$1',[A])).rows[0];
+   assert.deepEqual(prof,{full_name:'Deleted user',email:null,phone:null,avatar_url:null});
+   const u=(await db.query("SELECT email,encrypted_password,banned_until='infinity' AS banned FROM auth.users WHERE id=$1",[A])).rows[0];
+   assert.ok(u.email.startsWith('deleted+')&&u.email.endsWith('@egbay.invalid')); assert.equal(u.encrypted_password,null); assert.equal(u.banned,true);
+   assert.equal((await db.query('SELECT count(*)::int n FROM auth.sessions WHERE user_id=$1',[A])).rows[0].n,0);
+   assert.equal((await db.query('SELECT count(*)::int n FROM public.live_sessions WHERE seller_id=$1',[A])).rows[0].n,0);
+   assert.equal((await as('anon',null,'SELECT * FROM public.public_profiles WHERE id=$1',[A])).rows.length,0);
+ });
+ await test('A seller with orders keeps the order rows and loses the listing content',async()=>{
+   await as('service_role',null,'SELECT public.begin_account_deletion($1)',[B]);
+   await as('service_role',null,'SELECT * FROM public.claim_account_deletions($1)',[B]);
+   await as('service_role',null,'SELECT public.purge_account_data($1)',[B]);
+   const p=(await db.query('SELECT status,images,description FROM public.products WHERE id=$1',[soldProduct])).rows[0];
+   assert.deepEqual(p,{status:'removed',images:[],description:''});
+   assert.equal((await db.query('SELECT count(*)::int n FROM public.orders WHERE id=$1',[order])).rows[0].n,1);
+   assert.equal((await db.query('SELECT count(*)::int n FROM public.wallet_transactions WHERE paymob_transaction_id=555')).rows[0].n,1);
  });
  console.log(checks+' database security checks passed.');await db.close();
 })().catch(async e=>{console.error(e.message);process.exitCode=1;await db.close();});

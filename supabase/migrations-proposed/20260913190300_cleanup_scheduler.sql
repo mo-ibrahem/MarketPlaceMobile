@@ -16,7 +16,6 @@ DECLARE
     v_wallet_id UUID;
     v_amount_egp NUMERIC(12, 2);
 BEGIN
-    PERFORM public.require_commerce_enabled();
     v_amount_egp := p_amount_cents / 100.0;
 
     SELECT id, user_id, amount, currency, status, paymob_transaction_id

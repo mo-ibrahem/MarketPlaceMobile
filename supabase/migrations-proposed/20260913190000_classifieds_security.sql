@@ -2,13 +2,12 @@
 BEGIN;
 CREATE SCHEMA IF NOT EXISTS private;
 REVOKE ALL ON SCHEMA private FROM PUBLIC, anon, authenticated;
-CREATE TABLE private.launch_settings (
-  singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),
-  payments_enabled boolean NOT NULL DEFAULT false,
-  financial_records_are_test_data boolean NOT NULL DEFAULT true,
-  CHECK (NOT payments_enabled OR NOT financial_records_are_test_data)
-);
-INSERT INTO private.launch_settings DEFAULT VALUES;
+-- No platform-wide "payments_enabled" switch here. PAYMENTS_ENABLED is a
+-- build-time flag of the iOS app only; egbay.shop runs in payments mode
+-- against the same database, so a server-side kill switch that defaults to
+-- off would have stopped web checkout, top-ups, payouts, boosts, live
+-- booking and webhook settlement the moment it was applied. See
+-- HANDOFF-TO-CODEX.md section 2.1.
 CREATE TABLE private.worker_credentials (
   purpose text PRIMARY KEY,
   secret text NOT NULL DEFAULT (gen_random_uuid()::text || gen_random_uuid()::text)
@@ -98,32 +97,22 @@ CREATE OR REPLACE VIEW public.public_profiles AS
  AND u.deleted_at IS NULL AND (u.banned_until IS NULL OR u.banned_until<=now()))
  AND NOT EXISTS(SELECT 1 FROM public.account_deletion_jobs j WHERE j.user_id=p.id);
 
-CREATE OR REPLACE FUNCTION public.commerce_is_enabled()
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
- SELECT coalesce((SELECT payments_enabled FROM private.launch_settings WHERE singleton),false);
-$$;
-REVOKE ALL ON FUNCTION public.commerce_is_enabled() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.commerce_is_enabled() TO authenticated, service_role;
-CREATE OR REPLACE FUNCTION public.require_commerce_enabled()
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-BEGIN
- IF NOT public.commerce_is_enabled() THEN RAISE EXCEPTION 'Payments and live selling are unavailable in classifieds mode' USING ERRCODE='42501'; END IF;
-END $$;
-REVOKE ALL ON FUNCTION public.require_commerce_enabled() FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.require_commerce_enabled() TO service_role;
-CREATE OR REPLACE FUNCTION public.guard_new_commerce()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-BEGIN PERFORM public.require_commerce_enabled(); RETURN NEW; END $$;
-REVOKE ALL ON FUNCTION public.guard_new_commerce() FROM PUBLIC, anon, authenticated;
-CREATE TRIGGER guard_new_commerce BEFORE INSERT ON public.orders FOR EACH ROW EXECUTE FUNCTION public.guard_new_commerce();
-CREATE TRIGGER guard_new_commerce BEFORE INSERT ON public.wallet_topups FOR EACH ROW EXECUTE FUNCTION public.guard_new_commerce();
-CREATE TRIGGER guard_new_commerce BEFORE INSERT ON public.live_sessions FOR EACH ROW EXECUTE FUNCTION public.guard_new_commerce();
--- Disabled features cannot be reached through PostgREST, even if an older app shows them.
-REVOKE INSERT, UPDATE, DELETE ON public.live_sessions, public.live_chat_messages,
- public.live_pinned_products, public.seller_verification_requests FROM PUBLIC, anon, authenticated;
-CREATE POLICY live_read_enabled ON public.live_sessions AS RESTRICTIVE FOR SELECT TO authenticated USING(public.commerce_is_enabled());
-CREATE POLICY live_chat_read_enabled ON public.live_chat_messages AS RESTRICTIVE FOR SELECT TO authenticated USING(public.commerce_is_enabled());
-REVOKE SELECT ON public.live_sessions, public.live_chat_messages, public.live_pinned_products FROM anon;
+-- Live and verification privileges, narrowed to what the web client actually
+-- does from the browser (EgbayWeb lib/liveService.ts, app/seller-verification):
+--   live_sessions            insert via book_live_session RPC only; the client
+--                            updates status/timestamps/labels, never price,
+--                            channel, viewer counts or the wallet charge.
+--   live_chat_messages       client inserts; never edits or deletes.
+--   live_pinned_products     client inserts and unpins; never deletes.
+--   seller_verification_requests
+--                            client inserts (always pending, see policy below);
+--                            review happens through the admin RPC.
+REVOKE INSERT, UPDATE, DELETE ON public.live_sessions FROM PUBLIC, anon, authenticated;
+GRANT UPDATE (title, title_ar, description, thumbnail_url, category, status, scheduled_at, started_at, ended_at)
+  ON public.live_sessions TO authenticated;
+REVOKE UPDATE, DELETE ON public.live_chat_messages FROM PUBLIC, anon, authenticated;
+REVOKE DELETE ON public.live_pinned_products FROM PUBLIC, anon, authenticated;
+REVOKE UPDATE, DELETE ON public.seller_verification_requests FROM PUBLIC, anon, authenticated;
 CREATE POLICY verification_starts_pending ON public.seller_verification_requests AS RESTRICTIVE FOR INSERT TO authenticated
  WITH CHECK(status='pending' AND reviewed_by IS NULL AND reviewed_at IS NULL AND reviewer_notes IS NULL);
 
@@ -147,8 +136,13 @@ BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
  PERFORM public.begin_account_deletion(auth.uid());
 END $$;
-REVOKE ALL ON FUNCTION public.delete_my_account() FROM PUBLIC, anon, authenticated;
--- Old clients cannot mistake queue acceptance for successful erasure. Use the Edge Function.
+REVOKE ALL ON FUNCTION public.delete_my_account() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.delete_my_account() TO authenticated;
+-- Every shipped build up to 23 calls this RPC directly. It now enqueues the
+-- same job the delete-account edge function does, so an old client gets
+-- immediate access denial, withdrawn listings and revoked sessions, and the
+-- cron dispatcher finishes storage and row cleanup within a minute. New
+-- clients call the edge function and get an honest complete/pending answer.
 
 CREATE OR REPLACE FUNCTION public.authorize_cleanup_worker(p_secret text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$

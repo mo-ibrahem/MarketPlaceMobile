@@ -126,8 +126,6 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-  const { data: commerceEnabled, error: commerceError } = await supabase.rpc('commerce_is_enabled');
-  if (commerceError || commerceEnabled !== true) return new Response('Payment processing is disabled', { status: 503 });
   const orderId = UUID_RE.test(merchantOrderId) ? merchantOrderId : null;
 
   // Writes down what Paymob told us. Everything this function learns about

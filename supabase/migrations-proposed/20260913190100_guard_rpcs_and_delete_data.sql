@@ -12,7 +12,6 @@ DECLARE
   v_tier SMALLINT;
   v_status TEXT;
 BEGIN
-    PERFORM public.require_commerce_enabled();
   IF p_decision NOT IN ('approved', 'rejected') THEN
     RAISE EXCEPTION 'Invalid decision: must be approved or rejected';
   END IF;
@@ -80,7 +79,6 @@ DECLARE
     v_channel TEXT;
     v_session RECORD;
 BEGIN
-    PERFORM public.require_commerce_enabled();
     IF p_tier = 'flash' THEN v_price := 79; v_max_viewers := 30;
     ELSIF p_tier = 'pro' THEN v_price := 149; v_max_viewers := 100;
     ELSIF p_tier = 'mega' THEN v_price := 299; v_max_viewers := 300;
@@ -150,7 +148,6 @@ DECLARE
     v_total_deductions NUMERIC;
     v_net_escrow NUMERIC(12, 2);
 BEGIN
-    PERFORM public.require_commerce_enabled();
     SELECT buyer_id, seller_id, amount, status
     INTO v_buyer_id, v_seller_id, v_amount, v_status
     FROM public.orders WHERE id = p_order_id FOR UPDATE;
@@ -239,7 +236,6 @@ DECLARE
     v_handover_method TEXT;
     v_live_display_price NUMERIC;
 BEGIN
-    PERFORM public.require_commerce_enabled();
     v_handover_method := COALESCE(p_handover_method, 'courier');
 
     IF v_handover_method NOT IN ('courier', 'qr_meetup') THEN
@@ -469,7 +465,6 @@ DECLARE
     v_total_deductions NUMERIC;
     v_net_escrow NUMERIC(12, 2);
 BEGIN
-    PERFORM public.require_commerce_enabled();
     IF p_currency IS DISTINCT FROM 'EGP' OR p_amount_cents IS NULL OR p_amount_cents <= 0
       OR p_paymob_tx_id IS NULL OR p_paymob_tx_id <= 0 THEN RAISE EXCEPTION 'Invalid payment'; END IF;
     v_amount_egp := p_amount_cents / 100.0;
@@ -583,7 +578,6 @@ DECLARE
     v_amount NUMERIC(12, 2);
     v_days INTEGER;
 BEGIN
-    PERFORM public.require_commerce_enabled();
     SELECT seller_id INTO v_seller_id FROM public.products WHERE id = p_product_id;
     
     IF NOT FOUND THEN RAISE EXCEPTION 'Product not found'; END IF;
@@ -638,7 +632,6 @@ DECLARE
     v_available_balance NUMERIC(12, 2);
     v_payout_id UUID;
 BEGIN
-    PERFORM public.require_commerce_enabled();
     SELECT id, available_balance INTO v_wallet_id, v_available_balance
     FROM public.user_wallets WHERE user_id = p_user_id FOR UPDATE;
 
@@ -830,58 +823,77 @@ END $$;
 
 CREATE OR REPLACE FUNCTION public.purge_account_data(p_user_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE order_ids uuid[]; product_ids uuid[]; room_ids uuid[]; txn_ids uuid[];
+-- Retention rule (the one the privacy policy states and the earlier
+-- app_review_compliance migration implements): the person's data goes, the
+-- marketplace's records of transactions with OTHER people stay, stripped of
+-- anything that identifies the person. Nothing here touches another user's
+-- wallet, deletes another user's messages, or removes an order the other
+-- party may still need. Rewritten from a version that hard-deleted all of
+-- that behind a "records are test data" flag -- see HANDOFF-TO-CODEX.md 2.4.
+--
+-- Runs after the edge function has drained the user's storage objects, and
+-- ends by anonymising + banning the auth row. It never deletes auth.users:
+-- orders.buyer_id / seller_id are ON DELETE RESTRICT, so that would fail for
+-- exactly the users who have history, and products.seller_id CASCADE would
+-- take their orders with it if it did not.
+DECLARE product_ids uuid[]; sold_product_ids uuid[];
 BEGIN
  PERFORM 1 FROM public.account_deletion_jobs WHERE user_id=p_user_id AND status='processing' FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Deletion was not requested'; END IF;
  IF EXISTS(SELECT 1 FROM storage.objects WHERE owner_id=p_user_id::text
  OR (bucket_id='kyc-documents' AND split_part(name,'/',1)=p_user_id::text)) THEN RAISE EXCEPTION 'Storage cleanup incomplete'; END IF;
- SELECT coalesce(array_agg(id),'{}') INTO product_ids FROM public.products WHERE seller_id=p_user_id;
- SELECT coalesce(array_agg(id),'{}') INTO order_ids FROM public.orders WHERE buyer_id=p_user_id OR seller_id=p_user_id OR product_id=ANY(product_ids);
- SELECT coalesce(array_agg(id),'{}') INTO room_ids FROM public.chat_rooms WHERE p_user_id=ANY(participant_ids);
- -- Never silently erase real ledgers after commerce is introduced.
- IF NOT (SELECT financial_records_are_test_data FROM private.launch_settings WHERE singleton) AND
- (cardinality(order_ids)>0 OR EXISTS(SELECT 1 FROM public.wallet_topups WHERE user_id=p_user_id)
- OR EXISTS(SELECT 1 FROM public.payout_requests WHERE user_id=p_user_id)
- OR EXISTS(SELECT 1 FROM public.wallet_transactions t JOIN public.user_wallets w ON w.id=t.wallet_id WHERE w.user_id=p_user_id))
- THEN RAISE EXCEPTION 'Financial retention review required'; END IF;
 
- -- The operator confirmed existing financial records are test data.
- SELECT coalesce(array_agg(t.id),'{}') INTO txn_ids FROM public.wallet_transactions t
- WHERE t.order_fk=ANY(order_ids) OR t.wallet_id IN(SELECT id FROM public.user_wallets WHERE user_id=p_user_id)
- OR t.topup_fk IN(SELECT id FROM public.wallet_topups WHERE user_id=p_user_id)
- OR t.payout_fk IN(SELECT id FROM public.payout_requests WHERE user_id=p_user_id);
- UPDATE public.user_wallets w SET
- available_balance=w.available_balance-d.a,pending_balance=w.pending_balance-d.p
- FROM(SELECT wallet_id,coalesce(sum(delta_available),0) a,coalesce(sum(delta_pending),0) p
- FROM public.wallet_transactions WHERE id=ANY(txn_ids) GROUP BY wallet_id)d
- WHERE w.id=d.wallet_id AND w.user_id<>p_user_id;
- DELETE FROM public.wallet_transactions WHERE id=ANY(txn_ids);
- DELETE FROM public.paymob_payment_attempts WHERE order_id=ANY(order_ids)
- OR merchant_order_id IN(SELECT merchant_order_id FROM public.wallet_topups WHERE user_id=p_user_id);
- DELETE FROM public.reviews WHERE reviewer_id=p_user_id OR seller_id=p_user_id OR order_id=ANY(order_ids);
- DELETE FROM public.orders WHERE id=ANY(order_ids);
- DELETE FROM public.payments WHERE buyer_id=p_user_id OR seller_id=p_user_id OR product_id=ANY(product_ids);
- DELETE FROM public.payout_requests WHERE user_id=p_user_id;
- DELETE FROM public.wallet_topups WHERE user_id=p_user_id;
- DELETE FROM public.live_chat_messages WHERE user_id=p_user_id;
+ SELECT coalesce(array_agg(id),'{}') INTO product_ids FROM public.products WHERE seller_id=p_user_id;
+ -- Listings somebody ordered are financial history: withdraw and scrub, keep the row.
+ -- (orders.product_id is ON DELETE RESTRICT, so deleting them is not possible anyway.)
+ SELECT coalesce(array_agg(DISTINCT product_id),'{}') INTO sold_product_ids FROM public.orders WHERE product_id=ANY(product_ids);
+ UPDATE public.products SET status='removed', images='{}', description='', updated_at=now()
+ WHERE id=ANY(sold_product_ids);
+ -- Everything else they listed goes; the AFTER DELETE trigger queues the images.
  DELETE FROM public.live_pinned_products WHERE product_id=ANY(product_ids);
+ DELETE FROM public.products WHERE id=ANY(product_ids) AND NOT (id=ANY(sold_product_ids));
+
+ -- Their own live sessions and what was said in them.
+ DELETE FROM public.live_chat_messages WHERE user_id=p_user_id
+ OR session_id IN(SELECT id FROM public.live_sessions WHERE seller_id=p_user_id);
+ DELETE FROM public.live_pinned_products WHERE session_id IN(SELECT id FROM public.live_sessions WHERE seller_id=p_user_id);
  DELETE FROM public.live_sessions WHERE seller_id=p_user_id;
- -- Remove previews and references to erased messages, not just the author's inbox.
- DELETE FROM public.notifications WHERE user_id=p_user_id
- OR payload->>'room_id'=ANY(room_ids::text[]) OR payload->>'order_id'=ANY(order_ids::text[]);
- DELETE FROM public.content_reports WHERE reporter_id=p_user_id OR target_id=p_user_id
- OR target_id=ANY(product_ids) OR target_id IN(SELECT id FROM public.messages WHERE room_id=ANY(room_ids));
- DELETE FROM public.chat_rooms WHERE id=ANY(room_ids);
- UPDATE public.seller_verification_requests SET reviewed_by=NULL WHERE reviewed_by=p_user_id;
+
+ -- Conversations stay for the other participant; this person's words do not.
+ UPDATE public.messages SET content='[Message deleted]' WHERE sender_id=p_user_id;
+
+ -- Orders stay (theirs as buyer and as seller); the identifying fields on them go.
+ UPDATE public.orders SET shipping_address=NULL, notes=NULL, updated_at=now()
+ WHERE buyer_id=p_user_id AND shipping_address IS NOT NULL;
+ -- Ratings stay (they are the counterparty's reputation); free-text comments go.
+ UPDATE public.reviews SET comment=NULL, edited_at=now() WHERE reviewer_id=p_user_id AND comment IS NOT NULL;
+ UPDATE public.reviews SET seller_response=NULL WHERE seller_id=p_user_id AND seller_response IS NOT NULL;
+
+ -- Payout destinations are bank/wallet identifiers: scrub, don't delete
+ -- (payout_requests reference them).
+ UPDATE public.payout_methods SET account_identifier='[deleted]', account_holder_name='[deleted]', is_default=false
+ WHERE user_id=p_user_id;
+
  DELETE FROM public.seller_verification_requests WHERE user_id=p_user_id;
- DELETE FROM public.products WHERE id=ANY(product_ids);
- DELETE FROM public.payout_methods WHERE user_id=p_user_id;
- DELETE FROM public.user_wallets WHERE user_id=p_user_id;
+ UPDATE public.seller_verification_requests SET reviewed_by=NULL WHERE reviewed_by=p_user_id;
+ DELETE FROM public.notifications WHERE user_id=p_user_id;
  DELETE FROM public.wishlists WHERE user_id=p_user_id;
  DELETE FROM public.blocked_users WHERE blocker_id=p_user_id OR blocked_id=p_user_id;
- DELETE FROM public.user_profiles WHERE id=p_user_id;
- -- The Edge Function calls auth.admin.deleteUser after this transaction.
+ -- content_reports are left as moderation evidence; ids are not PII once the profile is scrubbed.
+
+ -- The profile row stays (orders, reviews, messages reference it) with nothing personal on it.
+ -- public_profiles already hides rows whose account is banned or queued for deletion.
+ UPDATE public.user_profiles SET full_name='Deleted user', email=NULL, phone=NULL, address=NULL,
+ avatar_url=NULL, national_id_number=NULL, national_id_front_url=NULL, national_id_back_url=NULL, updated_at=now()
+ WHERE id=p_user_id;
+
+ -- Auth: no way back in, nothing identifying left.
+ UPDATE auth.users SET email='deleted+'||p_user_id::text||'@egbay.invalid', phone=NULL, encrypted_password=NULL,
+ raw_user_meta_data='{}'::jsonb, email_change=NULL, email_change_token_new=NULL, email_change_token_current=NULL,
+ phone_change=NULL, recovery_token=NULL, banned_until='infinity'::timestamptz, updated_at=now()
+ WHERE id=p_user_id;
+ DELETE FROM auth.identities WHERE user_id=p_user_id;
+ DELETE FROM auth.sessions WHERE user_id=p_user_id;
 END $$;
 REVOKE ALL ON FUNCTION public.purge_account_data(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.purge_account_data(uuid) TO service_role;

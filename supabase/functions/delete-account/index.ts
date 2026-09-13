@@ -48,14 +48,14 @@ Deno.serve(async (req: Request) => {
         }
       }
       if (!drained) throw new Error('More storage cleanup remains');
+      // purge_account_data scrubs the person's data, keeps the marketplace's
+      // records of their transactions with other people, and ends by
+      // anonymising + permanently banning the auth row. It does not delete
+      // auth.users: orders.buyer_id/seller_id are ON DELETE RESTRICT, so a
+      // hard delete would fail for any user with history, and cascading
+      // through products would take other people's orders with it.
       const { error: purgeError } = await admin.rpc('purge_account_data', { p_user_id: job.user_id });
       if (purgeError) throw purgeError;
-      const { error: deleteError } = await admin.auth.admin.deleteUser(job.user_id);
-      if (deleteError) {
-        const { error: lookupError } = await admin.auth.admin.getUserById(job.user_id);
-        // Only a confirmed absent account makes retries successful.
-        if (lookupError?.status !== 404 && lookupError?.code !== 'user_not_found') throw deleteError;
-      }
       const { error: finishError } = await admin.from('account_deletion_jobs').update({
         status: 'complete', completed_at: new Date().toISOString(), lease_until: null,
       }).eq('user_id', job.user_id);

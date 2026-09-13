@@ -38,16 +38,19 @@ $$;
 REVOKE ALL ON FUNCTION public.product_image_cleanup_paths(uuid,text[]) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.product_image_cleanup_paths(uuid,text[]) TO service_role;
 
--- Defense in depth: also revoke any pre-existing column grants on disabled mutations.
+-- Defense in depth: also revoke any pre-existing column-level UPDATE grants on
+-- chat rooms and messages, which clients must never edit (inbox hiding goes
+-- through hide_chat_room_for_user). Only these two: live_sessions keeps a
+-- deliberate column-level UPDATE grant from the first migration, and the
+-- other live/verification tables keep their table-level grants because the
+-- web client writes them from the browser (HANDOFF-TO-CODEX.md 2.2).
 DO $$
 DECLARE t text; cols text;
 BEGIN
- FOREACH t IN ARRAY ARRAY['chat_rooms','messages','live_sessions','live_chat_messages','live_pinned_products','seller_verification_requests']
+ FOREACH t IN ARRAY ARRAY['chat_rooms','messages']
  LOOP
  SELECT string_agg(quote_ident(attname),',') INTO cols FROM pg_attribute WHERE attrelid=('public.'||t)::regclass AND attnum>0 AND NOT attisdropped;
  EXECUTE format('REVOKE UPDATE (%s) ON public.%I FROM PUBLIC, anon, authenticated',cols,t);
- IF t NOT IN('chat_rooms','messages') THEN
- EXECUTE format('REVOKE INSERT (%s) ON public.%I FROM PUBLIC, anon, authenticated',cols,t); END IF;
  END LOOP;
 END $$;
 COMMIT;
