@@ -74,7 +74,7 @@ async function test(name, run) { await run(); count++; console.log('PASS', name)
     require: () => ({ createClient: () => ({
       storage: { from: () => ({ remove: async paths => { removed.push(...paths); return { data: [], error: null }; } }) },
       from: () => ({ insert: async () => ({ error: null }) }),
-      rpc: async (_name, params) => { if (_name === 'product_image_cleanup_paths') return { data: ownedImagePaths, error: null }; rpcCalls++; lastRpcParams = params; return { data: null, error: rpcError }; },
+      rpc: async (_name, params) => { if (_name === 'commerce_is_enabled') return { data: true, error: null }; if (_name === 'product_image_cleanup_paths') return { data: ownedImagePaths, error: null }; rpcCalls++; lastRpcParams = params; return { data: null, error: rpcError }; },
     }) }),
   };
   load('supabase/functions/create-payment-key/index.ts', adapters);
@@ -185,7 +185,7 @@ async function test(name, run) { await run(); count++; console.log('PASS', name)
     } : { createClient: () => ({
       auth: { getUser: async () => ({ data: { user: liveUser }, error: null }) },
       from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: liveSession, error: null }) }) }) }),
-      rpc: async () => ({ data: liveAllowed, error: null }),
+      rpc: async name => ({ data: name === 'commerce_is_enabled' ? true : liveAllowed, error: null }),
     }) },
   });
   const liveRequest = (body = {}, auth = true) => new Request('https://example.test', {

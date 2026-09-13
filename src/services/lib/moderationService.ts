@@ -77,8 +77,10 @@ export const getBlockedUserIds = async (): Promise<Set<string>> => {
  * permanently bans) the signed-in account. Resolves only after the database
  * confirmed; the caller signs out afterwards.
  */
-export const deleteMyAccount = async (): Promise<void> => {
+export const deleteMyAccount = async (): Promise<'complete' | 'pending'> => {
   await requireUser();
-  const { error } = await supabase.rpc('delete_my_account');
+  const { data, error } = await supabase.functions.invoke('delete-account', { body: {} });
   if (error) throw error;
+  if (data?.status !== 'complete' && data?.status !== 'pending') throw new Error('Account deletion was not confirmed');
+  return data.status;
 };

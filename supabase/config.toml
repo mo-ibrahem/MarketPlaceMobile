@@ -348,7 +348,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.delete-product-images]
 enabled = true
-verify_jwt = true
+verify_jwt = false # Custom server-only worker/webhook secret checked in the handler.
 import_map = "./functions/delete-product-images/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -377,3 +377,8 @@ entrypoint = "./functions/paymob-webhook/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/generate-agora-token/index.ts"
+
+[functions.delete-account]
+enabled = true
+verify_jwt = false # Handler verifies the user or private worker secret.
+entrypoint = "./functions/delete-account/index.ts"

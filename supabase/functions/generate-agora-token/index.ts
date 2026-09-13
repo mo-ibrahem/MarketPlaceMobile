@@ -32,6 +32,8 @@ Deno.serve(async (req: Request) => {
   try {
     const { data: { user }, error: authError } = await client.auth.getUser(authorization.slice(7));
     if (authError || !user) return reply(401, 'Authentication required');
+    const { data: commerceEnabled, error: commerceError } = await client.rpc('commerce_is_enabled');
+    if (commerceError || commerceEnabled !== true) return reply(503, 'Live selling is unavailable in classifieds mode');
     let input;
     try { input = await req.json(); } catch { return reply(400, 'Invalid JSON'); }
     const { channelName, uid, role } = input ?? {};

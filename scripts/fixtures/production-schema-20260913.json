@@ -1,0 +1,2908 @@
+{
+  "columns": [
+    {
+      "type": "jsonb",
+      "table": "payout_requests",
+      "column": "metadata",
+      "default": "'{}'::jsonb",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "payments",
+      "column": "product_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "payments",
+      "column": "buyer_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "payments",
+      "column": "seller_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "numeric",
+      "table": "payments",
+      "column": "amount",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "numeric",
+      "table": "user_wallets",
+      "column": "pending_balance",
+      "default": "0.00",
+      "nullable": "YES"
+    },
+    {
+      "type": "numeric",
+      "table": "user_wallets",
+      "column": "available_balance",
+      "default": "0.00",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "user_wallets",
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "user_wallets",
+      "column": "use_spendable_funds",
+      "default": "true",
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "user_wallets",
+      "column": "express_payout_enabled",
+      "default": "true",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "notifications",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "notifications",
+      "column": "user_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "jsonb",
+      "table": "notifications",
+      "column": "payload",
+      "default": "'{}'::jsonb",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "notifications",
+      "column": "read_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "notifications",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "reviews",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "reviews",
+      "column": "order_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "reviews",
+      "column": "reviewer_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "reviews",
+      "column": "seller_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "reviews",
+      "column": "product_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int2",
+      "table": "reviews",
+      "column": "rating",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "reviews",
+      "column": "seller_responded_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "reviews",
+      "column": "edited_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "reviews",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "order_events",
+      "column": "id",
+      "default": "uuid_generate_v4()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "order_events",
+      "column": "order_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "jsonb",
+      "table": "order_events",
+      "column": "payload",
+      "default": "'{}'::jsonb",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "order_events",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "products",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "numeric",
+      "table": "products",
+      "column": "price",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "products",
+      "column": "seller_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "products",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "products",
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "products",
+      "column": "is_promoted",
+      "default": "false",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "products",
+      "column": "promoted_until",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "products",
+      "column": "view_count",
+      "default": "0",
+      "nullable": "YES"
+    },
+    {
+      "type": "numeric",
+      "table": "products",
+      "column": "promoted_ad_rate",
+      "default": "0.00",
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "products",
+      "column": "is_promoted_on_sale",
+      "default": "false",
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "products",
+      "column": "stock",
+      "default": "0",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "payout_requests",
+      "column": "id",
+      "default": "uuid_generate_v4()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "payout_requests",
+      "column": "wallet_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "numeric",
+      "table": "payout_requests",
+      "column": "amount",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "payout_requests",
+      "column": "payout_method_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "payout_requests",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "payout_requests",
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "payout_requests",
+      "column": "user_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "live_chat_messages",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "live_chat_messages",
+      "column": "session_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "live_chat_messages",
+      "column": "user_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "live_chat_messages",
+      "column": "is_host",
+      "default": "false",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "live_chat_messages",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "live_pinned_products",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "live_pinned_products",
+      "column": "session_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "live_pinned_products",
+      "column": "product_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "live_pinned_products",
+      "column": "display_price",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "live_pinned_products",
+      "column": "pinned_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "live_pinned_products",
+      "column": "unpinned_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "live_pinned_products",
+      "column": "units_sold",
+      "default": "0",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "live_sessions",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "live_sessions",
+      "column": "seller_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "int4",
+      "table": "live_sessions",
+      "column": "pass_price_egp",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "int4",
+      "table": "live_sessions",
+      "column": "max_viewers",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "live_sessions",
+      "column": "scheduled_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "live_sessions",
+      "column": "started_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "live_sessions",
+      "column": "ended_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "live_sessions",
+      "column": "peak_viewers",
+      "default": "0",
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "live_sessions",
+      "column": "current_viewers",
+      "default": "0",
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "live_sessions",
+      "column": "total_sales_egp",
+      "default": "0",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "live_sessions",
+      "column": "wallet_charge_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "live_sessions",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "public_profiles",
+      "column": "id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "public_profiles",
+      "column": "tier",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "public_profiles",
+      "column": "is_verified_seller",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "numeric",
+      "table": "public_profiles",
+      "column": "rating_avg",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "public_profiles",
+      "column": "rating_count",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "paymob_payment_attempts",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "paymob_payment_attempts",
+      "column": "order_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int8",
+      "table": "paymob_payment_attempts",
+      "column": "paymob_transaction_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int8",
+      "table": "paymob_payment_attempts",
+      "column": "amount_cents",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "jsonb",
+      "table": "paymob_payment_attempts",
+      "column": "payload",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "paymob_payment_attempts",
+      "column": "resolved_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "paymob_payment_attempts",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "payments",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "payments",
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "payments",
+      "column": "completed_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "jsonb",
+      "table": "payments",
+      "column": "metadata",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "wishlists",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "wishlists",
+      "column": "user_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "wishlists",
+      "column": "product_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "wishlists",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "wishlists",
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "orders",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "orders",
+      "column": "product_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "orders",
+      "column": "buyer_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "orders",
+      "column": "seller_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "jsonb",
+      "table": "orders",
+      "column": "shipping_address",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "orders",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "orders",
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "orders",
+      "column": "shipped_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "orders",
+      "column": "delivered_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int8",
+      "table": "orders",
+      "column": "paymob_transaction_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "numeric",
+      "table": "orders",
+      "column": "amount",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "jsonb",
+      "table": "orders",
+      "column": "product_snapshot",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "user_profiles",
+      "column": "id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "user_profiles",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "user_profiles",
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "user_profiles",
+      "column": "tier",
+      "default": "1",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "user_profiles",
+      "column": "tier_verified_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "user_profiles",
+      "column": "is_verified_seller",
+      "default": "false",
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "user_profiles",
+      "column": "is_admin",
+      "default": "false",
+      "nullable": "NO"
+    },
+    {
+      "type": "numeric",
+      "table": "user_profiles",
+      "column": "rating_avg",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "user_profiles",
+      "column": "rating_count",
+      "default": "0",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "content_reports",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "content_reports",
+      "column": "reporter_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "content_reports",
+      "column": "target_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "content_reports",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "content_reports",
+      "column": "reviewed_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "blocked_users",
+      "column": "blocker_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "blocked_users",
+      "column": "blocked_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "blocked_users",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "messages",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "messages",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "messages",
+      "column": "room_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "messages",
+      "column": "sender_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "chat_rooms",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "chat_rooms",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "_uuid",
+      "table": "chat_rooms",
+      "column": "participant_ids",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "chat_rooms",
+      "column": "product_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "_uuid",
+      "table": "chat_rooms",
+      "column": "deleted_for",
+      "default": "'{}'::uuid[]",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "wallet_topups",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "wallet_topups",
+      "column": "user_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "numeric",
+      "table": "wallet_topups",
+      "column": "amount",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "int8",
+      "table": "wallet_topups",
+      "column": "paymob_transaction_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "wallet_topups",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "wallet_topups",
+      "column": "paid_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "wallet_topups",
+      "column": "expires_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "payout_methods",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "payout_methods",
+      "column": "user_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "payout_methods",
+      "column": "is_default",
+      "default": "false",
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "payout_methods",
+      "column": "is_verified",
+      "default": "true",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "payout_methods",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "seller_verification_requests",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "seller_verification_requests",
+      "column": "user_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "int2",
+      "table": "seller_verification_requests",
+      "column": "requested_tier",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "seller_verification_requests",
+      "column": "reviewed_by",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "seller_verification_requests",
+      "column": "reviewed_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "seller_verification_requests",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "seller_verification_requests",
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "wallet_transactions",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "wallet_transactions",
+      "column": "wallet_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "numeric",
+      "table": "wallet_transactions",
+      "column": "amount",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "numeric",
+      "table": "wallet_transactions",
+      "column": "fee_amount",
+      "default": "0.00",
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "wallet_transactions",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "type": "int8",
+      "table": "wallet_transactions",
+      "column": "paymob_transaction_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "numeric",
+      "table": "wallet_transactions",
+      "column": "delta_available",
+      "default": "0",
+      "nullable": "YES"
+    },
+    {
+      "type": "numeric",
+      "table": "wallet_transactions",
+      "column": "delta_pending",
+      "default": "0",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "wallet_transactions",
+      "column": "order_fk",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "wallet_transactions",
+      "column": "topup_fk",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "wallet_transactions",
+      "column": "payout_fk",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "user_wallets",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "user_wallets",
+      "column": "user_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "payments",
+      "column": "currency",
+      "default": "'EGP'::character varying",
+      "nullable": "NO"
+    },
+    {
+      "type": "varchar",
+      "table": "payments",
+      "column": "status",
+      "default": "'pending'::character varying",
+      "nullable": "NO"
+    },
+    {
+      "type": "varchar",
+      "table": "payments",
+      "column": "stripe_payment_intent_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "payments",
+      "column": "stripe_customer_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "payments",
+      "column": "payment_method_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "wallet_topups",
+      "column": "paymob_order_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "live_chat_messages",
+      "column": "username",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "live_chat_messages",
+      "column": "message",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "paymob_payment_attempts",
+      "column": "error_message",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "notifications",
+      "column": "type",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "varchar",
+      "table": "products",
+      "column": "promotion_tier",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "notifications",
+      "column": "link",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "payout_methods",
+      "column": "type",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "varchar",
+      "table": "payout_methods",
+      "column": "account_identifier",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "varchar",
+      "table": "payout_methods",
+      "column": "account_holder_name",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "varchar",
+      "table": "orders",
+      "column": "payment_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "live_chat_messages",
+      "column": "msg_type",
+      "default": "'chat'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "paymob_payment_attempts",
+      "column": "merchant_order_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "live_sessions",
+      "column": "agora_channel",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "orders",
+      "column": "status",
+      "default": "'pending_payment'::character varying",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "live_sessions",
+      "column": "agora_token",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "orders",
+      "column": "tracking_number",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "orders",
+      "column": "notes",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "live_sessions",
+      "column": "thumbnail_url",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "live_sessions",
+      "column": "status",
+      "default": "'scheduled'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "seller_verification_requests",
+      "column": "full_name",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "seller_verification_requests",
+      "column": "national_id_number",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "seller_verification_requests",
+      "column": "national_id_front_url",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "seller_verification_requests",
+      "column": "national_id_back_url",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "seller_verification_requests",
+      "column": "status",
+      "default": "'pending'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "orders",
+      "column": "handover_method",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "orders",
+      "column": "handover_pin_hash",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "orders",
+      "column": "handover_pin_encrypted",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "seller_verification_requests",
+      "column": "reviewer_notes",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "user_profiles",
+      "column": "full_name",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "user_profiles",
+      "column": "avatar_url",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "user_profiles",
+      "column": "phone",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "user_profiles",
+      "column": "address",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "live_sessions",
+      "column": "category",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "paymob_payment_attempts",
+      "column": "currency",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "user_profiles",
+      "column": "email",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "reviews",
+      "column": "comment",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "user_profiles",
+      "column": "national_id_number",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "user_profiles",
+      "column": "national_id_front_url",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "user_profiles",
+      "column": "national_id_back_url",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "reviews",
+      "column": "seller_response",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "payout_requests",
+      "column": "status",
+      "default": "'pending'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "paymob_payment_attempts",
+      "column": "outcome",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "wallet_transactions",
+      "column": "order_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "wallet_transactions",
+      "column": "type",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "varchar",
+      "table": "payments",
+      "column": "id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "payout_requests",
+      "column": "reference_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "content_reports",
+      "column": "target_type",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "varchar",
+      "table": "wallet_transactions",
+      "column": "status",
+      "default": "'completed'::character varying",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "content_reports",
+      "column": "reason",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "content_reports",
+      "column": "status",
+      "default": "'open'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "wallet_transactions",
+      "column": "description",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "public_profiles",
+      "column": "full_name",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "order_events",
+      "column": "event_type",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "public_profiles",
+      "column": "avatar_url",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "live_sessions",
+      "column": "title",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "live_sessions",
+      "column": "title_ar",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "products",
+      "column": "title",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "products",
+      "column": "description",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "wallet_transactions",
+      "column": "reference_id_text",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "messages",
+      "column": "content",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "live_sessions",
+      "column": "description",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "products",
+      "column": "category",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "varchar",
+      "table": "products",
+      "column": "condition",
+      "default": "'New'::character varying",
+      "nullable": "YES"
+    },
+    {
+      "type": "_text",
+      "table": "products",
+      "column": "images",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "user_wallets",
+      "column": "currency",
+      "default": "'EGP'::character varying",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "live_sessions",
+      "column": "pass_tier",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "user_wallets",
+      "column": "payout_schedule",
+      "default": "'daily'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "varchar",
+      "table": "products",
+      "column": "status",
+      "default": "'active'::character varying",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "wallet_topups",
+      "column": "currency",
+      "default": "'EGP'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "wallet_topups",
+      "column": "status",
+      "default": "'pending'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "wallet_topups",
+      "column": "merchant_order_id",
+      "default": null,
+      "nullable": "NO"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "DELETE",
+      "qual": "(auth.uid() = user_id)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "wishlists",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can delete from their own wishlists",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "wishlists",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can insert into their own wishlists",
+      "schemaname": "public",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "payments",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can insert their own payments as buyer",
+      "schemaname": "public",
+      "with_check": "(auth.uid() = buyer_id)"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "user_profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can insert their own profile",
+      "schemaname": "public",
+      "with_check": "(auth.uid() = id)"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(auth.uid() = buyer_id)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "payments",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view their own payments as buyer",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(auth.uid() = seller_id)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "payments",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view their own payments as seller",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(auth.uid() = user_id)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "wishlists",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view their own wishlists",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "service_role"
+      ],
+      "tablename": "user_profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow service_role to access user_profiles",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(auth.uid() = ANY (participant_ids))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "chat_rooms",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow read access to own chat rooms",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(EXISTS ( SELECT 1\n   FROM chat_rooms\n  WHERE ((chat_rooms.id = messages.room_id) AND (auth.uid() = ANY (chat_rooms.participant_ids)))))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "messages",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow read access to messages in own rooms",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "messages",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow insert access to own messages",
+      "schemaname": "public",
+      "with_check": "((sender_id = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM chat_rooms\n  WHERE ((chat_rooms.id = messages.room_id) AND (auth.uid() = ANY (chat_rooms.participant_ids))))))"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "chat_rooms",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow users to create their own chat rooms",
+      "schemaname": "public",
+      "with_check": "(auth.uid() = ANY (participant_ids))"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "(seller_id = auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "tablename": "live_sessions",
+      "permissive": "PERMISSIVE",
+      "policyname": "seller_manage_own_session",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "public"
+      ],
+      "tablename": "live_pinned_products",
+      "permissive": "PERMISSIVE",
+      "policyname": "public_read_pinned_products",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "(EXISTS ( SELECT 1\n   FROM live_sessions s\n  WHERE ((s.id = live_pinned_products.session_id) AND (s.seller_id = auth.uid()))))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "live_pinned_products",
+      "permissive": "PERMISSIVE",
+      "policyname": "seller_manage_pins",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(auth.uid() = id)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "user_profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can update their own profile",
+      "schemaname": "public",
+      "with_check": "(auth.uid() = id)"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(bucket_id = 'avatars'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow authenticated users to upload avatars 1oj01fe_0",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow authenticated users to upload to avatars bucket",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = 'avatars'::text) AND ((auth.uid())::text = owner_id))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(auth.uid() = user_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "user_wallets",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view own wallet",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(wallet_id IN ( SELECT user_wallets.id\n   FROM user_wallets\n  WHERE (user_wallets.user_id = auth.uid())))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wallet_transactions",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view own transactions",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(auth.uid() IS NOT NULL)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "live_chat_messages",
+      "permissive": "PERMISSIVE",
+      "policyname": "auth_read_chat",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "live_chat_messages",
+      "permissive": "PERMISSIVE",
+      "policyname": "auth_write_chat",
+      "schemaname": "public",
+      "with_check": "((auth.uid() IS NOT NULL) AND (user_id = auth.uid()))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "payout_requests",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view own payout requests",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(auth.uid() = id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "user_profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow public read access to all profiles",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((buyer_id = auth.uid()) OR (seller_id = auth.uid()))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "orders",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view own orders",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "payout_methods",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view own payout methods",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "payout_methods",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can insert own payout methods",
+      "schemaname": "public",
+      "with_check": "(user_id = auth.uid())"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "payout_methods",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can delete own payout methods",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((status)::text = 'active'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "products",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public active-product SELECT",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "products",
+      "permissive": "PERMISSIVE",
+      "policyname": "Seller INSERT",
+      "schemaname": "public",
+      "with_check": "(seller_id = auth.uid())"
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(seller_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "products",
+      "permissive": "PERMISSIVE",
+      "policyname": "Seller UPDATE",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(seller_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "products",
+      "permissive": "PERMISSIVE",
+      "policyname": "Seller DELETE",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(auth.uid() = user_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wallet_topups",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view own topups",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(EXISTS ( SELECT 1\n   FROM orders\n  WHERE ((orders.id = order_events.order_id) AND ((orders.buyer_id = auth.uid()) OR (orders.seller_id = auth.uid())))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "order_events",
+      "permissive": "PERMISSIVE",
+      "policyname": "Buyers and Sellers can view their order events",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(status = ANY (ARRAY['live'::text, 'scheduled'::text]))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "live_sessions",
+      "permissive": "PERMISSIVE",
+      "policyname": "public_read_live_sessions",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Authenticated users can upload product images",
+      "schemaname": "storage",
+      "with_check": "(bucket_id = 'product-images'::text)"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(bucket_id = ANY (ARRAY['product-images'::text, 'avatars'::text]))",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public can read product images and avatars",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "seller_verification_requests",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view own verification requests",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "seller_verification_requests",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can submit own verification requests",
+      "schemaname": "public",
+      "with_check": "(user_id = auth.uid())"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can upload own KYC documents",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = 'kyc-documents'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'kyc-documents'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can read own KYC documents",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "user_wallets",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can create own zero-balance wallet",
+      "schemaname": "public",
+      "with_check": "((auth.uid() = user_id) AND (pending_balance = (0)::numeric) AND (available_balance = (0)::numeric))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(auth.uid() = user_id)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "notifications",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users read only their own notifications",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "public"
+      ],
+      "tablename": "reviews",
+      "permissive": "PERMISSIVE",
+      "policyname": "Reviews are publicly readable",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(reporter_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "content_reports",
+      "permissive": "PERMISSIVE",
+      "policyname": "reporter reads own reports",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(blocker_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "blocked_users",
+      "permissive": "PERMISSIVE",
+      "policyname": "user reads own block list",
+      "schemaname": "public",
+      "with_check": null
+    }
+  ],
+  "triggers": [
+    {
+      "table": "products",
+      "definition": "CREATE TRIGGER trg_prevent_promotion_tampering BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION check_product_promotion_update()"
+    },
+    {
+      "table": "messages",
+      "definition": "CREATE TRIGGER trg_unhide_chat_room_on_new_message AFTER INSERT ON public.messages FOR EACH ROW EXECUTE FUNCTION unhide_chat_room_on_new_message()"
+    },
+    {
+      "table": "order_events",
+      "definition": "CREATE TRIGGER trg_notify_on_order_event AFTER INSERT ON public.order_events FOR EACH ROW EXECUTE FUNCTION notify_on_order_event()"
+    },
+    {
+      "table": "messages",
+      "definition": "CREATE TRIGGER trg_notify_on_new_message AFTER INSERT ON public.messages FOR EACH ROW EXECUTE FUNCTION notify_on_new_message()"
+    },
+    {
+      "table": "wallet_transactions",
+      "definition": "CREATE TRIGGER trg_notify_on_wallet_transaction AFTER INSERT ON public.wallet_transactions FOR EACH ROW EXECUTE FUNCTION notify_on_wallet_transaction()"
+    },
+    {
+      "table": "reviews",
+      "definition": "CREATE TRIGGER trg_refresh_seller_rating_aggregate AFTER INSERT OR DELETE OR UPDATE ON public.reviews FOR EACH ROW EXECUTE FUNCTION refresh_seller_rating_aggregate()"
+    },
+    {
+      "table": "reviews",
+      "definition": "CREATE TRIGGER trg_notify_on_new_review AFTER INSERT ON public.reviews FOR EACH ROW EXECUTE FUNCTION notify_on_new_review()"
+    },
+    {
+      "table": "orders",
+      "definition": "CREATE TRIGGER trg_resolve_paymob_attempts AFTER UPDATE OF status ON public.orders FOR EACH ROW EXECUTE FUNCTION resolve_paymob_attempts_on_status_change()"
+    }
+  ],
+  "functions": [
+    {
+      "name": "admin_resolve_dispute(uuid,uuid,text,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.admin_resolve_dispute(p_admin_id uuid, p_order_id uuid, p_resolution text, p_notes text DEFAULT NULL::text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n  v_is_admin BOOLEAN;\n  v_buyer_id UUID;\n  v_seller_id UUID;\n  v_status TEXT;\n  v_seller_wallet_id UUID;\n  v_buyer_wallet_id UUID;\n  v_seller_pending_balance NUMERIC(12,2);\n  v_net_escrow NUMERIC(12,2);\nBEGIN\n  IF p_resolution NOT IN ('refund_buyer', 'release_seller') THEN\n    RAISE EXCEPTION 'Invalid resolution: must be refund_buyer or release_seller';\n  END IF;\n\n  SELECT is_admin INTO v_is_admin FROM public.user_profiles WHERE id = p_admin_id;\n  IF NOT COALESCE(v_is_admin, false) THEN\n    RAISE EXCEPTION 'Unauthorized: caller is not an admin';\n  END IF;\n\n  SELECT buyer_id, seller_id, status INTO v_buyer_id, v_seller_id, v_status\n  FROM public.orders WHERE id = p_order_id FOR UPDATE;\n\n  IF NOT FOUND THEN RAISE EXCEPTION 'Order not found'; END IF;\n  IF v_status != 'disputed' THEN RAISE EXCEPTION 'Order is not disputed (status: %)', v_status; END IF;\n\n  SELECT id, pending_balance INTO v_seller_wallet_id, v_seller_pending_balance\n  FROM public.user_wallets WHERE user_id = v_seller_id FOR UPDATE;\n  IF NOT FOUND THEN RAISE EXCEPTION 'Seller wallet not found'; END IF;\n\n  SELECT delta_pending INTO STRICT v_net_escrow\n  FROM public.wallet_transactions\n  WHERE order_fk = p_order_id AND type = 'escrow_hold' AND wallet_id = v_seller_wallet_id;\n\n  IF v_seller_pending_balance < v_net_escrow THEN\n    RAISE EXCEPTION 'Seller pending balance is less than the held escrow amount';\n  END IF;\n\n  IF p_resolution = 'release_seller' THEN\n    UPDATE public.user_wallets\n    SET pending_balance = pending_balance - v_net_escrow,\n        available_balance = available_balance + v_net_escrow,\n        updated_at = NOW()\n    WHERE id = v_seller_wallet_id;\n\n    UPDATE public.orders SET status = 'completed', updated_at = NOW() WHERE id = p_order_id;\n\n    INSERT INTO public.order_events (order_id, event_type, payload, created_at)\n    VALUES (p_order_id, 'dispute_resolved', jsonb_build_object('resolution', 'release_seller', 'admin_id', p_admin_id, 'notes', p_notes), NOW());\n    INSERT INTO public.order_events (order_id, event_type, created_at)\n    VALUES (p_order_id, 'completed', NOW());\n\n    INSERT INTO public.wallet_transactions (\n      wallet_id, order_id, type, amount, status, description,\n      delta_available, delta_pending, order_fk\n    ) VALUES (\n      v_seller_wallet_id, p_order_id::TEXT, 'earning', v_net_escrow, 'completed',\n      'Escrow Released (Dispute Resolved in Seller Favor)', v_net_escrow, -v_net_escrow, p_order_id\n    );\n\n  ELSE\n    SELECT id INTO v_buyer_wallet_id FROM public.user_wallets WHERE user_id = v_buyer_id FOR UPDATE;\n    IF NOT FOUND THEN\n      INSERT INTO public.user_wallets (user_id, available_balance, pending_balance, currency)\n      VALUES (v_buyer_id, 0, 0, 'EGP') RETURNING id INTO v_buyer_wallet_id;\n    END IF;\n\n    UPDATE public.user_wallets\n    SET pending_balance = pending_balance - v_net_escrow, updated_at = NOW()\n    WHERE id = v_seller_wallet_id;\n\n    UPDATE public.user_wallets\n    SET available_balance = available_balance + v_net_escrow, updated_at = NOW()\n    WHERE id = v_buyer_wallet_id;\n\n    UPDATE public.orders SET status = 'refunded', updated_at = NOW() WHERE id = p_order_id;\n\n    INSERT INTO public.order_events (order_id, event_type, payload, created_at)\n    VALUES (p_order_id, 'dispute_resolved', jsonb_build_object('resolution', 'refund_buyer', 'admin_id', p_admin_id, 'notes', p_notes), NOW());\n    INSERT INTO public.order_events (order_id, event_type, created_at)\n    VALUES (p_order_id, 'refunded', NOW());\n\n    INSERT INTO public.wallet_transactions (\n      wallet_id, order_id, type, amount, status, description,\n      delta_available, delta_pending, order_fk\n    ) VALUES (\n      v_seller_wallet_id, p_order_id::TEXT, 'refund', v_net_escrow, 'completed',\n      'Escrow Reversed (Dispute Resolved: Buyer Refunded)', 0, -v_net_escrow, p_order_id\n    );\n\n    INSERT INTO public.wallet_transactions (\n      wallet_id, order_id, type, amount, status, description,\n      delta_available, delta_pending, order_fk\n    ) VALUES (\n      v_buyer_wallet_id, p_order_id::TEXT, 'refund', v_net_escrow, 'completed',\n      'Refund: Dispute Resolved in Buyer Favor', v_net_escrow, 0, p_order_id\n    );\n  END IF;\n\n  RETURN jsonb_build_object('success', true, 'resolution', p_resolution, 'amount', v_net_escrow);\nEND;\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "admin_review_seller_verification(uuid,uuid,text,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.admin_review_seller_verification(p_admin_id uuid, p_request_id uuid, p_decision text, p_notes text DEFAULT NULL::text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n  v_is_admin BOOLEAN;\n  v_user_id UUID;\n  v_tier SMALLINT;\n  v_status TEXT;\nBEGIN\n  IF p_decision NOT IN ('approved', 'rejected') THEN\n    RAISE EXCEPTION 'Invalid decision: must be approved or rejected';\n  END IF;\n\n  SELECT is_admin INTO v_is_admin FROM public.user_profiles WHERE id = p_admin_id;\n  IF NOT COALESCE(v_is_admin, false) THEN\n    RAISE EXCEPTION 'Unauthorized: caller is not an admin';\n  END IF;\n\n  SELECT user_id, requested_tier, status INTO v_user_id, v_tier, v_status\n  FROM public.seller_verification_requests\n  WHERE id = p_request_id\n  FOR UPDATE;\n\n  IF NOT FOUND THEN RAISE EXCEPTION 'Verification request not found'; END IF;\n  IF v_status != 'pending' THEN RAISE EXCEPTION 'Request already reviewed (status: %)', v_status; END IF;\n\n  UPDATE public.seller_verification_requests\n  SET status = p_decision,\n      reviewer_notes = p_notes,\n      reviewed_by = p_admin_id,\n      reviewed_at = NOW(),\n      updated_at = NOW()\n  WHERE id = p_request_id;\n\n  IF p_decision = 'approved' THEN\n    UPDATE public.user_profiles\n    SET tier = v_tier,\n        tier_verified_at = NOW(),\n        is_verified_seller = true,\n        updated_at = NOW()\n    WHERE id = v_user_id;\n  END IF;\n\n  RETURN jsonb_build_object('success', true, 'decision', p_decision, 'user_id', v_user_id);\nEND;\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "block_user(uuid)",
+      "definition": "CREATE OR REPLACE FUNCTION public.block_user(p_user_id uuid)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nBEGIN\n  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;\n  IF p_user_id = auth.uid() THEN RAISE EXCEPTION 'You cannot block yourself'; END IF;\n  INSERT INTO public.blocked_users (blocker_id, blocked_id) VALUES (auth.uid(), p_user_id)\n  ON CONFLICT DO NOTHING;\nEND $function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "book_live_session(uuid,text,text,text,text,text,timestamp with time zone,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.book_live_session(p_seller_id uuid, p_title text, p_title_ar text, p_description text, p_tier text, p_category text, p_scheduled_at timestamp with time zone, p_thumbnail_url text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_price NUMERIC;\n    v_max_viewers INTEGER;\n    v_wallet_id UUID;\n    v_available NUMERIC;\n    v_tx_id UUID;\n    v_channel TEXT;\n    v_session RECORD;\nBEGIN\n    IF p_tier = 'flash' THEN v_price := 79; v_max_viewers := 30;\n    ELSIF p_tier = 'pro' THEN v_price := 149; v_max_viewers := 100;\n    ELSIF p_tier = 'mega' THEN v_price := 299; v_max_viewers := 300;\n    ELSE RAISE EXCEPTION 'Invalid live pass tier';\n    END IF;\n\n    IF p_title IS NULL OR length(trim(p_title)) = 0 THEN\n        RAISE EXCEPTION 'Title is required';\n    END IF;\n\n    SELECT id, available_balance INTO v_wallet_id, v_available\n    FROM public.user_wallets WHERE user_id = p_seller_id FOR UPDATE;\n\n    IF NOT FOUND OR v_available < v_price THEN\n        RAISE EXCEPTION 'Insufficient wallet balance. Required: % EGP', v_price;\n    END IF;\n\n    UPDATE public.user_wallets\n    SET available_balance = available_balance - v_price, updated_at = NOW()\n    WHERE id = v_wallet_id;\n\n    INSERT INTO public.wallet_transactions (\n        wallet_id, type, amount, status, description, delta_available, delta_pending, reference_id_text\n    ) VALUES (\n        v_wallet_id, 'live_pass', v_price, 'completed',\n        'Live Pass Fee (' || p_tier || ')', -v_price, 0, NULL\n    ) RETURNING id INTO v_tx_id;\n\n    v_channel := 'egbay_live_' || extract(epoch from now())::bigint || '_' || substr(p_seller_id::text, 1, 8);\n\n    INSERT INTO public.live_sessions (\n        seller_id, title, title_ar, description, pass_tier, pass_price_egp,\n        max_viewers, agora_channel, status, scheduled_at, category, thumbnail_url,\n        wallet_charge_id\n    ) VALUES (\n        p_seller_id, p_title, p_title_ar, p_description, p_tier, v_price,\n        v_max_viewers, v_channel, 'scheduled', p_scheduled_at, p_category, p_thumbnail_url,\n        v_tx_id\n    ) RETURNING * INTO v_session;\n\n    UPDATE public.wallet_transactions SET reference_id_text = v_session.id::text WHERE id = v_tx_id;\n\n    RETURN to_jsonb(v_session);\nEND;\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "cancel_abandoned_orders()",
+      "definition": "CREATE OR REPLACE FUNCTION public.cancel_abandoned_orders()\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    r RECORD;\nBEGIN\n    FOR r IN\n        SELECT o.id\n        FROM public.orders o\n        WHERE o.status = 'pending_payment'\n          AND NOT EXISTS (\n              SELECT 1 FROM public.paymob_payment_attempts a\n              WHERE a.order_id = o.id\n                AND a.outcome = 'processing_failed'\n                AND a.resolved_at IS NULL\n          )\n          AND (\n              o.created_at < NOW() - INTERVAL '1 hour'\n              OR EXISTS (\n                  SELECT 1 FROM public.paymob_payment_attempts a\n                  WHERE a.order_id = o.id\n                    AND a.outcome = 'declined'\n                    AND a.created_at < NOW() - INTERVAL '15 minutes'\n              )\n          )\n    LOOP\n        PERFORM public.cancel_and_restore_order(r.id);\n    END LOOP;\nEND;\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "cancel_and_restore_order(uuid)",
+      "definition": "CREATE OR REPLACE FUNCTION public.cancel_and_restore_order(p_order_id uuid)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\r\nDECLARE\r\n    v_product_id UUID;\r\nBEGIN\r\n\r\n    UPDATE public.orders\r\n    SET\r\n        status = 'cancelled',\r\n        updated_at = NOW()\r\n    WHERE id = p_order_id\r\n      AND status = 'pending_payment'\r\n    RETURNING product_id\r\n    INTO v_product_id;\r\n\r\n\r\n    IF FOUND THEN\r\n\r\n        UPDATE public.products\r\n        SET\r\n            stock = stock + 1,\r\n            updated_at = NOW()\r\n        WHERE id = v_product_id;\r\n\r\n    END IF;\r\n\r\nEND;\r\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "check_product_promotion_update()",
+      "definition": "CREATE OR REPLACE FUNCTION public.check_product_promotion_update()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nDECLARE\n    v_role TEXT;\nBEGIN\n    BEGIN\n        v_role := current_setting('request.jwt.claims', true)::jsonb->>'role';\n    EXCEPTION WHEN OTHERS THEN\n        v_role := current_user;\n    END;\n\n    IF v_role NOT IN ('service_role', 'postgres') AND (\n        NEW.is_promoted IS DISTINCT FROM OLD.is_promoted OR\n        NEW.promoted_until IS DISTINCT FROM OLD.promoted_until OR\n        NEW.promotion_tier IS DISTINCT FROM OLD.promotion_tier OR\n        NEW.promoted_ad_rate IS DISTINCT FROM OLD.promoted_ad_rate OR\n        NEW.is_promoted_on_sale IS DISTINCT FROM OLD.is_promoted_on_sale\n    ) THEN\n        RAISE EXCEPTION 'Only system administrators can modify promotion status (Role: %)', v_role;\n    END IF;\n\n    RETURN NEW;\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "checkout_with_wallet(uuid,uuid)",
+      "definition": "CREATE OR REPLACE FUNCTION public.checkout_with_wallet(p_user_id uuid, p_order_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_buyer_id UUID;\n    v_seller_id UUID;\n    v_amount NUMERIC(12, 2);\n    v_status TEXT;\n    v_wallet_id UUID;\n    v_available_balance NUMERIC(12, 2);\n    v_seller_wallet_id UUID;\n\n    v_tier INT;\n    v_platform_fee_rate NUMERIC;\n    v_platform_commission NUMERIC;\n    v_paymob_fee NUMERIC;\n    v_total_deductions NUMERIC;\n    v_net_escrow NUMERIC(12, 2);\nBEGIN\n    SELECT buyer_id, seller_id, amount, status\n    INTO v_buyer_id, v_seller_id, v_amount, v_status\n    FROM public.orders WHERE id = p_order_id FOR UPDATE;\n\n    IF NOT FOUND THEN RAISE EXCEPTION 'Order not found'; END IF;\n    IF v_buyer_id != p_user_id THEN RAISE EXCEPTION 'Unauthorized'; END IF;\n    IF v_status != 'pending_payment' THEN RAISE EXCEPTION 'Order not pending_payment'; END IF;\n\n    SELECT id, available_balance INTO v_wallet_id, v_available_balance\n    FROM public.user_wallets WHERE user_id = p_user_id FOR UPDATE;\n\n    IF NOT FOUND OR v_available_balance < v_amount THEN RAISE EXCEPTION 'Insufficient balance'; END IF;\n\n    SELECT id INTO v_seller_wallet_id\n    FROM public.user_wallets WHERE user_id = v_seller_id FOR UPDATE;\n\n    IF NOT FOUND THEN RAISE EXCEPTION 'Seller wallet not found'; END IF;\n\n    SELECT tier INTO v_tier FROM public.user_profiles WHERE id = v_seller_id;\n\n    IF v_tier = 1 THEN v_platform_fee_rate := 0.035;\n    ELSIF v_tier = 2 THEN v_platform_fee_rate := 0.025;\n    ELSIF v_tier = 3 THEN v_platform_fee_rate := 0.015;\n    ELSE v_platform_fee_rate := 0.035;\n    END IF;\n\n    v_platform_commission := v_amount * v_platform_fee_rate;\n    v_paymob_fee := 0;\n    v_total_deductions := v_platform_commission + v_paymob_fee;\n    v_net_escrow := v_amount - v_total_deductions;\n\n    IF v_net_escrow <= 0 THEN RAISE EXCEPTION 'Net escrow amount is negative or zero'; END IF;\n\n    UPDATE public.user_wallets\n    SET available_balance = available_balance - v_amount,\n        updated_at = NOW()\n    WHERE id = v_wallet_id;\n\n    UPDATE public.user_wallets\n    SET pending_balance = pending_balance + v_net_escrow,\n        updated_at = NOW()\n    WHERE id = v_seller_wallet_id;\n\n    UPDATE public.orders\n    SET status = 'escrow_secured', updated_at = NOW()\n    WHERE id = p_order_id;\n\n    INSERT INTO public.order_events (order_id, event_type, created_at)\n    VALUES (p_order_id, 'payment_completed', NOW());\n\n    INSERT INTO public.order_events (order_id, event_type, created_at)\n    VALUES (p_order_id, 'escrow_secured', NOW());\n\n    INSERT INTO public.wallet_transactions (\n        wallet_id, order_id, type, amount, status, description, delta_available, delta_pending, order_fk\n    ) VALUES (\n        v_wallet_id, p_order_id::TEXT, 'purchase', v_amount, 'completed', 'Order Payment', -v_amount, 0, p_order_id\n    );\n\n    INSERT INTO public.wallet_transactions (\n        wallet_id, order_id, type, amount, status, description, delta_available, delta_pending, fee_amount, order_fk\n    ) VALUES (\n        v_seller_wallet_id, p_order_id::TEXT, 'escrow_hold', v_net_escrow, 'completed', 'Escrow Hold for Order', 0, v_net_escrow, v_total_deductions, p_order_id\n    );\n\n    RETURN jsonb_build_object('success', true);\nEND;\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "cleanup_old_notifications()",
+      "definition": "CREATE OR REPLACE FUNCTION public.cleanup_old_notifications()\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nBEGIN\n    DELETE FROM public.notifications\n    WHERE (read_at IS NOT NULL AND read_at < NOW() - INTERVAL '60 days')\n       OR created_at < NOW() - INTERVAL '180 days';\nEND;\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "create_marketplace_order(uuid,uuid,text,text,text,jsonb,uuid)",
+      "definition": "CREATE OR REPLACE FUNCTION public.create_marketplace_order(p_product_id uuid, p_buyer_id uuid, p_handover_method text, p_handover_pin_hash text, p_handover_pin_encrypted text, p_shipping_address jsonb, p_live_session_id uuid DEFAULT NULL::uuid)\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_seller_id UUID;\n    v_price NUMERIC;\n    v_hardened_price NUMERIC;\n    v_title TEXT;\n    v_images TEXT[];\n    v_condition TEXT;\n    v_category TEXT;\n    v_order_id UUID;\n    v_product_snapshot JSONB;\n    v_handover_method TEXT;\n    v_live_display_price NUMERIC;\nBEGIN\n    v_handover_method := COALESCE(p_handover_method, 'courier');\n\n    IF v_handover_method NOT IN ('courier', 'qr_meetup') THEN\n        RAISE EXCEPTION 'Unsupported handover method';\n    END IF;\n\n    IF p_handover_pin_hash IS NULL OR p_handover_pin_encrypted IS NULL THEN\n        RAISE EXCEPTION 'Secure handover PIN data is required';\n    END IF;\n\n    IF EXISTS (\n        SELECT 1 FROM public.orders\n        WHERE buyer_id = p_buyer_id\n          AND product_id = p_product_id\n          AND status = 'pending_payment'\n          AND created_at > NOW() - INTERVAL '5 minutes'\n    ) THEN\n        RAISE EXCEPTION 'You already have a pending order for this item.';\n    END IF;\n\n    UPDATE public.products\n    SET stock = stock - 1, updated_at = NOW()\n    WHERE id = p_product_id AND stock >= 1 AND status = 'active'\n    RETURNING seller_id, price, title, images, condition, category\n    INTO v_seller_id, v_price, v_title, v_images, v_condition, v_category;\n\n    IF NOT FOUND THEN\n        RAISE EXCEPTION 'Product is out of stock, unavailable, or does not exist.';\n    END IF;\n\n    v_hardened_price := COALESCE(v_price, 0);\n\n    IF p_live_session_id IS NOT NULL THEN\n        SELECT display_price INTO v_live_display_price\n        FROM public.live_pinned_products\n        WHERE session_id = p_live_session_id\n          AND product_id = p_product_id\n          AND unpinned_at IS NULL\n        LIMIT 1;\n\n        IF v_live_display_price IS NOT NULL THEN\n            v_hardened_price := LEAST(v_hardened_price, v_live_display_price);\n        END IF;\n    END IF;\n\n    IF v_handover_method = 'courier' THEN\n        v_hardened_price := v_hardened_price + 65;\n    END IF;\n\n    v_product_snapshot := jsonb_build_object(\n        'id', p_product_id,\n        'title', v_title,\n        'price', v_hardened_price,\n        'images', COALESCE(v_images, ARRAY[]::TEXT[]),\n        'condition', COALESCE(v_condition, 'Used'),\n        'category', COALESCE(v_category, 'General')\n    );\n\n    INSERT INTO public.orders (\n        product_id, buyer_id, seller_id, status, amount, product_snapshot,\n        handover_method, handover_pin_hash, handover_pin_encrypted, notes,\n        shipping_address, created_at\n    )\n    VALUES (\n        p_product_id, p_buyer_id, v_seller_id, 'pending_payment', v_hardened_price,\n        v_product_snapshot, v_handover_method, p_handover_pin_hash, p_handover_pin_encrypted,\n        jsonb_build_object(\n            'amount', v_hardened_price,\n            'live_session_id', p_live_session_id,\n            'courier_name', NULL\n        ),\n        p_shipping_address, NOW()\n    )\n    RETURNING id INTO v_order_id;\n\n    INSERT INTO public.order_events (order_id, event_type, payload)\n    VALUES (v_order_id, 'order_placed', jsonb_build_object('amount', v_hardened_price));\n\n    IF p_live_session_id IS NOT NULL THEN\n        UPDATE public.live_sessions\n        SET total_sales_egp = COALESCE(total_sales_egp, 0) + v_hardened_price::integer\n        WHERE id = p_live_session_id;\n\n        UPDATE public.live_pinned_products\n        SET units_sold = COALESCE(units_sold, 0) + 1\n        WHERE session_id = p_live_session_id\n          AND product_id = p_product_id\n          AND unpinned_at IS NULL;\n    END IF;\n\n    RETURN v_order_id;\nEND;\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "create_notification(uuid,text,jsonb,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.create_notification(p_user_id uuid, p_type text, p_payload jsonb DEFAULT '{}'::jsonb, p_link text DEFAULT NULL::text)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nBEGIN\n    IF p_user_id IS NULL THEN\n        RETURN;\n    END IF;\n\n    INSERT INTO public.notifications (user_id, type, payload, link)\n    VALUES (p_user_id, p_type, p_payload, p_link);\nEND;\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "create_user_profile()",
+      "definition": "CREATE OR REPLACE FUNCTION public.create_user_profile()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\nBEGIN\n  INSERT INTO public.user_profiles (id, email, full_name)\n  VALUES (\n    NEW.id,\n    NEW.email,\n    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email)\n  );\n\n  INSERT INTO public.user_wallets (user_id)\n  VALUES (NEW.id)\n  ON CONFLICT (user_id) DO NOTHING;\n\n  RETURN NEW;\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "delete_my_account()",
+      "definition": "CREATE OR REPLACE FUNCTION public.delete_my_account()\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'auth', 'pg_catalog'\nAS $function$\nDECLARE v_uid uuid := auth.uid();\nBEGIN\n  IF v_uid IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;\n\n  -- Listings off the market; wishlists/notifications/payout accounts/blocks/\n  -- ID-verification uploads gone.\n  UPDATE public.products SET status = 'removed', updated_at = now()\n   WHERE seller_id = v_uid AND status <> 'removed';\n  DELETE FROM public.wishlists                    WHERE user_id = v_uid;\n  DELETE FROM public.notifications                WHERE user_id = v_uid;\n  DELETE FROM public.blocked_users                WHERE blocker_id = v_uid;\n  DELETE FROM public.payout_methods               WHERE user_id = v_uid;\n  DELETE FROM public.seller_verification_requests WHERE user_id = v_uid;\n\n  -- Profile row stays (orders and reviews point at the id) but holds no PII.\n  UPDATE public.user_profiles\n     SET full_name = 'Deleted user', email = NULL, phone = NULL, address = NULL,\n         avatar_url = NULL, national_id_number = NULL,\n         national_id_front_url = NULL, national_id_back_url = NULL,\n         updated_at = now()\n   WHERE id = v_uid;\n\n  -- Auth identity: anonymise, remove credentials, ban, revoke every session.\n  UPDATE auth.users\n     SET email = 'deleted+' || v_uid::text || '@egbay.invalid',\n         phone = NULL,\n         encrypted_password = NULL,\n         raw_user_meta_data = '{}'::jsonb,\n         email_change = NULL, email_change_token_new = NULL, email_change_token_current = NULL,\n         phone_change = NULL, recovery_token = NULL,\n         banned_until = 'infinity'::timestamptz,\n         updated_at = now()\n   WHERE id = v_uid;\n  DELETE FROM auth.identities WHERE user_id = v_uid;\n  DELETE FROM auth.mfa_factors WHERE user_id = v_uid;\n  DELETE FROM auth.sessions    WHERE user_id = v_uid;   -- cascades refresh_tokens\nEND $function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "edit_review(uuid,integer,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.edit_review(p_review_id uuid, p_rating integer, p_comment text DEFAULT NULL::text)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_review RECORD;\nBEGIN\n    IF p_rating IS NULL OR p_rating < 1 OR p_rating > 5 THEN\n        RAISE EXCEPTION 'Rating must be between 1 and 5';\n    END IF;\n    IF p_comment IS NOT NULL AND char_length(p_comment) > 1000 THEN\n        RAISE EXCEPTION 'Comment must be 1000 characters or fewer';\n    END IF;\n\n    SELECT id, reviewer_id, created_at INTO v_review\n    FROM public.reviews\n    WHERE id = p_review_id\n    FOR UPDATE;\n\n    IF NOT FOUND THEN\n        RAISE EXCEPTION 'Review not found';\n    END IF;\n\n    IF auth.uid() != v_review.reviewer_id THEN\n        RAISE EXCEPTION 'You can only edit your own review';\n    END IF;\n\n    IF v_review.created_at < NOW() - INTERVAL '7 days' THEN\n        RAISE EXCEPTION 'The edit window for this review has closed';\n    END IF;\n\n    UPDATE public.reviews\n    SET rating = p_rating, comment = p_comment, edited_at = NOW()\n    WHERE id = p_review_id;\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "expire_promoted_products()",
+      "definition": "CREATE OR REPLACE FUNCTION public.expire_promoted_products()\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nBEGIN\n    UPDATE public.products\n    SET is_promoted = false,\n        promotion_tier = NULL,\n        updated_at = NOW()\n    WHERE is_promoted = true\n      AND promoted_until IS NOT NULL\n      AND promoted_until < NOW();\nEND;\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "hide_chat_room_for_user(uuid)",
+      "definition": "CREATE OR REPLACE FUNCTION public.hide_chat_room_for_user(p_room_id uuid)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_uid uuid := auth.uid();\nBEGIN\n    IF v_uid IS NULL THEN\n        RAISE EXCEPTION 'Not authenticated';\n    END IF;\n\n    UPDATE public.chat_rooms\n    SET deleted_for = deleted_for || v_uid\n    WHERE id = p_room_id\n      AND v_uid = ANY(participant_ids)\n      AND NOT (v_uid = ANY(deleted_for));\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "increment_product_view(uuid)",
+      "definition": "CREATE OR REPLACE FUNCTION public.increment_product_view(p_product_id uuid)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nBEGIN\n    UPDATE public.products\n    SET view_count = COALESCE(view_count, 0) + 1\n    WHERE id = p_product_id\n      AND status = 'active';\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "mark_all_notifications_read()",
+      "definition": "CREATE OR REPLACE FUNCTION public.mark_all_notifications_read()\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nBEGIN\n    UPDATE public.notifications\n    SET read_at = NOW()\n    WHERE user_id = auth.uid()\n      AND read_at IS NULL;\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "mark_notifications_read(uuid[])",
+      "definition": "CREATE OR REPLACE FUNCTION public.mark_notifications_read(p_ids uuid[])\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nBEGIN\n    UPDATE public.notifications\n    SET read_at = NOW()\n    WHERE id = ANY(p_ids)\n      AND user_id = auth.uid()\n      AND read_at IS NULL;\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "notify_on_new_message()",
+      "definition": "CREATE OR REPLACE FUNCTION public.notify_on_new_message()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_recipient_id uuid;\n    v_sender_name text;\nBEGIN\n    SELECT p INTO v_recipient_id\n    FROM unnest(\n        (SELECT participant_ids FROM public.chat_rooms WHERE id = NEW.room_id)\n    ) AS p\n    WHERE p != NEW.sender_id\n    LIMIT 1;\n\n    IF v_recipient_id IS NULL THEN\n        RETURN NEW;\n    END IF;\n\n    SELECT full_name INTO v_sender_name\n    FROM public.public_profiles\n    WHERE id = NEW.sender_id;\n\n    PERFORM public.create_notification(\n        v_recipient_id,\n        'new_message',\n        jsonb_build_object(\n            'room_id', NEW.room_id,\n            'sender_name', COALESCE(v_sender_name, 'EgyBay User'),\n            'preview', left(NEW.content, 120)\n        ),\n        '/chat/' || NEW.room_id::text\n    );\n\n    RETURN NEW;\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "notify_on_new_review()",
+      "definition": "CREATE OR REPLACE FUNCTION public.notify_on_new_review()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_product_title text;\nBEGIN\n    IF NEW.product_id IS NOT NULL THEN\n        SELECT title INTO v_product_title FROM public.products WHERE id = NEW.product_id;\n    END IF;\n\n    PERFORM public.create_notification(\n        NEW.seller_id,\n        'review_received',\n        jsonb_build_object('rating', NEW.rating, 'product_title', COALESCE(v_product_title, 'your listing'), 'review_id', NEW.id),\n        '/profile?tab=reviews'\n    );\n\n    RETURN NEW;\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "notify_on_order_event()",
+      "definition": "CREATE OR REPLACE FUNCTION public.notify_on_order_event()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_order RECORD;\n    v_product_title text;\n    v_link text;\nBEGIN\n    SELECT buyer_id, seller_id, amount, product_snapshot\n    INTO v_order\n    FROM public.orders\n    WHERE id = NEW.order_id;\n\n    IF NOT FOUND THEN\n        RETURN NEW;\n    END IF;\n\n    v_product_title := COALESCE(v_order.product_snapshot->>'title', 'your order');\n    v_link := '/orders/' || NEW.order_id::text;\n\n    IF NEW.event_type = 'order_placed' THEN\n        PERFORM public.create_notification(\n            v_order.seller_id, 'order_placed',\n            jsonb_build_object('order_id', NEW.order_id, 'product_title', v_product_title, 'amount', v_order.amount),\n            v_link\n        );\n\n    ELSIF NEW.event_type = 'escrow_secured' THEN\n        PERFORM public.create_notification(\n            v_order.seller_id, 'escrow_secured',\n            jsonb_build_object('order_id', NEW.order_id, 'product_title', v_product_title, 'amount', v_order.amount),\n            v_link\n        );\n\n    ELSIF NEW.event_type = 'shipped' THEN\n        PERFORM public.create_notification(\n            v_order.buyer_id, 'shipped',\n            jsonb_build_object('order_id', NEW.order_id, 'product_title', v_product_title),\n            v_link\n        );\n\n    ELSIF NEW.event_type = 'out_for_delivery' THEN\n        PERFORM public.create_notification(\n            v_order.buyer_id, 'out_for_delivery',\n            jsonb_build_object('order_id', NEW.order_id, 'product_title', v_product_title),\n            v_link\n        );\n\n    ELSIF NEW.event_type = 'delivered' THEN\n        PERFORM public.create_notification(\n            v_order.buyer_id, 'delivered',\n            jsonb_build_object('order_id', NEW.order_id, 'product_title', v_product_title),\n            v_link\n        );\n\n    ELSIF NEW.event_type = 'completed' THEN\n        PERFORM public.create_notification(\n            v_order.seller_id, 'completed',\n            jsonb_build_object('order_id', NEW.order_id, 'product_title', v_product_title, 'amount', v_order.amount),\n            v_link\n        );\n        PERFORM public.create_notification(\n            v_order.buyer_id, 'rate_purchase',\n            jsonb_build_object('order_id', NEW.order_id, 'product_title', v_product_title),\n            v_link\n        );\n\n    ELSIF NEW.event_type = 'disputed' THEN\n        PERFORM public.create_notification(\n            v_order.buyer_id, 'disputed',\n            jsonb_build_object('order_id', NEW.order_id, 'product_title', v_product_title),\n            v_link\n        );\n        PERFORM public.create_notification(\n            v_order.seller_id, 'disputed',\n            jsonb_build_object('order_id', NEW.order_id, 'product_title', v_product_title),\n            v_link\n        );\n    END IF;\n\n    RETURN NEW;\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "notify_on_wallet_transaction()",
+      "definition": "CREATE OR REPLACE FUNCTION public.notify_on_wallet_transaction()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_user_id uuid;\nBEGIN\n    IF NEW.type NOT IN ('top_up', 'withdrawal') THEN\n        RETURN NEW;\n    END IF;\n\n    SELECT user_id INTO v_user_id\n    FROM public.user_wallets\n    WHERE id = NEW.wallet_id;\n\n    IF v_user_id IS NULL THEN\n        RETURN NEW;\n    END IF;\n\n    PERFORM public.create_notification(\n        v_user_id,\n        NEW.type,\n        jsonb_build_object('amount', abs(NEW.amount)),\n        '/wallet'\n    );\n\n    RETURN NEW;\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "process_paymob_order_payment(text,bigint,bigint,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.process_paymob_order_payment(p_merchant_order_id text, p_paymob_tx_id bigint, p_amount_cents bigint, p_currency text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_order_id UUID;\n    v_buyer_id UUID;\n    v_seller_id UUID;\n    v_amount NUMERIC(12, 2);\n    v_status TEXT;\n    v_paymob_transaction_id BIGINT;\n    v_amount_egp NUMERIC(12, 2);\n    v_seller_wallet_id UUID;\n    v_tier INT;\n    v_platform_fee_rate NUMERIC;\n    v_platform_commission NUMERIC;\n    v_paymob_fee NUMERIC;\n    v_total_deductions NUMERIC;\n    v_net_escrow NUMERIC(12, 2);\nBEGIN\n    v_amount_egp := p_amount_cents / 100.0;\n\n    SELECT id, buyer_id, seller_id, amount, status, paymob_transaction_id\n    INTO v_order_id, v_buyer_id, v_seller_id, v_amount, v_status, v_paymob_transaction_id\n    FROM public.orders\n    WHERE id = p_merchant_order_id::UUID\n    FOR UPDATE;\n\n    IF NOT FOUND THEN RAISE EXCEPTION 'Order not found'; END IF;\n\n    IF v_status = 'escrow_secured' THEN\n        IF v_paymob_transaction_id = p_paymob_tx_id THEN\n            PERFORM 1 FROM public.wallet_transactions\n            WHERE order_fk = v_order_id\n              AND type = 'escrow_hold'\n              AND paymob_transaction_id = p_paymob_tx_id;\n\n            IF NOT FOUND THEN\n                RAISE EXCEPTION 'CRITICAL ALARM: Order % is escrow_secured but missing ledger hold for Paymob TX %', v_order_id, p_paymob_tx_id;\n            END IF;\n\n            RETURN jsonb_build_object('success', true, 'message', 'Idempotent completion');\n        ELSE\n            RAISE EXCEPTION 'Order % already paid by different Paymob TX %', v_order_id, v_paymob_transaction_id;\n        END IF;\n    END IF;\n\n    IF v_status != 'pending_payment' THEN RAISE EXCEPTION 'Order not pending_payment'; END IF;\n    IF v_amount != v_amount_egp THEN RAISE EXCEPTION 'Amount mismatch: expected %, got %', v_amount, v_amount_egp; END IF;\n\n    SELECT id INTO v_seller_wallet_id\n    FROM public.user_wallets WHERE user_id = v_seller_id FOR UPDATE;\n\n    IF v_seller_wallet_id IS NULL THEN\n        INSERT INTO public.user_wallets (user_id)\n        VALUES (v_seller_id)\n        ON CONFLICT (user_id) DO NOTHING\n        RETURNING id INTO v_seller_wallet_id;\n\n        IF v_seller_wallet_id IS NULL THEN\n            SELECT id INTO v_seller_wallet_id\n            FROM public.user_wallets WHERE user_id = v_seller_id FOR UPDATE;\n        END IF;\n\n        IF v_seller_wallet_id IS NULL THEN\n            RAISE EXCEPTION 'Could not create seller wallet for %', v_seller_id;\n        END IF;\n    END IF;\n\n    SELECT tier INTO v_tier FROM public.user_profiles WHERE id = v_seller_id;\n\n    IF v_tier = 1 THEN v_platform_fee_rate := 0.035;\n    ELSIF v_tier = 2 THEN v_platform_fee_rate := 0.025;\n    ELSIF v_tier = 3 THEN v_platform_fee_rate := 0.015;\n    ELSE v_platform_fee_rate := 0.035;\n    END IF;\n\n    v_platform_commission := v_amount * v_platform_fee_rate;\n    v_paymob_fee := (v_amount * 0.0275) + 3.00;\n    v_total_deductions := v_platform_commission + v_paymob_fee;\n    v_net_escrow := v_amount - v_total_deductions;\n\n    IF v_net_escrow <= 0 THEN RAISE EXCEPTION 'Net escrow amount is negative or zero'; END IF;\n\n    UPDATE public.orders\n    SET status = 'escrow_secured',\n        paymob_transaction_id = p_paymob_tx_id,\n        updated_at = NOW()\n    WHERE id = v_order_id;\n\n    UPDATE public.user_wallets\n    SET pending_balance = pending_balance + v_net_escrow,\n        updated_at = NOW()\n    WHERE id = v_seller_wallet_id;\n\n    INSERT INTO public.order_events (order_id, event_type, created_at)\n    VALUES (v_order_id, 'payment_completed', NOW());\n\n    INSERT INTO public.order_events (order_id, event_type, created_at)\n    VALUES (v_order_id, 'escrow_secured', NOW());\n\n    BEGIN\n        INSERT INTO public.wallet_transactions (\n            wallet_id, order_id, type, amount, status, description,\n            delta_available, delta_pending, order_fk, paymob_transaction_id, fee_amount\n        ) VALUES (\n            v_seller_wallet_id, v_order_id::TEXT, 'escrow_hold', v_net_escrow, 'completed', 'Escrow Hold for Order (Paymob)',\n            0, v_net_escrow, v_order_id, p_paymob_tx_id, v_total_deductions\n        );\n    EXCEPTION WHEN unique_violation THEN\n        RAISE EXCEPTION 'Duplicate Paymob transaction ID % globally rejected', p_paymob_tx_id;\n    END;\n\n    RETURN jsonb_build_object('success', true);\nEND;\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "process_paymob_topup(text,bigint,bigint,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.process_paymob_topup(p_merchant_order_id text, p_paymob_tx_id bigint, p_amount_cents bigint, p_currency text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_topup_id UUID;\n    v_user_id UUID;\n    v_amount NUMERIC(12, 2);\n    v_currency TEXT;\n    v_status TEXT;\n    v_paymob_transaction_id BIGINT;\n    v_wallet_id UUID;\n    v_amount_egp NUMERIC(12, 2);\nBEGIN\n    v_amount_egp := p_amount_cents / 100.0;\n\n    SELECT id, user_id, amount, currency, status, paymob_transaction_id\n    INTO v_topup_id, v_user_id, v_amount, v_currency, v_status, v_paymob_transaction_id\n    FROM public.wallet_topups\n    WHERE merchant_order_id = p_merchant_order_id\n    FOR UPDATE;\n\n    IF NOT FOUND THEN RAISE EXCEPTION 'Top-up not found: %', p_merchant_order_id; END IF;\n    \n    -- Order-level Idempotency Check (Happens FIRST)\n    IF v_status = 'paid' THEN \n        IF v_paymob_transaction_id = p_paymob_tx_id THEN\n            -- Verify ledger integrity before reporting idempotent success\n            PERFORM 1 FROM public.wallet_transactions \n            WHERE topup_fk = v_topup_id \n              AND type = 'top_up' \n              AND paymob_transaction_id = p_paymob_tx_id;\n            \n            IF NOT FOUND THEN\n                RAISE EXCEPTION 'Integrity Error: Top-up is paid but ledger record is missing/mismatched';\n            END IF;\n\n            RETURN jsonb_build_object('success', true, 'message', 'Already processed'); \n        ELSIF v_paymob_transaction_id IS NOT NULL THEN\n            RAISE EXCEPTION 'Top-up already settled with a different transaction ID';\n        END IF;\n    END IF;\n    \n    IF v_status != 'pending' THEN RAISE EXCEPTION 'Top-up is not pending'; END IF;\n    IF v_amount != v_amount_egp THEN RAISE EXCEPTION 'Amount mismatch'; END IF;\n    IF v_currency != p_currency THEN RAISE EXCEPTION 'Currency mismatch'; END IF;\n\n    SELECT id INTO v_wallet_id FROM public.user_wallets WHERE user_id = v_user_id FOR UPDATE;\n\n    IF NOT FOUND THEN\n        INSERT INTO public.user_wallets (user_id, available_balance, pending_balance, currency)\n        VALUES (v_user_id, v_amount, 0, 'EGP') RETURNING id INTO v_wallet_id;\n    ELSE\n        UPDATE public.user_wallets\n        SET available_balance = available_balance + v_amount, updated_at = NOW()\n        WHERE id = v_wallet_id;\n    END IF;\n\n    -- EXACT INSERT: Paymob top-up with Unique Violation catching for concurrency\n    BEGIN\n        INSERT INTO public.wallet_transactions (\n            wallet_id, type, amount, status, description, \n            delta_available, delta_pending, topup_fk, paymob_transaction_id\n        ) VALUES (\n            v_wallet_id, 'top_up', v_amount, 'completed', 'Wallet Deposit via Paymob', \n            v_amount, 0, v_topup_id, p_paymob_tx_id\n        );\n    EXCEPTION WHEN unique_violation THEN\n        RAISE EXCEPTION 'Duplicate Paymob transaction ID % globally rejected', p_paymob_tx_id;\n    END;\n\n    UPDATE public.wallet_topups\n    SET status = 'paid', paymob_transaction_id = p_paymob_tx_id, paid_at = NOW()\n    WHERE id = v_topup_id;\n\n    RETURN jsonb_build_object('success', true);\nEND;\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "purchase_boost(uuid,uuid,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.purchase_boost(p_user_id uuid, p_product_id uuid, p_package_id text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_wallet_id UUID;\n    v_available_balance NUMERIC(12, 2);\n    v_seller_id UUID;\n    v_amount NUMERIC(12, 2);\n    v_days INTEGER;\nBEGIN\n    SELECT seller_id INTO v_seller_id FROM public.products WHERE id = p_product_id;\n    \n    IF NOT FOUND THEN RAISE EXCEPTION 'Product not found'; END IF;\n    IF v_seller_id != p_user_id THEN RAISE EXCEPTION 'Unauthorized'; END IF;\n\n    -- Authoritative server-side pricing & duration\n    IF p_package_id = 'urgent' THEN \n        v_amount := 50.00; v_days := 3;\n    ELSIF p_package_id = 'featured' THEN \n        v_amount := 150.00; v_days := 7;\n    ELSIF p_package_id = 'turbo' THEN \n        v_amount := 300.00; v_days := 14;\n    ELSE RAISE EXCEPTION 'Invalid tier';\n    END IF;\n\n    SELECT id, available_balance INTO v_wallet_id, v_available_balance\n    FROM public.user_wallets WHERE user_id = p_user_id FOR UPDATE;\n\n    IF NOT FOUND OR v_available_balance < v_amount THEN RAISE EXCEPTION 'Insufficient balance'; END IF;\n\n    UPDATE public.user_wallets\n    SET available_balance = available_balance - v_amount, updated_at = NOW()\n    WHERE id = v_wallet_id;\n\n    UPDATE public.products\n    SET is_promoted = true,\n        promotion_tier = p_package_id,\n        promoted_until = NOW() + (v_days || ' days')::INTERVAL,\n        updated_at = NOW()\n    WHERE id = p_product_id;\n\n    -- EXACT INSERT: boost (Using reference_id_text for product tracking)\n    INSERT INTO public.wallet_transactions (\n        wallet_id, type, amount, status, description, delta_available, delta_pending, reference_id_text\n    ) VALUES (\n        v_wallet_id, 'boost', -v_amount, 'completed', 'Product Boost - ' || p_package_id, -v_amount, 0, p_product_id::TEXT\n    );\n\n    RETURN jsonb_build_object('success', true);\nEND;\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "refresh_seller_rating_aggregate()",
+      "definition": "CREATE OR REPLACE FUNCTION public.refresh_seller_rating_aggregate()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_seller_id uuid := COALESCE(NEW.seller_id, OLD.seller_id);\nBEGIN\n    UPDATE public.user_profiles\n    SET rating_avg = (SELECT ROUND(AVG(rating)::numeric, 2) FROM public.reviews WHERE seller_id = v_seller_id),\n        rating_count = (SELECT COUNT(*) FROM public.reviews WHERE seller_id = v_seller_id)\n    WHERE id = v_seller_id;\n\n    RETURN COALESCE(NEW, OLD);\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "release_escrow(uuid,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.release_escrow(p_user_id uuid, p_order_id text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\r\nDECLARE\r\n    v_seller_id UUID;\r\n    v_buyer_id UUID;\r\n    v_status TEXT;\r\n    v_handover_method TEXT;\r\n    v_seller_wallet_id UUID;\r\n    v_seller_pending_balance NUMERIC(12, 2);\r\n    v_net_escrow NUMERIC(12, 2);\r\n    v_order_uuid UUID;\r\nBEGIN\r\n\r\n    -- Convert the API order ID from TEXT to the authoritative UUID.\r\n    v_order_uuid := p_order_id::UUID;\r\n\r\n\r\n    -- ============================================================\r\n    -- Lock the order row and retrieve authoritative state.\r\n    -- ============================================================\r\n\r\n    SELECT\r\n        seller_id,\r\n        buyer_id,\r\n        status,\r\n        handover_method\r\n    INTO\r\n        v_seller_id,\r\n        v_buyer_id,\r\n        v_status,\r\n        v_handover_method\r\n    FROM public.orders\r\n    WHERE id = v_order_uuid\r\n    FOR UPDATE;\r\n\r\n\r\n    IF NOT FOUND THEN\r\n        RAISE EXCEPTION 'Order not found';\r\n    END IF;\r\n\r\n\r\n    -- ============================================================\r\n    -- Actor authorization\r\n    --\r\n    -- Meetup:\r\n    --   only seller can release.\r\n    --\r\n    -- Courier:\r\n    --   only buyer can confirm delivery/release.\r\n    --\r\n    -- Unknown methods:\r\n    --   fail closed.\r\n    -- ============================================================\r\n\r\n    IF v_handover_method = 'qr_meetup' THEN\r\n\r\n        IF p_user_id != v_seller_id THEN\r\n            RAISE EXCEPTION\r\n                'Unauthorized: Only the seller can release escrow for meetup orders';\r\n        END IF;\r\n\r\n    ELSIF v_handover_method = 'courier' THEN\r\n\r\n        IF p_user_id != v_buyer_id THEN\r\n            RAISE EXCEPTION\r\n                'Unauthorized: Only the buyer can confirm delivery for courier orders';\r\n        END IF;\r\n\r\n    ELSE\r\n\r\n        RAISE EXCEPTION\r\n            'Unsupported handover method: %',\r\n            COALESCE(v_handover_method, 'NULL');\r\n\r\n    END IF;\r\n\r\n\r\n    -- ============================================================\r\n    -- Validate order state.\r\n    --\r\n    -- escrow_secured:\r\n    --   valid starting state.\r\n    --\r\n    -- shipped / out_for_delivery:\r\n    --   valid courier states.\r\n    --\r\n    -- completed:\r\n    --   already released; reject replay.\r\n    -- ============================================================\r\n\r\n    IF v_status = 'completed' THEN\r\n        RAISE EXCEPTION\r\n            'Order already completed and escrow released';\r\n    END IF;\r\n\r\n\r\n    IF v_status NOT IN (\r\n        'escrow_secured',\r\n        'shipped',\r\n        'out_for_delivery'\r\n    ) THEN\r\n        RAISE EXCEPTION\r\n            'Order is not in a valid state for escrow release (current state: %)',\r\n            v_status;\r\n    END IF;\r\n\r\n\r\n    -- ============================================================\r\n    -- Lock seller wallet.\r\n    -- ============================================================\r\n\r\n    SELECT\r\n        id,\r\n        pending_balance\r\n    INTO\r\n        v_seller_wallet_id,\r\n        v_seller_pending_balance\r\n    FROM public.user_wallets\r\n    WHERE user_id = v_seller_id\r\n    FOR UPDATE;\r\n\r\n\r\n    IF NOT FOUND THEN\r\n        RAISE EXCEPTION 'Seller wallet not found';\r\n    END IF;\r\n\r\n\r\n    -- ============================================================\r\n    -- Retrieve the exact escrow amount created for this order.\r\n    --\r\n    -- STRICT intentionally fails if there is zero OR more than one\r\n    -- matching escrow_hold record.\r\n    -- ============================================================\r\n\r\n    SELECT delta_pending\r\n    INTO STRICT v_net_escrow\r\n    FROM public.wallet_transactions\r\n    WHERE order_fk = v_order_uuid\r\n      AND type = 'escrow_hold'\r\n      AND wallet_id = v_seller_wallet_id;\r\n\r\n\r\n    -- ============================================================\r\n    -- Financial safety check.\r\n    -- ============================================================\r\n\r\n    IF v_seller_pending_balance < v_net_escrow THEN\r\n        RAISE EXCEPTION\r\n            'Seller pending balance is less than required escrow release amount';\r\n    END IF;\r\n\r\n\r\n    -- ============================================================\r\n    -- Move escrow from pending -> available.\r\n    -- ============================================================\r\n\r\n    UPDATE public.user_wallets\r\n    SET\r\n        pending_balance = pending_balance - v_net_escrow,\r\n        available_balance = available_balance + v_net_escrow,\r\n        updated_at = NOW()\r\n    WHERE id = v_seller_wallet_id;\r\n\r\n\r\n    -- ============================================================\r\n    -- Complete order.\r\n    -- ============================================================\r\n\r\n    UPDATE public.orders\r\n    SET\r\n        status = 'completed',\r\n        updated_at = NOW()\r\n    WHERE id = v_order_uuid;\r\n\r\n\r\n    -- ============================================================\r\n    -- Order events.\r\n    -- ============================================================\r\n\r\n    INSERT INTO public.order_events (\r\n        order_id,\r\n        event_type,\r\n        created_at\r\n    )\r\n    VALUES (\r\n        v_order_uuid,\r\n        'escrow_released',\r\n        NOW()\r\n    );\r\n\r\n\r\n    INSERT INTO public.order_events (\r\n        order_id,\r\n        event_type,\r\n        created_at\r\n    )\r\n    VALUES (\r\n        v_order_uuid,\r\n        'completed',\r\n        NOW()\r\n    );\r\n\r\n\r\n    -- ============================================================\r\n    -- Seller earning ledger entry.\r\n    -- ============================================================\r\n\r\n    INSERT INTO public.wallet_transactions (\r\n        wallet_id,\r\n        order_id,\r\n        type,\r\n        amount,\r\n        status,\r\n        description,\r\n        delta_available,\r\n        delta_pending,\r\n        order_fk\r\n    )\r\n    VALUES (\r\n        v_seller_wallet_id,\r\n        p_order_id,\r\n        'earning',\r\n        v_net_escrow,\r\n        'completed',\r\n        'Escrow Released',\r\n        v_net_escrow,\r\n        -v_net_escrow,\r\n        v_order_uuid\r\n    );\r\n\r\n\r\n    RETURN jsonb_build_object(\r\n        'success',\r\n        true\r\n    );\r\n\r\nEND;\r\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "report_content(text,uuid,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.report_content(p_target_type text, p_target_id uuid, p_reason text)\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE v_id uuid;\nBEGIN\n  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;\n  IF p_target_type = 'user' AND p_target_id = auth.uid() THEN RAISE EXCEPTION 'You cannot report yourself'; END IF;\n  INSERT INTO public.content_reports (reporter_id, target_type, target_id, reason)\n  VALUES (auth.uid(), p_target_type, p_target_id, TRIM(p_reason))\n  RETURNING id INTO v_id;\n  RETURN v_id;\nEND $function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "request_wallet_payout(uuid,numeric,uuid)",
+      "definition": "CREATE OR REPLACE FUNCTION public.request_wallet_payout(p_user_id uuid, p_amount numeric, p_payout_method_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_wallet_id UUID;\n    v_available_balance NUMERIC(12, 2);\n    v_payout_id UUID;\nBEGIN\n    SELECT id, available_balance INTO v_wallet_id, v_available_balance\n    FROM public.user_wallets WHERE user_id = p_user_id FOR UPDATE;\n\n    IF NOT FOUND THEN RAISE EXCEPTION 'Wallet not found'; END IF;\n    IF p_amount <= 0 THEN RAISE EXCEPTION 'Invalid amount'; END IF;\n    IF v_available_balance < p_amount THEN RAISE EXCEPTION 'Insufficient balance'; END IF;\n\n    PERFORM 1 FROM public.payout_methods WHERE id = p_payout_method_id AND user_id = p_user_id;\n    IF NOT FOUND THEN RAISE EXCEPTION 'Invalid payout method'; END IF;\n\n    UPDATE public.user_wallets\n    SET available_balance = available_balance - p_amount, updated_at = NOW()\n    WHERE id = v_wallet_id;\n\n    -- EXACT INSERT: Populating wallet_id for payout requests linkage (ASSUMING IT EXISTS IN SCHEMA)\n    INSERT INTO public.payout_requests (\n        user_id, wallet_id, amount, status, payout_method_id, created_at\n    ) VALUES (\n        p_user_id, v_wallet_id, p_amount, 'pending', p_payout_method_id, NOW()\n    ) RETURNING id INTO v_payout_id;\n\n    -- EXACT INSERT: payout\n    INSERT INTO public.wallet_transactions (\n        wallet_id, type, amount, status, description, \n        delta_available, delta_pending, payout_fk\n    ) VALUES (\n        v_wallet_id, 'withdrawal', -p_amount, 'pending', 'Payout Request', \n        -p_amount, 0, v_payout_id\n    );\n\n    RETURN jsonb_build_object('success', true, 'payoutRequestId', v_payout_id);\nEND;\n$function$\n",
+      "auth_execute": false
+    },
+    {
+      "name": "resolve_paymob_attempts_on_status_change()",
+      "definition": "CREATE OR REPLACE FUNCTION public.resolve_paymob_attempts_on_status_change()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nBEGIN\n    IF OLD.status = 'pending_payment' AND NEW.status <> 'pending_payment' THEN\n        UPDATE public.paymob_payment_attempts\n        SET resolved_at = NOW()\n        WHERE order_id = NEW.id\n          AND resolved_at IS NULL;\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "respond_to_review(uuid,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.respond_to_review(p_review_id uuid, p_response text)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_seller_id uuid;\nBEGIN\n    IF p_response IS NULL OR char_length(trim(p_response)) = 0 THEN\n        RAISE EXCEPTION 'Response cannot be empty';\n    END IF;\n    IF char_length(p_response) > 1000 THEN\n        RAISE EXCEPTION 'Response must be 1000 characters or fewer';\n    END IF;\n\n    SELECT seller_id INTO v_seller_id\n    FROM public.reviews\n    WHERE id = p_review_id\n    FOR UPDATE;\n\n    IF NOT FOUND THEN\n        RAISE EXCEPTION 'Review not found';\n    END IF;\n\n    IF auth.uid() != v_seller_id THEN\n        RAISE EXCEPTION 'Only the reviewed seller can respond to this review';\n    END IF;\n\n    UPDATE public.reviews\n    SET seller_response = p_response, seller_responded_at = NOW()\n    WHERE id = p_review_id;\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "submit_review(uuid,integer,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.submit_review(p_order_id uuid, p_rating integer, p_comment text DEFAULT NULL::text)\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nDECLARE\n    v_order RECORD;\n    v_review_id uuid;\nBEGIN\n    IF p_rating IS NULL OR p_rating < 1 OR p_rating > 5 THEN\n        RAISE EXCEPTION 'Rating must be between 1 and 5';\n    END IF;\n    IF p_comment IS NOT NULL AND char_length(p_comment) > 1000 THEN\n        RAISE EXCEPTION 'Comment must be 1000 characters or fewer';\n    END IF;\n\n    SELECT id, buyer_id, seller_id, product_id, status, updated_at\n    INTO v_order\n    FROM public.orders\n    WHERE id = p_order_id\n    FOR UPDATE;\n\n    IF NOT FOUND THEN\n        RAISE EXCEPTION 'Order not found';\n    END IF;\n\n    IF auth.uid() != v_order.buyer_id THEN\n        RAISE EXCEPTION 'Only the buyer of this order can review it';\n    END IF;\n\n    IF v_order.status != 'completed' THEN\n        RAISE EXCEPTION 'Order must be completed before it can be reviewed';\n    END IF;\n\n    IF v_order.updated_at < NOW() - INTERVAL '90 days' THEN\n        RAISE EXCEPTION 'The review window for this order has closed';\n    END IF;\n\n    BEGIN\n        INSERT INTO public.reviews (order_id, reviewer_id, seller_id, product_id, rating, comment)\n        VALUES (p_order_id, auth.uid(), v_order.seller_id, v_order.product_id, p_rating, p_comment)\n        RETURNING id INTO v_review_id;\n    EXCEPTION WHEN unique_violation THEN\n        RAISE EXCEPTION 'You have already reviewed this order';\n    END;\n\n    RETURN v_review_id;\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "unblock_user(uuid)",
+      "definition": "CREATE OR REPLACE FUNCTION public.unblock_user(p_user_id uuid)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nBEGIN\n  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;\n  DELETE FROM public.blocked_users WHERE blocker_id = auth.uid() AND blocked_id = p_user_id;\nEND $function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "unhide_chat_room_on_new_message()",
+      "definition": "CREATE OR REPLACE FUNCTION public.unhide_chat_room_on_new_message()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nBEGIN\n    UPDATE public.chat_rooms\n    SET deleted_for = '{}'::uuid[]\n    WHERE id = NEW.room_id\n      AND deleted_for <> '{}'::uuid[];\n    RETURN NEW;\nEND;\n$function$\n",
+      "auth_execute": true
+    },
+    {
+      "name": "update_my_profile(text,text,text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_my_profile(p_full_name text DEFAULT NULL::text, p_phone text DEFAULT NULL::text, p_avatar_url text DEFAULT NULL::text)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_catalog'\nAS $function$\nBEGIN\n  IF auth.uid() IS NULL THEN\n    RAISE EXCEPTION 'Not authenticated';\n  END IF;\n\n  IF p_full_name IS NOT NULL AND char_length(TRIM(p_full_name)) > 80 THEN\n    RAISE EXCEPTION 'Name must be 80 characters or fewer';\n  END IF;\n\n  -- Never let a display name be set to an email address: full_name is rendered\n  -- publicly on listing cards, chat and reviews (which anon can read).\n  IF p_full_name IS NOT NULL AND POSITION('@' IN p_full_name) > 0 THEN\n    RAISE EXCEPTION 'Display name must not contain an email address';\n  END IF;\n\n  UPDATE public.user_profiles\n  SET full_name  = COALESCE(NULLIF(TRIM(p_full_name), ''), full_name),\n      phone      = COALESCE(NULLIF(TRIM(p_phone), ''), phone),\n      avatar_url = COALESCE(NULLIF(TRIM(p_avatar_url), ''), avatar_url),\n      updated_at = NOW()\n  WHERE id = auth.uid();\nEND;\n$function$\n",
+      "auth_execute": true
+    }
+  ],
+  "constraints": [
+    {
+      "name": "orders_pkey",
+      "table": "orders",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "payments_pkey",
+      "table": "payments",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "payments_stripe_payment_intent_id_key",
+      "table": "payments",
+      "definition": "UNIQUE (stripe_payment_intent_id)"
+    },
+    {
+      "name": "products_pkey",
+      "table": "products",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "user_profiles_pkey",
+      "table": "user_profiles",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "wishlists_pkey",
+      "table": "wishlists",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "wishlists_user_id_product_id_key",
+      "table": "wishlists",
+      "definition": "UNIQUE (user_id, product_id)"
+    },
+    {
+      "name": "orders_payment_id_fkey",
+      "table": "orders",
+      "definition": "FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "payments_buyer_id_fkey",
+      "table": "payments",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "payments_seller_id_fkey",
+      "table": "payments",
+      "definition": "FOREIGN KEY (seller_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "products_seller_id_fkey",
+      "table": "products",
+      "definition": "FOREIGN KEY (seller_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "user_profiles_id_fkey",
+      "table": "user_profiles",
+      "definition": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "wishlists_product_id_fkey",
+      "table": "wishlists",
+      "definition": "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "wishlists_user_id_fkey",
+      "table": "wishlists",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "blocked_users_pkey",
+      "table": "blocked_users",
+      "definition": "PRIMARY KEY (blocker_id, blocked_id)"
+    },
+    {
+      "name": "blocked_users_blocker_id_fkey",
+      "table": "blocked_users",
+      "definition": "FOREIGN KEY (blocker_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "blocked_users_blocked_id_fkey",
+      "table": "blocked_users",
+      "definition": "FOREIGN KEY (blocked_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "user_profiles_email_key",
+      "table": "user_profiles",
+      "definition": "UNIQUE (email)"
+    },
+    {
+      "name": "chat_rooms_pkey",
+      "table": "chat_rooms",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "messages_pkey",
+      "table": "messages",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "messages_room_id_fkey",
+      "table": "messages",
+      "definition": "FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "messages_sender_id_fkey",
+      "table": "messages",
+      "definition": "FOREIGN KEY (sender_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "reviews_reviewer_id_fkey",
+      "table": "reviews",
+      "definition": "FOREIGN KEY (reviewer_id) REFERENCES auth.users(id)"
+    },
+    {
+      "name": "reviews_seller_id_fkey",
+      "table": "reviews",
+      "definition": "FOREIGN KEY (seller_id) REFERENCES auth.users(id)"
+    },
+    {
+      "name": "reviews_product_id_fkey",
+      "table": "reviews",
+      "definition": "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "orders_product_id_fkey",
+      "table": "orders",
+      "definition": "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "payments_product_id_fkey",
+      "table": "payments",
+      "definition": "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "user_wallets_pkey",
+      "table": "user_wallets",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "user_wallets_user_id_key",
+      "table": "user_wallets",
+      "definition": "UNIQUE (user_id)"
+    },
+    {
+      "name": "user_wallets_user_id_fkey",
+      "table": "user_wallets",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "wallet_transactions_pkey",
+      "table": "wallet_transactions",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "payout_methods_pkey",
+      "table": "payout_methods",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "payout_methods_user_id_fkey",
+      "table": "payout_methods",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "wallet_topups_amount_check",
+      "table": "wallet_topups",
+      "definition": "CHECK ((amount > (0)::numeric))"
+    },
+    {
+      "name": "wallet_topups_pkey",
+      "table": "wallet_topups",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "wallet_topups_merchant_order_id_key",
+      "table": "wallet_topups",
+      "definition": "UNIQUE (merchant_order_id)"
+    },
+    {
+      "name": "wallet_topups_paymob_transaction_id_key",
+      "table": "wallet_topups",
+      "definition": "UNIQUE (paymob_transaction_id)"
+    },
+    {
+      "name": "wallet_transactions_paymob_transaction_id_key",
+      "table": "wallet_transactions",
+      "definition": "UNIQUE (paymob_transaction_id)"
+    },
+    {
+      "name": "orders_paymob_transaction_id_key",
+      "table": "orders",
+      "definition": "UNIQUE (paymob_transaction_id)"
+    },
+    {
+      "name": "wallet_topups_user_id_fkey",
+      "table": "wallet_topups",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "orders_amount_check",
+      "table": "orders",
+      "definition": "CHECK ((amount >= (0)::numeric))"
+    },
+    {
+      "name": "products_price_check",
+      "table": "products",
+      "definition": "CHECK ((price >= (0)::numeric))"
+    },
+    {
+      "name": "orders_buyer_id_fkey",
+      "table": "orders",
+      "definition": "FOREIGN KEY (buyer_id) REFERENCES auth.users(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "orders_seller_id_fkey",
+      "table": "orders",
+      "definition": "FOREIGN KEY (seller_id) REFERENCES auth.users(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "wallet_transactions_wallet_id_fkey",
+      "table": "wallet_transactions",
+      "definition": "FOREIGN KEY (wallet_id) REFERENCES user_wallets(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "wallet_transactions_order_fk_fkey",
+      "table": "wallet_transactions",
+      "definition": "FOREIGN KEY (order_fk) REFERENCES orders(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "wallet_transactions_topup_fk_fkey",
+      "table": "wallet_transactions",
+      "definition": "FOREIGN KEY (topup_fk) REFERENCES wallet_topups(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "wtx_fk_check",
+      "table": "wallet_transactions",
+      "definition": "CHECK ((num_nonnulls(order_fk, topup_fk, payout_fk) <= 1))"
+    },
+    {
+      "name": "payout_requests_amount_check",
+      "table": "payout_requests",
+      "definition": "CHECK ((amount > (0)::numeric))"
+    },
+    {
+      "name": "payout_requests_pkey",
+      "table": "payout_requests",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "payout_requests_wallet_id_fkey",
+      "table": "payout_requests",
+      "definition": "FOREIGN KEY (wallet_id) REFERENCES user_wallets(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "payout_requests_payout_method_id_fkey",
+      "table": "payout_requests",
+      "definition": "FOREIGN KEY (payout_method_id) REFERENCES payout_methods(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "wallet_transactions_payout_fk_fkey",
+      "table": "wallet_transactions",
+      "definition": "FOREIGN KEY (payout_fk) REFERENCES payout_requests(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "order_events_pkey",
+      "table": "order_events",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "order_events_order_id_fkey",
+      "table": "order_events",
+      "definition": "FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "live_sessions_pass_tier_check",
+      "table": "live_sessions",
+      "definition": "CHECK ((pass_tier = ANY (ARRAY['flash'::text, 'pro'::text, 'mega'::text])))"
+    },
+    {
+      "name": "live_sessions_status_check",
+      "table": "live_sessions",
+      "definition": "CHECK ((status = ANY (ARRAY['scheduled'::text, 'live'::text, 'ended'::text, 'cancelled'::text])))"
+    },
+    {
+      "name": "live_sessions_pkey",
+      "table": "live_sessions",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "live_sessions_agora_channel_key",
+      "table": "live_sessions",
+      "definition": "UNIQUE (agora_channel)"
+    },
+    {
+      "name": "live_sessions_seller_id_fkey",
+      "table": "live_sessions",
+      "definition": "FOREIGN KEY (seller_id) REFERENCES auth.users(id)"
+    },
+    {
+      "name": "live_pinned_products_pkey",
+      "table": "live_pinned_products",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "live_pinned_products_session_id_fkey",
+      "table": "live_pinned_products",
+      "definition": "FOREIGN KEY (session_id) REFERENCES live_sessions(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "live_pinned_products_product_id_fkey",
+      "table": "live_pinned_products",
+      "definition": "FOREIGN KEY (product_id) REFERENCES products(id)"
+    },
+    {
+      "name": "live_chat_messages_msg_type_check",
+      "table": "live_chat_messages",
+      "definition": "CHECK ((msg_type = ANY (ARRAY['chat'::text, 'reaction'::text, 'system'::text])))"
+    },
+    {
+      "name": "live_chat_messages_pkey",
+      "table": "live_chat_messages",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "live_chat_messages_session_id_fkey",
+      "table": "live_chat_messages",
+      "definition": "FOREIGN KEY (session_id) REFERENCES live_sessions(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "live_chat_messages_user_id_fkey",
+      "table": "live_chat_messages",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id)"
+    },
+    {
+      "name": "products_stock_check",
+      "table": "products",
+      "definition": "CHECK ((stock >= 0))"
+    },
+    {
+      "name": "payout_requests_user_id_fkey",
+      "table": "payout_requests",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id)"
+    },
+    {
+      "name": "seller_verification_requests_requested_tier_check",
+      "table": "seller_verification_requests",
+      "definition": "CHECK ((requested_tier = ANY (ARRAY[2, 3])))"
+    },
+    {
+      "name": "seller_verification_requests_status_check",
+      "table": "seller_verification_requests",
+      "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])))"
+    },
+    {
+      "name": "seller_verification_requests_pkey",
+      "table": "seller_verification_requests",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "seller_verification_requests_user_id_fkey",
+      "table": "seller_verification_requests",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "seller_verification_requests_reviewed_by_fkey",
+      "table": "seller_verification_requests",
+      "definition": "FOREIGN KEY (reviewed_by) REFERENCES auth.users(id)"
+    },
+    {
+      "name": "orders_status_check",
+      "table": "orders",
+      "definition": "CHECK (((status)::text = ANY ((ARRAY['pending_payment'::character varying, 'escrow_secured'::character varying, 'shipped'::character varying, 'out_for_delivery'::character varying, 'delivered'::character varying, 'completed'::character varying, 'disputed'::character varying, 'cancelled'::character varying, 'refunded'::character varying])::text[])))"
+    },
+    {
+      "name": "chat_rooms_product_id_fkey",
+      "table": "chat_rooms",
+      "definition": "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "notifications_pkey",
+      "table": "notifications",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "notifications_user_id_fkey",
+      "table": "notifications",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "reviews_rating_check",
+      "table": "reviews",
+      "definition": "CHECK (((rating >= 1) AND (rating <= 5)))"
+    },
+    {
+      "name": "reviews_comment_check",
+      "table": "reviews",
+      "definition": "CHECK ((char_length(comment) <= 1000))"
+    },
+    {
+      "name": "reviews_seller_response_check",
+      "table": "reviews",
+      "definition": "CHECK ((char_length(seller_response) <= 1000))"
+    },
+    {
+      "name": "reviews_pkey",
+      "table": "reviews",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "reviews_order_id_key",
+      "table": "reviews",
+      "definition": "UNIQUE (order_id)"
+    },
+    {
+      "name": "reviews_order_id_fkey",
+      "table": "reviews",
+      "definition": "FOREIGN KEY (order_id) REFERENCES orders(id)"
+    },
+    {
+      "name": "paymob_payment_attempts_outcome_check",
+      "table": "paymob_payment_attempts",
+      "definition": "CHECK ((outcome = ANY (ARRAY['declined'::text, 'processing_failed'::text])))"
+    },
+    {
+      "name": "paymob_payment_attempts_pkey",
+      "table": "paymob_payment_attempts",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "paymob_payment_attempts_order_id_fkey",
+      "table": "paymob_payment_attempts",
+      "definition": "FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "content_reports_status_check",
+      "table": "content_reports",
+      "definition": "CHECK ((status = ANY (ARRAY['open'::text, 'reviewed'::text, 'actioned'::text, 'dismissed'::text])))"
+    },
+    {
+      "name": "content_reports_target_type_check",
+      "table": "content_reports",
+      "definition": "CHECK ((target_type = ANY (ARRAY['listing'::text, 'user'::text, 'message'::text])))"
+    },
+    {
+      "name": "content_reports_reason_check",
+      "table": "content_reports",
+      "definition": "CHECK (((char_length(reason) >= 1) AND (char_length(reason) <= 1000)))"
+    },
+    {
+      "name": "content_reports_pkey",
+      "table": "content_reports",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "content_reports_reporter_id_fkey",
+      "table": "content_reports",
+      "definition": "FOREIGN KEY (reporter_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "blocked_users_check",
+      "table": "blocked_users",
+      "definition": "CHECK ((blocker_id <> blocked_id))"
+    }
+  ]
+}

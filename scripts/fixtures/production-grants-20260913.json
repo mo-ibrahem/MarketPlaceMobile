@@ -1,0 +1,3779 @@
+[
+  {
+    "role": "anon",
+    "table": "objects",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "bucket_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "name",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "owner",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "last_accessed_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "metadata",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "path_tokens",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "version",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "owner_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "user_metadata",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "archived_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "is_delete_marker",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "is_versioned",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "payments",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "product_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "buyer_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "seller_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "amount",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "currency",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "status",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "stripe_payment_intent_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "stripe_customer_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "payment_method_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "completed_at",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "metadata",
+        "insert": true,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "migrations",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "name",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "hash",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "executed_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": null
+  },
+  {
+    "role": "anon",
+    "table": "s3_multipart_uploads",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "in_progress_size",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "upload_signature",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "bucket_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "key",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "version",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "owner_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "user_metadata",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "metadata",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "wishlists",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "user_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "product_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "buckets",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "name",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "owner",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "public",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "avif_autodetection",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "file_size_limit",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "allowed_mime_types",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "owner_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "type",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "versioning_status",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "s3_multipart_uploads_parts",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "upload_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "size",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "part_number",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "bucket_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "key",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "etag",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "owner_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "version",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "orders",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "payment_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "product_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "buyer_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "seller_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "status",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "shipping_address",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "tracking_number",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "notes",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "shipped_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "delivered_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "paymob_transaction_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "amount",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "product_snapshot",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "handover_method",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "handover_pin_hash",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "handover_pin_encrypted",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": null
+  },
+  {
+    "role": "anon",
+    "table": "user_profiles",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "full_name",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "avatar_url",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "phone",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "address",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "email",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "tier",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "national_id_number",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "national_id_front_url",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "national_id_back_url",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "tier_verified_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "is_verified_seller",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "is_admin",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "rating_avg",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "rating_count",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "content_reports",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "reporter_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "target_type",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "target_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "reason",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "status",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "reviewed_at",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "blocked_users",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "blocker_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "blocked_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "messages",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "room_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "sender_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "content",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "chat_rooms",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "participant_ids",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "product_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "deleted_for",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "buckets_vectors",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "type",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "vector_indexes",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "name",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "bucket_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "data_type",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "dimension",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "distance_metric",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "metadata_configuration",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "buckets_analytics",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "name",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "type",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "format",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "deleted_at",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "wallet_topups",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "user_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "amount",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "currency",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "status",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "merchant_order_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "paymob_order_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "paymob_transaction_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "paid_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "expires_at",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "payout_methods",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "user_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "type",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "account_identifier",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "account_holder_name",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "is_default",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "is_verified",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "seller_verification_requests",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "user_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "requested_tier",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "full_name",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "national_id_number",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "national_id_front_url",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "national_id_back_url",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "status",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "reviewer_notes",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "reviewed_by",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "reviewed_at",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "wallet_transactions",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "wallet_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "order_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "type",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "amount",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "fee_amount",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "status",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "description",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "paymob_transaction_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "delta_available",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "delta_pending",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "order_fk",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "topup_fk",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "payout_fk",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "reference_id_text",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "user_wallets",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "user_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "pending_balance",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "available_balance",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "currency",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "payout_schedule",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "use_spendable_funds",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "express_payout_enabled",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "notifications",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "user_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "type",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "payload",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "link",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "read_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": null
+  },
+  {
+    "role": "anon",
+    "table": "reviews",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "order_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "reviewer_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "seller_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "product_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "rating",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "comment",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "seller_response",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "seller_responded_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "edited_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "order_events",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "order_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "event_type",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "payload",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "products",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "title",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "description",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "price",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "category",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "condition",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "images",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "seller_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "status",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "is_promoted",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "promotion_tier",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "promoted_until",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "view_count",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "promoted_ad_rate",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "is_promoted_on_sale",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "stock",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "payout_requests",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "wallet_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "amount",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "status",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "payout_method_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "metadata",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "reference_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "user_id",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": null
+  },
+  {
+    "role": "anon",
+    "table": "live_chat_messages",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "session_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "user_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "username",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "message",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "is_host",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "msg_type",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "live_pinned_products",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "session_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "product_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "display_price",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "pinned_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "unpinned_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "units_sold",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "live_sessions",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "seller_id",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "title",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "title_ar",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "description",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "pass_tier",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "pass_price_egp",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "max_viewers",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "agora_channel",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "agora_token",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "thumbnail_url",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "status",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "scheduled_at",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "started_at",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "ended_at",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "peak_viewers",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "current_viewers",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "total_sales_egp",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "wallet_charge_id",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "category",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "public_profiles",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "full_name",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "avatar_url",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "tier",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "is_verified_seller",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "rating_avg",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "rating_count",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "anon",
+    "table": "paymob_payment_attempts",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "merchant_order_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "order_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "paymob_transaction_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "amount_cents",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "currency",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "outcome",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "error_message",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "payload",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "resolved_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": null
+  },
+  {
+    "role": "authenticated",
+    "table": "objects",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "bucket_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "name",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "owner",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "last_accessed_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "metadata",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "path_tokens",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "version",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "owner_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "user_metadata",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "archived_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "is_delete_marker",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "is_versioned",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "payments",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "product_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "buyer_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "seller_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "amount",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "currency",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "status",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "stripe_payment_intent_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "stripe_customer_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "payment_method_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "completed_at",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "metadata",
+        "insert": true,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "migrations",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "name",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "hash",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "executed_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": null
+  },
+  {
+    "role": "authenticated",
+    "table": "s3_multipart_uploads",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "in_progress_size",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "upload_signature",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "bucket_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "key",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "version",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "owner_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "user_metadata",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "metadata",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "wishlists",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "user_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "product_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "buckets",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "name",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "owner",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "public",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "avif_autodetection",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "file_size_limit",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "allowed_mime_types",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "owner_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "type",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "versioning_status",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "s3_multipart_uploads_parts",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "upload_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "size",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "part_number",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "bucket_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "key",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "etag",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "owner_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "version",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "orders",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "payment_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "product_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "buyer_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "seller_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "status",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "shipping_address",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "tracking_number",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "notes",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "shipped_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "delivered_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "paymob_transaction_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "amount",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "product_snapshot",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "handover_method",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "handover_pin_hash",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "handover_pin_encrypted",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": null
+  },
+  {
+    "role": "authenticated",
+    "table": "user_profiles",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "full_name",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "avatar_url",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "phone",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "address",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "email",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "tier",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "national_id_number",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "national_id_front_url",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "national_id_back_url",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "tier_verified_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "is_verified_seller",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "is_admin",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "rating_avg",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "rating_count",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "content_reports",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "reporter_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "target_type",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "target_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "reason",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "status",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "reviewed_at",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "blocked_users",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "blocker_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "blocked_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "messages",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "room_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "sender_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "content",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "chat_rooms",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "participant_ids",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "product_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "deleted_for",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "buckets_vectors",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "type",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "vector_indexes",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "name",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "bucket_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "data_type",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "dimension",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "distance_metric",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "metadata_configuration",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "buckets_analytics",
+    "schema": "storage",
+    "columns": [
+      {
+        "name": "name",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "type",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "format",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "deleted_at",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "wallet_topups",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "user_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "amount",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "currency",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "status",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "merchant_order_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "paymob_order_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "paymob_transaction_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "paid_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "expires_at",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "payout_methods",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "user_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "type",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "account_identifier",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "account_holder_name",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "is_default",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "is_verified",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "seller_verification_requests",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "user_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "requested_tier",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "full_name",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "national_id_number",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "national_id_front_url",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "national_id_back_url",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "status",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "reviewer_notes",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "reviewed_by",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "reviewed_at",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "wallet_transactions",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "wallet_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "order_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "type",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "amount",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "fee_amount",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "status",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "description",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "paymob_transaction_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "delta_available",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "delta_pending",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "order_fk",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "topup_fk",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "payout_fk",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "reference_id_text",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "user_wallets",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "user_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "pending_balance",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "available_balance",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "currency",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "payout_schedule",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "use_spendable_funds",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "express_payout_enabled",
+        "insert": true,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "notifications",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "user_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "type",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "payload",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "link",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "read_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "reviews",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "order_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "reviewer_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "seller_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "product_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "rating",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "comment",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "seller_response",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "seller_responded_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "edited_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "order_events",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "order_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "event_type",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "payload",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "products",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "title",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "description",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "price",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "category",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "condition",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "images",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "seller_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "status",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "updated_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "is_promoted",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "promotion_tier",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "promoted_until",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "view_count",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "promoted_ad_rate",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "is_promoted_on_sale",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "stock",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "payout_requests",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "wallet_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "amount",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "status",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "payout_method_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "metadata",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "reference_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "updated_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "user_id",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "live_chat_messages",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "session_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "user_id",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "username",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "message",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "is_host",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "msg_type",
+        "insert": true,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": true,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "live_pinned_products",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "session_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "product_id",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "display_price",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "pinned_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "unpinned_at",
+        "insert": true,
+        "update": true
+      },
+      {
+        "name": "units_sold",
+        "insert": true,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "live_sessions",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "seller_id",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "title",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "title_ar",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "description",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "pass_tier",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "pass_price_egp",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "max_viewers",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "agora_channel",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "agora_token",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "thumbnail_url",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "status",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "scheduled_at",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "started_at",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "ended_at",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "peak_viewers",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "current_viewers",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "total_sales_egp",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "wallet_charge_id",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "category",
+        "insert": false,
+        "update": true
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": true
+      }
+    ],
+    "privileges": [
+      "SELECT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "public_profiles",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "full_name",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "avatar_url",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "tier",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "is_verified_seller",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "rating_avg",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "rating_count",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": [
+      "SELECT"
+    ]
+  },
+  {
+    "role": "authenticated",
+    "table": "paymob_payment_attempts",
+    "schema": "public",
+    "columns": [
+      {
+        "name": "id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "merchant_order_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "order_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "paymob_transaction_id",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "amount_cents",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "currency",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "outcome",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "error_message",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "payload",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "resolved_at",
+        "insert": false,
+        "update": false
+      },
+      {
+        "name": "created_at",
+        "insert": false,
+        "update": false
+      }
+    ],
+    "privileges": null
+  }
+]
