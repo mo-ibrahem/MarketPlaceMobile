@@ -16,7 +16,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { displayName } from '../../src/services/lib/displayName';
-import { DIGITAL_PURCHASES_ENABLED } from '../../src/services/lib/platformCommerce';
+import { DIGITAL_PURCHASES_ENABLED, PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
+import NotAvailableYet from '../../src/components/NotAvailableYet';
 import {
   getActiveLiveSessions,
   isGenuinelyLive,
@@ -56,6 +57,8 @@ export default function LiveDiscoveryScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
+    // Classifieds mode: nothing here can be reached, so don't even fetch.
+    if (!PAYMENTS_ENABLED) { setLoading(false); setRefreshing(false); return; }
     try {
       setSessions(await getActiveLiveSessions());
     } catch (err) {
@@ -67,6 +70,12 @@ export default function LiveDiscoveryScreen() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Classifieds mode: live broadcasting does not exist right now (see
+  // PLAN-CLASSIFIEDS-MODE.md).
+  if (!PAYMENTS_ENABLED) {
+    return <NotAvailableYet />;
+  }
 
   const liveNow = sessions.filter(isGenuinelyLive);
   const upcoming = sessions.filter(s => s.status === 'scheduled');

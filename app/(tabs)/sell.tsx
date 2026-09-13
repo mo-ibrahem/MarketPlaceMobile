@@ -37,6 +37,7 @@ import Toast from "react-native-toast-message";
 import { useAuth } from "../../hooks/useAuth";
 import { productService } from "../../src/services/lib/products";
 import { SELLER_TIERS, getSellerTier, type SellerTierConfig } from "../../src/services/lib/walletService";
+import { PAYMENTS_ENABLED } from "../../src/services/lib/platformCommerce";
 import { supabase } from "../../src/services/lib/supabase";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -80,7 +81,9 @@ export default function SellScreen() {
   // Real tier -- this ribbon used to hardcode "Tier 2 Verified" for everyone.
   const [sellerTier, setSellerTier] = useState<SellerTierConfig>(SELLER_TIERS[1]);
   useEffect(() => {
-    if (!user) return;
+    // Classifieds mode: there is no tier/fee/payout system right now, so
+    // don't even fetch (see PLAN-CLASSIFIEDS-MODE.md).
+    if (!PAYMENTS_ENABLED || !user) return;
     getSellerTier(user.id).then(setSellerTier).catch(() => {});
   }, [user]);
   const router = useRouter();
@@ -309,18 +312,22 @@ export default function SellScreen() {
         })}
       </View>
 
-      {/* ── Seller Tier Status Ribbon ── */}
-      <TouchableOpacity
-        style={styles.sellerTierRibbon}
-        onPress={() => router.push('/seller-verification' as any)}
-        activeOpacity={0.85}
-      >
-        <ShieldCheck size={16} color="#2563EB" />
-        <Text style={styles.sellerTierRibbonText}>
-          {sellerTier.name}: <Text style={{ fontWeight: '800', color: '#1E40AF' }}>{sellerTier.listingLimitCount >= 999999 ? "Unlimited" : sellerTier.listingLimitCount} listings · {(sellerTier.commissionFeePercent * 100).toFixed(1)}% fee</Text>
-        </Text>
-        <Text style={styles.sellerTierRibbonCta}>Payout setup →</Text>
-      </TouchableOpacity>
+      {/* ── Seller Tier Status Ribbon ──
+          Hidden while PAYMENTS_ENABLED is false: there is no tier, fee or
+          payout system right now (see PLAN-CLASSIFIEDS-MODE.md). */}
+      {PAYMENTS_ENABLED && (
+        <TouchableOpacity
+          style={styles.sellerTierRibbon}
+          onPress={() => router.push('/seller-verification' as any)}
+          activeOpacity={0.85}
+        >
+          <ShieldCheck size={16} color="#2563EB" />
+          <Text style={styles.sellerTierRibbonText}>
+            {sellerTier.name}: <Text style={{ fontWeight: '800', color: '#1E40AF' }}>{sellerTier.listingLimitCount >= 999999 ? "Unlimited" : sellerTier.listingLimitCount} listings · {(sellerTier.commissionFeePercent * 100).toFixed(1)}% fee</Text>
+          </Text>
+          <Text style={styles.sellerTierRibbonCta}>Payout setup →</Text>
+        </TouchableOpacity>
+      )}
 
       {/* ── Scrollable content ── */}
       <ScrollView

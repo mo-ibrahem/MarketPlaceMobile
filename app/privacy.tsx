@@ -21,6 +21,7 @@ import {
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
+import { PAYMENTS_ENABLED } from '../src/services/lib/platformCommerce';
 
 export default function PrivacyPolicyScreen() {
   const router = useRouter();
@@ -28,7 +29,7 @@ export default function PrivacyPolicyScreen() {
   const [lang, setLang] = useState<'ar' | 'en'>('ar');
   const isRTL = lang === 'ar';
 
-  const arSections = [
+  const arSectionsFull = [
     {
       id: 'scope',
       title: '١. النطاق والإطار القانوني',
@@ -105,7 +106,7 @@ export default function PrivacyPolicyScreen() {
     },
   ];
 
-  const enSections = [
+  const enSectionsFull = [
     {
       id: 'scope',
       title: '1. Scope & Legal Framework',
@@ -180,7 +181,111 @@ Data is shared strictly with authorized partners necessary for platform operatio
     },
   ];
 
-  const sections = isRTL ? arSections : enSections;
+  // While PAYMENTS_ENABLED is false, EgyBay does not collect escrow ledger
+  // data, payout destinations, or KYC documents, and does not share anything
+  // with Paymob or Bosta -- so this policy should not claim it does (see
+  // PLAN-CLASSIFIEDS-MODE.md). "scope", "rights" (account deletion) and the
+  // core of "security" are unaffected by payments and are reused as-is.
+  const scopeAr = arSectionsFull.find(s => s.id === 'scope')!;
+  const rightsAr = arSectionsFull.find(s => s.id === 'rights')!;
+  const scopeEn = enSectionsFull.find(s => s.id === 'scope')!;
+  const rightsEn = enSectionsFull.find(s => s.id === 'rights')!;
+
+  const arSectionsClassifieds = [
+    scopeAr,
+    {
+      id: 'collection',
+      title: '٢. البيانات التي نقوم بجمعها',
+      content: `لتشغيل الإعلانات والدردشة داخل التطبيق، نقوم بجمع:
+
+أ. البيانات الشخصية وبيانات الاتصال:
+• الاسم الكامل، البريد الإلكتروني، ورقم الهاتف المصري.
+• صورة الملف الشخصي، إن وُجدت.
+
+ب. بيانات تسجيل الدخول والأمان:
+• بيانات الحساب المشفرة عبر Supabase Authentication بنظام حماية Row-Level Security.
+• عنوان البروتوكول (IP) ونوع الجهاز لضمان أمان الحساب ومنع الاختراق.
+
+ج. بيانات الإعلانات والدردشة:
+• عناوين الإعلانات، الصور، الأسعار، ورسائل المحادثة بين المشترين والبائعين.
+
+لا تقوم إيجي باي حالياً بجمع أو معالجة أي بيانات دفع أو حسابات بنكية، لأن التطبيق لا يُجري أي عملية دفع بين المستخدمين.`,
+    },
+    {
+      id: 'usage',
+      title: '٣. كيف نستخدم بياناتك ونحميها',
+      content: `نستخدم بياناتك للأغراض المشروعة التالية فقط:
+• تشغيل الإعلانات والدردشة بين المشترين والبائعين.
+• مكافحة الغش والاحتيال: فحص الإعلانات المخالفة ومنع الحسابات الوهمية والسلع المقلدة.
+• الإشعارات: إعلامك بالرسائل الجديدة وتحديثات الإعلانات.`,
+    },
+    {
+      id: 'sharing',
+      title: '٤. مشاركة البيانات مع أطراف ثالثة',
+      content: `منصة إيجي باي لا تقوم نهائياً ببيع أو تأجير أو مشاركة بياناتك الشخصية مع شركات الإعلانات أو الوسطاء.
+
+تتم مشاركة الحد الأدنى من البيانات الضرورية مع الجهات المعتمدة التالية فقط:
+• البنية التحتية السحابية (خوادم Supabase / AWS المعتمدة): لحفظ قواعد البيانات بتشفير AES-256.
+• الجهات القضائية المصرية: فقط في حال وجود طلب رسمي وملزم قانوناً وفق التشريعات المصرية.`,
+    },
+    rightsAr,
+    {
+      id: 'security',
+      title: '٦. معايير الأمان والتشفير',
+      content: `• يتم تشفير جميع الاتصالات عبر شهادات SSL/TLS 256-bit عالية الأمان.
+• المحادثات الخاصة بين المشترين والبائعين محمية بقواعد الأمان الصارمة على مستوى الصفوف (RLS).`,
+    },
+  ];
+
+  const enSectionsClassifieds = [
+    scopeEn,
+    {
+      id: 'collection',
+      title: '2. Information We Collect',
+      content: `To run listings and in-app chat, we collect:
+
+A. Personal & Contact Information:
+• Full name, email address, Egyptian mobile number.
+• Profile photo, if provided.
+
+B. Authentication & Security Data:
+• Passwords securely hashed via Supabase Auth with Row-Level Security (RLS).
+• Session tokens, device IP address for fraud prevention.
+
+C. Listings & Chat Data:
+• Listing titles, photos, prices, and messages exchanged between buyers and sellers.
+
+EgyBay does not currently collect or process any payment or bank account data, because the app does not run any payment between users.`,
+    },
+    {
+      id: 'usage',
+      title: '3. Purpose & Legal Basis of Processing',
+      content: `We process personal data strictly for legitimate purposes:
+• Running listings and chat between buyers and sellers.
+• Fraud Prevention: Detecting prohibited items and unauthorized accounts.
+• Notifications: Letting you know about new messages and listing updates.`,
+    },
+    {
+      id: 'sharing',
+      title: '4. Data Sharing & Third-Party Processors',
+      content: `EgyBay NEVER sells or rents your personal data to marketing brokers.
+
+Data is shared strictly with authorized partners necessary for platform operations:
+• Cloud Infrastructure (Supabase / AWS): Encrypted database storage.
+• Legal Authorities: Only when mandated by an official court warrant under Egyptian Law.`,
+    },
+    rightsEn,
+    {
+      id: 'security',
+      title: '6. Security Architecture & Encryption',
+      content: `• 256-bit TLS/SSL encryption for all data in transit.
+• Database Row-Level Security (RLS) guarantees chat and order privacy.`,
+    },
+  ];
+
+  const sections = PAYMENTS_ENABLED
+    ? (isRTL ? arSectionsFull : enSectionsFull)
+    : (isRTL ? arSectionsClassifieds : enSectionsClassifieds);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>

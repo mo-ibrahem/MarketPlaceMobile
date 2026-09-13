@@ -1,11 +1,12 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, Tabs } from "expo-router";
-import { House, Video, Plus, Package, User } from "lucide-react-native";
+import { House, Video, Plus, Package, User, MessageCircle } from "lucide-react-native";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../hooks/useAuth";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { color, font, space, weight } from "../../src/design/tokens";
+import { PAYMENTS_ENABLED } from "../../src/services/lib/platformCommerce";
 
 // Custom Sell tab icon — floating action button matching the web app
 function SellTabIcon({ label }: { label: string }) {
@@ -32,8 +33,8 @@ export default function TabsLayout() {
   // Tab labels are the most-read text in the app and were English-only, on an
   // app that ships a language switcher for an Egyptian market.
   const L = isRTL
-    ? { home: 'الرئيسية', live: 'بث مباشر', sell: 'بيع', orders: 'الطلبات', profile: 'حسابي' }
-    : { home: 'Home', live: 'Live', sell: 'Sell', orders: 'Orders', profile: 'Profile' };
+    ? { home: 'الرئيسية', live: 'بث مباشر', sell: 'بيع', orders: 'الطلبات', chats: 'الدردشات', profile: 'حسابي' }
+    : { home: 'Home', live: 'Live', sell: 'Sell', orders: 'Orders', chats: 'Chats', profile: 'Profile' };
 
   if (loading) {
     return (
@@ -93,10 +94,16 @@ export default function TabsLayout() {
         }}
       />
 
+      {/* Paused with orders while PAYMENTS_ENABLED is false: nobody can book
+          a stream without a wallet, so this would be a permanently empty tab
+          -- see PLAN-CLASSIFIEDS-MODE.md. href: null hides it from the bar
+          without unregistering the route, so a stale link to /live still
+          resolves (and shows its own NotAvailableYet guard). */}
       <Tabs.Screen
         name="live"
         options={{
           title: L.live,
+          href: PAYMENTS_ENABLED ? undefined : null,
           tabBarIcon: ({ color, focused }) => (
             <View style={{ position: 'relative' }}>
               <Video color={focused ? '#EF4444' : color} size={22} />
@@ -134,11 +141,25 @@ export default function TabsLayout() {
         }}
       />
 
+      {/* Paused while PAYMENTS_ENABLED is false -- see PLAN-CLASSIFIEDS-MODE.md. */}
       <Tabs.Screen
         name="orders"
         options={{
           title: L.orders,
+          href: PAYMENTS_ENABLED ? undefined : null,
           tabBarIcon: ({ color, size }) => <Package color={color} size={22} />,
+        }}
+      />
+
+      {/* Chat is the core flow while payments are paused, so it gets its own
+          tab; once PAYMENTS_ENABLED flips back on, chat returns to living
+          inside Profile's "Chats" sub-tab and this tab hides again. */}
+      <Tabs.Screen
+        name="chats"
+        options={{
+          title: L.chats,
+          href: PAYMENTS_ENABLED ? null : undefined,
+          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={22} />,
         }}
       />
 

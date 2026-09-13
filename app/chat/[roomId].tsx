@@ -21,6 +21,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import { blockUser, isBackendMissing, reportContent, SAFETY_EMAIL } from '../../src/services/lib/moderationService';
+import { PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 import {
   getChatRoomDetails,
   getMessages,
@@ -291,7 +292,9 @@ export default function ChatRoomScreen() {
         {/* ── Safety Notice Banner ── */}
         <View style={styles.safetyBanner}>
           <ShieldCheck size={14} color="#2563EB" />
-          <Text style={styles.safetyBannerText}>{t('chat.safetyReminder')}</Text>
+          <Text style={styles.safetyBannerText}>
+            {t(PAYMENTS_ENABLED ? 'chat.safetyReminder' : 'chat.safetyReminderClassifieds')}
+          </Text>
         </View>
 
         {/* ── Message List ── */}
@@ -337,7 +340,7 @@ export default function ChatRoomScreen() {
                       <View style={styles.offerActionRow}>
                         <TouchableOpacity
                           style={styles.acceptOfferBtn}
-                          onPress={() => handleSend('✅ [OFFER ACCEPTED / تم قبول العرض] I accept your offer! Let’s arrange delivery or meetup.')}
+                          onPress={() => handleSend('✅ [OFFER ACCEPTED / تم قبول العرض] I accept your offer! Let’s agree where to meet and how you’ll pay.')}
                         >
                           <Text style={styles.acceptOfferText}>{t('chat.acceptOffer')}</Text>
                         </TouchableOpacity>

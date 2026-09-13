@@ -23,7 +23,8 @@ const VERIFY_INTERVAL_MS = 2000;
 const VERIFY_TIMEOUT_MS = 40000;
 
 import { classifyPaymobUrl, isTrustedPaymentOrigin, paymentBackendState, type PaymobUrlOutcome } from '../src/services/lib/paymentSafety';
-import { DIGITAL_PURCHASES_ENABLED } from '../src/services/lib/platformCommerce';
+import { DIGITAL_PURCHASES_ENABLED, PAYMENTS_ENABLED } from '../src/services/lib/platformCommerce';
+import NotAvailableYet from '../src/components/NotAvailableYet';
 export { classifyPaymobUrl } from '../src/services/lib/paymentSafety';
 
 type Phase = 'paying' | 'verifying' | 'confirmed' | 'unconfirmed' | 'declined';
@@ -199,6 +200,11 @@ export default function PaymentScreen() {
   const handleNavigationStateChange = (navState: any) => {
     handleUrl(navState?.url || '');
   };
+
+  // Classifieds mode: no payment flow exists right now (see PLAN-CLASSIFIEDS-MODE.md).
+  if (!PAYMENTS_ENABLED) {
+    return <NotAvailableYet />;
+  }
 
   if (!paymentToken || !orderId || (isTopUp && !DIGITAL_PURCHASES_ENABLED)) {
     return (

@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { PAYMENTS_ENABLED } from './platformCommerce';
 
 export interface AppNotification {
   id: string;
@@ -171,11 +172,15 @@ export function notificationRoute(n: AppNotification): string | null {
     case 'completed':
     case 'disputed':
     case 'rate_purchase':
+      // Classifieds mode: an old notification pointing at an order must not
+      // open a screen that no longer exists (see PLAN-CLASSIFIEDS-MODE.md).
+      if (!PAYMENTS_ENABLED) return '/(tabs)';
       return orderId ? `/order/${orderId}` : null;
     case 'new_message':
       return roomId ? `/chat/${roomId}` : null;
     case 'top_up':
     case 'withdrawal':
+      if (!PAYMENTS_ENABLED) return '/(tabs)';
       return '/wallet';
     case 'review_received':
       return productId ? `/products/${productId}` : null;

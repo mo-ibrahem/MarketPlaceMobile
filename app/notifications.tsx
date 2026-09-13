@@ -21,6 +21,7 @@ import {
   notificationRoute,
   type AppNotification,
 } from '../src/services/lib/notificationService';
+import { PAYMENTS_ENABLED } from '../src/services/lib/platformCommerce';
 
 function timeAgo(iso: string, isRTL: boolean): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -151,9 +152,9 @@ export default function NotificationsScreen() {
               <Bell color="#CBD5E1" size={44} />
               <Text style={s.emptyTitle}>{isRTL ? 'لا توجد إشعارات بعد' : 'No notifications yet'}</Text>
               <Text style={s.emptySub}>
-                {isRTL
-                  ? 'ستظهر هنا تحديثات طلباتك ورسائلك ومحفظتك.'
-                  : 'Updates about your orders, messages and wallet will appear here.'}
+                {PAYMENTS_ENABLED
+                  ? (isRTL ? 'ستظهر هنا تحديثات طلباتك ورسائلك ومحفظتك.' : 'Updates about your orders, messages and wallet will appear here.')
+                  : (isRTL ? 'ستظهر هنا رسائلك وتحديثات إعلاناتك.' : 'Updates about your messages and listings will appear here.')}
               </Text>
             </View>
           }

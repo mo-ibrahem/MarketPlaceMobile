@@ -54,7 +54,8 @@ import {
   type UserWallet,
   type WalletTransaction,
 } from '../src/services/lib/walletService';
-import { DIGITAL_PURCHASES_ENABLED } from '../src/services/lib/platformCommerce';
+import { DIGITAL_PURCHASES_ENABLED, PAYMENTS_ENABLED } from '../src/services/lib/platformCommerce';
+import NotAvailableYet from '../src/components/NotAvailableYet';
 import { supabase } from '../src/services/lib/supabase';
 export default function WalletScreen() {
   const router = useRouter();
@@ -89,6 +90,8 @@ export default function WalletScreen() {
   const [txFilter, setTxFilter] = useState<'all' | 'escrow' | 'payout' | 'top_up' | 'boost'>('all');
 
   const loadWalletData = useCallback(async () => {
+    // Classifieds mode: nothing here can be reached, so don't even fetch.
+    if (!PAYMENTS_ENABLED) { setLoading(false); return; }
     if (!user) return;
     try {
       const [w, txs, pms, tier] = await Promise.all([
@@ -252,6 +255,11 @@ export default function WalletScreen() {
       setUpgradingTier(false);
     }
   };
+
+  // Classifieds mode: there is no wallet right now (see PLAN-CLASSIFIEDS-MODE.md).
+  if (!PAYMENTS_ENABLED) {
+    return <NotAvailableYet />;
+  }
 
   if (loading) {
     return (

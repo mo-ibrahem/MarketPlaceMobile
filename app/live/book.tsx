@@ -15,7 +15,8 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle2, AlertCircle, Video, Wallet } from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { bookLiveSession, LIVE_PASSES, type LivePassTier } from '../../src/services/lib/liveService';
-import { DIGITAL_PURCHASES_ENABLED } from '../../src/services/lib/platformCommerce';
+import { DIGITAL_PURCHASES_ENABLED, PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
+import NotAvailableYet from '../../src/components/NotAvailableYet';
 import { getUserWallet } from '../../src/services/lib/walletService';
 import { supabase } from '../../src/services/lib/supabase';
 
@@ -43,6 +44,8 @@ export default function BookLiveScreen() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Classifieds mode: nothing here can be reached, so don't even fetch.
+    if (!PAYMENTS_ENABLED) { setLoading(false); return; }
     if (!user) return;
     getUserWallet(user.id)
       .then((wallet) => {
@@ -76,6 +79,12 @@ export default function BookLiveScreen() {
       setBooking(false);
     }
   };
+
+  // Classifieds mode: live booking is a paid digital feature that does not
+  // exist right now at all (see PLAN-CLASSIFIEDS-MODE.md).
+  if (!PAYMENTS_ENABLED) {
+    return <NotAvailableYet />;
+  }
 
   if (loading) {
     return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#EF4444" /></View>;

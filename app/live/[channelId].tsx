@@ -37,6 +37,8 @@ import {
   type LiveSession,
 } from '../../src/services/lib/liveService';
 import { supabase } from '../../src/services/lib/supabase';
+import NotAvailableYet from '../../src/components/NotAvailableYet';
+import { PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 
 const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || 'f9fd0dadb9674b698d234f4551d6100b';
 
@@ -116,6 +118,8 @@ export default function LiveViewerScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
+    // Classifieds mode: nothing here can be reached, so don't even fetch.
+    if (!PAYMENTS_ENABLED) { setLoading(false); return; }
     if (!channelId) return;
 
     (async () => {
@@ -217,6 +221,12 @@ export default function LiveViewerScreen() {
       }).catch(() => {});
     }
   };
+
+  // Classifieds mode: live viewing does not exist right now (see
+  // PLAN-CLASSIFIEDS-MODE.md).
+  if (!PAYMENTS_ENABLED) {
+    return <NotAvailableYet />;
+  }
 
   if (loading) {
     return (

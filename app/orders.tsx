@@ -26,6 +26,8 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../src/i18n/LanguageContext';
 import { getUserOrders, type MarketplaceOrder } from '../src/services/lib/orderService';
+import NotAvailableYet from '../src/components/NotAvailableYet';
+import { PAYMENTS_ENABLED } from '../src/services/lib/platformCommerce';
 
 type TabKey = 'all' | 'purchases' | 'sales';
 
@@ -185,6 +187,8 @@ export default function OrdersScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('all');
 
   const fetchOrders = useCallback(async () => {
+    // Classifieds mode: nothing here can be reached, so don't even fetch.
+    if (!PAYMENTS_ENABLED) { setLoading(false); setRefreshing(false); return; }
     if (!user) return;
     try {
       const data = await getUserOrders(user.id);
@@ -221,6 +225,11 @@ export default function OrdersScreen() {
     { key: 'purchases', label: isRTL ? 'مشتريات 🛍️' : '🛍️ Buying', count: purchases.length },
     { key: 'sales', label: isRTL ? 'مبيعات 🏷️' : '🏷️ Selling', count: sales.length },
   ];
+
+  // Classifieds mode: there are no orders right now (see PLAN-CLASSIFIEDS-MODE.md).
+  if (!PAYMENTS_ENABLED) {
+    return <NotAvailableYet />;
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

@@ -24,6 +24,7 @@ import { productService, type Product } from '../../src/services/lib/products';
 import { getUserOrders, type MarketplaceOrder } from '../../src/services/lib/orderService';
 import { getActiveLiveSessions, isGenuinelyLive, type LiveSession } from '../../src/services/lib/liveService';
 import { useAuth } from '../../hooks/useAuth';
+import { PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 
 /**
  * Home, rebuilt around the product instead of around the marketplace.
@@ -89,6 +90,9 @@ export default function HomeScreen() {
   // What the hero shows depends on the viewer's state, so the home loads the
   // two things that can change it: their orders, and whether anyone is live.
   const loadContext = useCallback(async () => {
+    // Classifieds mode: no orders and no live sessions exist right now, so
+    // don't even fetch (see PLAN-CLASSIFIEDS-MODE.md).
+    if (!PAYMENTS_ENABLED) { setOrders([]); setLiveNow(null); return; }
     try {
       const [o, l] = await Promise.all([
         user ? getUserOrders(user.id) : Promise.resolve([]),
@@ -285,7 +289,10 @@ export default function HomeScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={s.heroPrice}>{formatEGP(item.price)}</Text>
                         <Text style={s.heroMeta} numberOfLines={1}>
-                          {displayName(item.seller?.full_name, 'Seller')} · {isArabic ? 'محفوظ في الضمان حتى الفحص' : 'held in escrow until you inspect'}
+                          {displayName(item.seller?.full_name, 'Seller')}
+                          {PAYMENTS_ENABLED
+                            ? ` · ${isArabic ? 'محفوظ في الضمان حتى الفحص' : 'held in escrow until you inspect'}`
+                            : ` · ${isArabic ? 'راسل البائع للتفاصيل' : 'message the seller for details'}`}
                         </Text>
                       </View>
                       <View style={s.heroArrow}><ArrowUpRight size={22} color={color.text} /></View>
@@ -367,7 +374,7 @@ export default function HomeScreen() {
                         item={item}
                         width={laneWidth}
                         imageHeight={tall ? laneWidth * 1.33 : laneWidth}
-                        showEscrow
+                        showEscrow={PAYMENTS_ENABLED}
                         isWishlisted={wishlistIds.has(item.id)}
                         onPress={() => router.push(`/products/${item.id}` as any)}
                         onToggleWishlist={() => toggleWishlist(item)}
@@ -379,7 +386,11 @@ export default function HomeScreen() {
                           <Plus size={28} color={color.textInverse} />
                           <View>
                             <Text style={s.sellTitle}>{isArabic ? 'بِع شيئاً اليوم' : 'Sell something today'}</Text>
-                            <Text style={s.sellSub}>{isArabic ? 'المشتري يدفع قبل الشحن. عمولة ٣.٥٪' : 'Buyer pays before you ship. 3.5% fee.'}</Text>
+                            <Text style={s.sellSub}>
+                              {PAYMENTS_ENABLED
+                                ? (isArabic ? 'المشتري يدفع قبل الشحن. عمولة ٣.٥٪' : 'Buyer pays before you ship. 3.5% fee.')
+                                : (isArabic ? 'أضف صوراً وسعراً، والمشترون يراسلونك مباشرة' : 'Add photos and a price -- buyers message you directly')}
+                            </Text>
                           </View>
                         </TouchableOpacity>
                       )}
@@ -426,7 +437,11 @@ export default function HomeScreen() {
           </View>
           <View style={s.searchEscrow}>
             <ShieldCheck size={16} color={color.successDark} />
-            <Text style={s.searchEscrowText}>{isArabic ? 'كل عملية شراء محفوظة في الضمان حتى تفحص المنتج.' : 'Every purchase is held in escrow until you inspect the item.'}</Text>
+            <Text style={s.searchEscrowText}>
+              {PAYMENTS_ENABLED
+                ? (isArabic ? 'كل عملية شراء محفوظة في الضمان حتى تفحص المنتج.' : 'Every purchase is held in escrow until you inspect the item.')
+                : (isArabic ? 'راسل البائع، اتفقا على السعر، والتقيا بأمان.' : 'Chat with the seller, agree on a price, meet safely.')}
+            </Text>
           </View>
         </SafeAreaView>
       </Modal>

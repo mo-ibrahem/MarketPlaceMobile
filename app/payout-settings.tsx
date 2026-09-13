@@ -31,6 +31,8 @@ import {
   getUserWallet,
   type PayoutMethod,
 } from '../src/services/lib/walletService';
+import NotAvailableYet from '../src/components/NotAvailableYet';
+import { PAYMENTS_ENABLED } from '../src/services/lib/platformCommerce';
 
 export default function PayoutSettingsScreen() {
   const router = useRouter();
@@ -50,6 +52,8 @@ export default function PayoutSettingsScreen() {
   const [holderName, setHolderName] = useState(user?.user_metadata?.full_name || '');
 
   const loadData = async () => {
+    // Classifieds mode: nothing here can be reached, so don't even fetch.
+    if (!PAYMENTS_ENABLED) { setLoading(false); return; }
     if (!user) return;
     try {
       const [methodsData, walletData] = await Promise.all([
@@ -101,6 +105,11 @@ export default function PayoutSettingsScreen() {
       setSaving(false);
     }
   };
+
+  // Classifieds mode: there are no payouts right now (see PLAN-CLASSIFIEDS-MODE.md).
+  if (!PAYMENTS_ENABLED) {
+    return <NotAvailableYet />;
+  }
 
   if (loading) {
     return (

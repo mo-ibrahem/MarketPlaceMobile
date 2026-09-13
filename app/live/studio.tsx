@@ -29,6 +29,8 @@ import {
 } from '../../src/services/lib/liveService';
 import { productService } from '../../src/services/lib/products';
 import { supabase } from '../../src/services/lib/supabase';
+import NotAvailableYet from '../../src/components/NotAvailableYet';
+import { PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 
 // Agora Studio runs via WebView since react-native-agora requires native rebuild
 // The WebView loads a self-contained Agora WebRTC host page
@@ -109,6 +111,8 @@ export default function StudioScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
+    // Classifieds mode: nothing here can be reached, so don't even fetch.
+    if (!PAYMENTS_ENABLED) return;
     if (!sessionId || !user) return;
     (async () => {
       const { data } = await supabase.from('live_sessions').select('*').eq('id', sessionId).single();
@@ -213,6 +217,12 @@ export default function StudioScreen() {
   const studioHTML = isLive && agoraToken && session?.agora_channel
     ? buildStudioHTML(AGORA_APP_ID, agoraToken, session.agora_channel, hostUid)
     : null;
+
+  // Classifieds mode: live broadcasting does not exist right now (see
+  // PLAN-CLASSIFIEDS-MODE.md).
+  if (!PAYMENTS_ENABLED) {
+    return <NotAvailableYet />;
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top']}>

@@ -15,9 +15,11 @@ import {
   Scale,
   Mail,
   Globe,
+  MessageCircle,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
+import { PAYMENTS_ENABLED } from '../src/services/lib/platformCommerce';
 
 export default function TermsOfServiceScreen() {
   const router = useRouter();
@@ -25,7 +27,7 @@ export default function TermsOfServiceScreen() {
   const [lang, setLang] = useState<'ar' | 'en'>('ar');
   const isRTL = lang === 'ar';
 
-  const arSections = [
+  const arSectionsFull = [
     {
       id: 'acceptance',
       title: '١. طبيعة المنصة والموافقة على الشروط',
@@ -107,7 +109,7 @@ export default function TermsOfServiceScreen() {
     },
   ];
 
-  const enSections = [
+  const enSectionsFull = [
     {
       id: 'acceptance',
       title: '1. Platform Role & Acceptance of Agreement',
@@ -189,7 +191,65 @@ Sellers must dispatch sold items via our integrated courier partner within 48 ho
     },
   ];
 
-  const sections = isRTL ? arSections : enSections;
+  // While PAYMENTS_ENABLED is false there is no escrow, no payout, no
+  // Bosta-integrated shipping and no dispute process to describe -- so those
+  // sections are replaced rather than left describing a system that is not
+  // running (see PLAN-CLASSIFIEDS-MODE.md). The prohibited-goods policy is
+  // untouched: it has nothing to do with payments.
+  // Reused verbatim except renumbered: it's item 4 of 7 in the full terms
+  // but item 3 of 4 here.
+  const prohibitedAr = { ...arSectionsFull.find(s => s.id === 'prohibited')!, title: '٣. قائمة السلع والمواد المحظورة قانوناً' };
+  const prohibitedEn = { ...enSectionsFull.find(s => s.id === 'prohibited')!, title: '3. Prohibited & Illegal Goods Policy' };
+
+  const arSectionsClassifieds = [
+    {
+      id: 'acceptance',
+      title: '١. طبيعة المنصة والموافقة على الشروط',
+      content: `مرحباً بكم في منصة وتطبيق إيجي باي (EgyBay). بالوصول إلى التطبيق أو تسجيل حساب أو نشر إعلانات، فإنك توافق على الالتزام الكامل بهذه الشروط والأحكام الخاضعة لقوانين جمهورية مصر العربية (قانون حماية المستهلك رقم ١٨١ لسنة ٢٠١٨ والقانون المدني).
+
+تعمل إيجي باي كمنصة تكنولوجية وسيطة لربط البائعين والمشترين عبر الإعلانات والدردشة داخل التطبيق. إيجي باي ليست مُصنّعاً أو مالكاً للمنتجات المعروضة من البائعين المستقلين.`,
+    },
+    {
+      id: 'no-payments',
+      title: '٢. لا تقوم إيجي باي بمعالجة المدفوعات حالياً',
+      content: `إيجي باي لا تُجري أو تُعالج أي عملية دفع بين المستخدمين في الوقت الحالي. يتفق المشتري والبائع مباشرة على السعر وطريقة الدفع وتسليم السلعة خارج التطبيق.
+
+إيجي باي ليست طرفاً في هذا الاتفاق ولا تتحمل مسؤولية أي خسارة مالية أو نزاع ينشأ عنه. راجع صفحة "نصائح الأمان" داخل التطبيق قبل إتمام أي صفقة.`,
+    },
+    prohibitedAr,
+    {
+      id: 'liability',
+      title: '٤. إخلاء المسؤولية',
+      content: `تقدم إيجي باي أدوات الإعلان والتواصل فقط. جميع الاتفاقات المالية وعمليات التسليم تتم بالكامل خارج التطبيق وعلى مسؤولية طرفي الصفقة.`,
+    },
+  ];
+
+  const enSectionsClassifieds = [
+    {
+      id: 'acceptance',
+      title: '1. Platform Role & Acceptance of Agreement',
+      content: `Welcome to EgyBay. By accessing the mobile application, registering an account, or posting a listing, you enter into a legally binding agreement under the laws of the Arab Republic of Egypt (Consumer Protection Law No. 181/2018 and Civil Code).
+
+EgyBay acts strictly as an intermediary technology platform connecting buyers and sellers through listings and in-app chat. EgyBay is not the manufacturer, retailer, or physical owner of items listed by independent sellers.`,
+    },
+    {
+      id: 'no-payments',
+      title: '2. EgyBay Does Not Process Payments Right Now',
+      content: `EgyBay does not run or process any payment between users at this time. The buyer and seller agree directly on price, payment method, and handover, outside the app.
+
+EgyBay is not a party to that agreement and is not responsible for any financial loss or dispute arising from it. See the in-app "Safety tips" page before completing a deal.`,
+    },
+    prohibitedEn,
+    {
+      id: 'liability',
+      title: '4. Limitation of Liability',
+      content: `EgyBay provides listing and messaging tools only. All financial agreements and handovers take place entirely outside the app and at the parties' own risk.`,
+    },
+  ];
+
+  const sections = PAYMENTS_ENABLED
+    ? (isRTL ? arSectionsFull : enSectionsFull)
+    : (isRTL ? arSectionsClassifieds : enSectionsClassifieds);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
@@ -199,7 +259,9 @@ Sellers must dispatch sold items via our integrated courier partner within 48 ho
           <ArrowLeft color="#0F172A" size={22} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {isRTL ? 'الشروط والأحكام والضمان' : 'Terms & Escrow Agreement'}
+          {PAYMENTS_ENABLED
+            ? (isRTL ? 'الشروط والأحكام والضمان' : 'Terms & Escrow Agreement')
+            : (isRTL ? 'الشروط والأحكام' : 'Terms of Service')}
         </Text>
         {/* Language Switcher */}
         <TouchableOpacity
@@ -218,9 +280,9 @@ Sellers must dispatch sold items via our integrated courier partner within 48 ho
         <View style={styles.badgeWrap}>
           <Scale color="#2563EB" size={32} />
           <Text style={styles.mainTitle}>
-            {isRTL
-              ? 'شروط استخدام منصة إيجي باي والضمان المالي'
-              : 'EgyBay Terms of Service & Escrow Agreement'}
+            {PAYMENTS_ENABLED
+              ? (isRTL ? 'شروط استخدام منصة إيجي باي والضمان المالي' : 'EgyBay Terms of Service & Escrow Agreement')
+              : (isRTL ? 'شروط استخدام منصة إيجي باي' : 'EgyBay Terms of Service')}
           </Text>
           <Text style={styles.dateText}>
             {isRTL ? 'آخر تحديث: أغسطس ٢٠٢٦' : 'Last updated: August 2026'}
@@ -230,13 +292,27 @@ Sellers must dispatch sold items via our integrated courier partner within 48 ho
         {/* Highlights */}
         <View style={styles.highlightRow}>
           <View style={styles.highlightCard}>
-            <ShieldCheck color="#10B981" size={18} />
-            <Text style={styles.highlightTitle}>
-              {isRTL ? 'ضمان مالي ١٠٠٪' : '100% Escrow'}
-            </Text>
-            <Text style={styles.highlightSub}>
-              {isRTL ? 'حجز الأموال حتى الفحص' : 'Funds held safely'}
-            </Text>
+            {PAYMENTS_ENABLED ? (
+              <>
+                <ShieldCheck color="#10B981" size={18} />
+                <Text style={styles.highlightTitle}>
+                  {isRTL ? 'ضمان مالي ١٠٠٪' : '100% Escrow'}
+                </Text>
+                <Text style={styles.highlightSub}>
+                  {isRTL ? 'حجز الأموال حتى الفحص' : 'Funds held safely'}
+                </Text>
+              </>
+            ) : (
+              <>
+                <MessageCircle color="#2563EB" size={18} />
+                <Text style={styles.highlightTitle}>
+                  {isRTL ? 'دردشة مباشرة' : 'Direct chat'}
+                </Text>
+                <Text style={styles.highlightSub}>
+                  {isRTL ? 'تواصل مباشر مع الطرف الآخر' : 'Talk to the other person directly'}
+                </Text>
+              </>
+            )}
           </View>
           <View style={styles.highlightCard}>
             <FileText color="#2563EB" size={18} />

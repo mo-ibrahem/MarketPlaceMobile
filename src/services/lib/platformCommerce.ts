@@ -25,3 +25,23 @@ export const DIGITAL_PURCHASES_ENABLED = Platform.OS !== 'ios';
 
 /** Physical-goods checkout is allowed everywhere and must not use IAP. */
 export const PHYSICAL_CHECKOUT_ENABLED = true;
+
+/**
+ * Master switch for the money layer. false = classifieds mode: listings,
+ * chat, profiles, wishlist, report/block, and account deletion work; there is
+ * no checkout, no orders, no escrow, no wallet, no payouts, no boosts, no
+ * live booking, no seller tiers, and no reviews (reviews require a completed
+ * order, so none can exist while this is off).
+ *
+ * This exists because Paymob's merchant verification is taking longer than
+ * the App Store submission can wait for. Rather than submit an escrow app
+ * that cannot actually process a payment, or delete the payment code and
+ * rebuild it later, every money surface in the app is gated on this one
+ * constant. See PLAN-CLASSIFIEDS-MODE.md for the full list of what is gated
+ * and how it was verified.
+ *
+ * Set to true when the Paymob merchant account is approved. Everything
+ * gated on this constant is intact and was working on 2026-09-13 (build 21)
+ * -- flipping this flag and rebuilding is the entire re-launch process.
+ */
+export const PAYMENTS_ENABLED = false;

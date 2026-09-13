@@ -46,7 +46,7 @@ import Reanimated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimate
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import { getProductBoostInfo } from '../../src/services/lib/boostService';
-import { DIGITAL_PURCHASES_ENABLED } from '../../src/services/lib/platformCommerce';
+import { DIGITAL_PURCHASES_ENABLED, PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 import { isBackendMissing, reportContent, SAFETY_EMAIL } from '../../src/services/lib/moderationService';
 import { getOrCreateChatRoom, sendMessage } from '../../src/services/lib/chatService';
 import { productService, type Product } from '../../src/services/lib/products';
@@ -102,6 +102,9 @@ export default function ProductDetailScreen() {
   const [activeIndex,     setActiveIndex]     = useState(0);
   const [productReviews,  setProductReviews]  = useState<Review[]>([]);
   const [sellerRating,    setSellerRating]    = useState<SellerRating | null>(null);
+  // Classifieds mode has no orders, so no reviews can exist -- the seller
+  // card shows a listings count instead of a rating (see PLAN-CLASSIFIEDS-MODE.md).
+  const [sellerListingsCount, setSellerListingsCount] = useState<number | null>(null);
 
   // Offer Modal State
   const [offerModalVisible, setOfferModalVisible] = useState(false);
@@ -128,13 +131,19 @@ export default function ProductDetailScreen() {
         setSimilarProducts(similar);
       }
 
-      // Reviews are supporting detail -- a failure here must not blank the
-      // listing, so they load beside the product rather than gating it.
-      getProductReviews(id).then(setProductReviews).catch(err =>
-        console.warn('[ProductDetail] product reviews failed:', err));
-      if (data?.seller_id) {
-        getSellerRating(data.seller_id).then(setSellerRating).catch(err =>
-          console.warn('[ProductDetail] seller rating failed:', err));
+      if (PAYMENTS_ENABLED) {
+        // Reviews are supporting detail -- a failure here must not blank the
+        // listing, so they load beside the product rather than gating it.
+        getProductReviews(id).then(setProductReviews).catch(err =>
+          console.warn('[ProductDetail] product reviews failed:', err));
+        if (data?.seller_id) {
+          getSellerRating(data.seller_id).then(setSellerRating).catch(err =>
+            console.warn('[ProductDetail] seller rating failed:', err));
+        }
+      } else if (data?.seller_id) {
+        productService.getProductsBySeller(data.seller_id)
+          .then(list => setSellerListingsCount(list.length))
+          .catch(err => console.warn('[ProductDetail] seller listings count failed:', err));
       }
     } catch {
       Toast.show({ type: 'error', text1: 'Failed to load product.' });
@@ -337,10 +346,13 @@ export default function ProductDetailScreen() {
           })()}
 
           {/* Owner Boost CTA Card.
-              Hidden on iOS: a boost is a paid digital feature and 3.1.3(g)
-              requires in-app purchase for it. Until boosts go through
-              StoreKit, iOS must not offer -- or point at -- buying one. */}
-          {DIGITAL_PURCHASES_ENABLED && user?.id === product.seller_id && (
+              Hidden entirely while PAYMENTS_ENABLED is false -- boosts are a
+              paid digital feature with no purchase path at all right now
+              (see PLAN-CLASSIFIEDS-MODE.md). Hidden on iOS even once payments
+              are back: 3.1.3(g) requires in-app purchase for it, and until
+              boosts go through StoreKit, iOS must not offer -- or point at --
+              buying one. */}
+          {PAYMENTS_ENABLED && DIGITAL_PURCHASES_ENABLED && user?.id === product.seller_id && (
             <TouchableOpacity
               style={styles.ownerBoostBanner}
               onPress={() => router.push(`/boost/${product.id}` as any)}
@@ -412,19 +424,44 @@ export default function ProductDetailScreen() {
                 </View>
                 {/* Real rating from the reviews aggregate. The previous pills
                     showed a hardcoded "18 items sold" for every seller and an
-                    unconditional "Verified Seller" badge -- both were invented. */}
-                <View style={styles.sellerMetricsRow}>
-                  <StarRating
-                    value={sellerRating?.rating_avg ?? null}
-                    count={sellerRating?.rating_count ?? 0}
-                    size={13}
-                    isRTL={isRTL}
-                  />
-                </View>
+                    unconditional "Verified Seller" badge -- both were invented.
+                    Classifieds mode has no orders, so no reviews can exist --
+                    a listings count stands in for the rating instead. */}
+                {PAYMENTS_ENABLED ? (
+                  <View style={styles.sellerMetricsRow}>
+                    <StarRating
+                      value={sellerRating?.rating_avg ?? null}
+                      count={sellerRating?.rating_count ?? 0}
+                      size={13}
+                      isRTL={isRTL}
+                    />
+                  </View>
+                ) : sellerListingsCount != null && (
+                  <View style={styles.sellerMetricsRow}>
+                    <Text style={styles.sellerMetaText}>
+                      {isRTL
+                        ? `${sellerListingsCount} إعلان`
+                        : `${sellerListingsCount} listing${sellerListingsCount === 1 ? '' : 's'}`}
+                    </Text>
+                  </View>
+                )}
               </View>
               <ChevronRight color="#CBD5E1" size={18} />
             </View>
           </Reanimated.View>
+
+          {/* Safety tips: meet in public, inspect before paying -- worth
+              surfacing on every listing, not just while payments are paused. */}
+          <TouchableOpacity
+            style={styles.safetyLink}
+            onPress={() => router.push('/safety' as any)}
+            activeOpacity={0.7}
+          >
+            <ShieldAlert size={13} color="#94A3B8" />
+            <Text style={styles.safetyLinkText}>
+              {isRTL ? 'نصائح للبيع والشراء بأمان' : 'Safety tips for buying and selling'}
+            </Text>
+          </TouchableOpacity>
 
           {/* Location badge */}
           {(product as any).location && (
@@ -439,10 +476,20 @@ export default function ProductDetailScreen() {
               Buy in the sticky bar. */}
           {!isOwner && (
             <Reanimated.View entering={FadeInDown.duration(350).delay(150)} style={styles.sellerActions}>
-              <TouchableOpacity style={styles.ghostBtn} onPress={handleContact} activeOpacity={0.85}>
-                <MessageCircle size={17} color="#0F172A" />
-                <Text style={styles.ghostBtnText}>{isRTL ? 'راسل البائع' : 'Message seller'}</Text>
-              </TouchableOpacity>
+              {/* While payments are paused, the sticky bar's main action IS
+                  "Message seller" (see below), so repeating it here would be
+                  a second identical CTA. Share fills the slot instead. */}
+              {PAYMENTS_ENABLED ? (
+                <TouchableOpacity style={styles.ghostBtn} onPress={handleContact} activeOpacity={0.85}>
+                  <MessageCircle size={17} color="#0F172A" />
+                  <Text style={styles.ghostBtnText}>{isRTL ? 'راسل البائع' : 'Message seller'}</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.ghostBtn} onPress={handleShare} activeOpacity={0.85}>
+                  <Share2 size={16} color="#0F172A" />
+                  <Text style={styles.ghostBtnText}>{isRTL ? 'مشاركة' : 'Share'}</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity style={styles.ghostBtn} onPress={handleOpenOfferModal} activeOpacity={0.85}>
                 <Tag size={16} color="#0F172A" />
                 <Text style={styles.ghostBtnText}>{isRTL ? 'قدّم عرضاً' : 'Make an offer'}</Text>
@@ -450,7 +497,10 @@ export default function ProductDetailScreen() {
             </Reanimated.View>
           )}
 
-          {/* ── EgyBay Escrow & Money Back Guarantee Card ── */}
+          {/* ── EgyBay Escrow & Money Back Guarantee Card ──
+              Classifieds mode: there is no escrow to promise right now (see
+              PLAN-CLASSIFIEDS-MODE.md). */}
+          {PAYMENTS_ENABLED && (
           <Reanimated.View entering={FadeInDown.duration(350).delay(180)}>
             <TouchableOpacity
               style={styles.guaranteeCard}
@@ -477,6 +527,7 @@ export default function ProductDetailScreen() {
               </View>
             </TouchableOpacity>
           </Reanimated.View>
+          )}
 
           {/* ── Delivery & Handover Options Strip ── */}
           <Reanimated.View entering={FadeInDown.duration(350).delay(220)} style={styles.deliverySection}>
@@ -509,7 +560,10 @@ export default function ProductDetailScreen() {
             </Text>
           </Reanimated.View>
 
-          {/* ── Reviews for this listing ── */}
+          {/* ── Reviews for this listing ──
+              Classifieds mode: reviews require a completed order, and no
+              orders exist right now (see PLAN-CLASSIFIEDS-MODE.md). */}
+          {PAYMENTS_ENABLED && (
           <View style={{ marginBottom: 24 }}>
             <View style={styles.reviewsHeader}>
               <Text style={styles.sectionLabel}>
@@ -531,6 +585,7 @@ export default function ProductDetailScreen() {
               }
             />
           </View>
+          )}
 
           {/* ── Similar Products Carousel (eBay style) ── */}
           {similarProducts.length > 0 && (
@@ -638,21 +693,35 @@ export default function ProductDetailScreen() {
               <Text style={styles.barPrice} numberOfLines={1}>{formatEGP(product.price)}</Text>
             </View>
 
-            <TouchableOpacity
-              style={styles.buyBtn}
-              onPress={handleBuyNow}
-              disabled={isBuying}
-              activeOpacity={0.9}
-            >
-              {isBuying ? (
-                <ActivityIndicator color="white" size="small" />
-              ) : (
-                <>
-                  <ShoppingBag size={18} color="white" />
-                  <Text style={styles.buyBtnText}>{isRTL ? 'اشترِ الآن' : 'Buy now'}</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {/* Classifieds mode: there is no checkout right now, so the main
+                action is starting the conversation, not buying (see
+                PLAN-CLASSIFIEDS-MODE.md). */}
+            {PAYMENTS_ENABLED ? (
+              <TouchableOpacity
+                style={styles.buyBtn}
+                onPress={handleBuyNow}
+                disabled={isBuying}
+                activeOpacity={0.9}
+              >
+                {isBuying ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <>
+                    <ShoppingBag size={18} color="white" />
+                    <Text style={styles.buyBtnText}>{isRTL ? 'اشترِ الآن' : 'Buy now'}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.buyBtn}
+                onPress={handleContact}
+                activeOpacity={0.9}
+              >
+                <MessageCircle size={18} color="white" />
+                <Text style={styles.buyBtnText}>{isRTL ? 'راسل البائع' : 'Message seller'}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </Reanimated.View>
@@ -1120,6 +1189,16 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   reportListingText: { fontSize: 12, color: '#94A3B8', fontWeight: '600' },
+
+  // Safety tips link (below seller card)
+  safetyLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  safetyLinkText: { fontSize: 12, color: '#94A3B8', fontWeight: '600' },
 
   // Bottom sticky bar
   bottomBar: {

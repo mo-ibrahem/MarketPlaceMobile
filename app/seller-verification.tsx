@@ -46,6 +46,8 @@ import {
   validateEgyptianNationalId,
   type SellerTierConfig,
 } from '../src/services/lib/walletService';
+import NotAvailableYet from '../src/components/NotAvailableYet';
+import { PAYMENTS_ENABLED } from '../src/services/lib/platformCommerce';
 
 export default function SellerVerificationScreen() {
   const router = useRouter();
@@ -165,6 +167,11 @@ export default function SellerVerificationScreen() {
       setSubmitting(false);
     }
   };
+
+  // Classifieds mode: seller tiers do not exist right now (see PLAN-CLASSIFIEDS-MODE.md).
+  if (!PAYMENTS_ENABLED) {
+    return <NotAvailableYet />;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>

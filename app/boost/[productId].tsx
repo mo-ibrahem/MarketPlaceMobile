@@ -33,7 +33,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
-import { DIGITAL_PURCHASES_ENABLED } from '../../src/services/lib/platformCommerce';
+import { DIGITAL_PURCHASES_ENABLED, PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
+import NotAvailableYet from '../../src/components/NotAvailableYet';
 import {
   BOOST_PACKAGES,
   boostProduct,
@@ -56,6 +57,8 @@ export default function BoostProductScreen() {
   const [boosting, setBoosting] = useState(false);
 
   useEffect(() => {
+    // Classifieds mode: nothing here can be reached, so don't even fetch.
+    if (!PAYMENTS_ENABLED) { setLoading(false); return; }
     async function loadData() {
       if (!productId) return;
       try {
@@ -110,6 +113,13 @@ export default function BoostProductScreen() {
       setBoosting(false);
     }
   };
+
+  // Classifieds mode: boosts are a paid digital feature that does not exist
+  // right now at all (see PLAN-CLASSIFIEDS-MODE.md). Checked before the
+  // iOS-specific IAP gate below, which only matters once payments are back.
+  if (!PAYMENTS_ENABLED) {
+    return <NotAvailableYet />;
+  }
 
   // App Store Review Guideline 3.1.1 / 3.1.3: paid digital features must use
   // in-app purchase. This screen sells one without StoreKit, so on iOS it

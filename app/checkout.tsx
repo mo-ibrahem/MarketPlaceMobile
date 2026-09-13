@@ -42,6 +42,8 @@ import { startPaymobCheckoutSession } from '../src/services/lib/paymobService';
 import { productService, type Product } from '../src/services/lib/products';
 import { deductWalletSpendableFunds, getUserWallet, type UserWallet } from '../src/services/lib/walletService';
 import EscrowTrustModal from '../src/components/EscrowTrustModal';
+import NotAvailableYet from '../src/components/NotAvailableYet';
+import { PAYMENTS_ENABLED } from '../src/services/lib/platformCommerce';
 
 const GOVERNORATES = ['Cairo', 'Giza', 'Alexandria', 'Dakahlia', 'Sharqia', 'Qalyubia', 'Gharbia', 'Red Sea'];
 
@@ -80,6 +82,8 @@ export default function CheckoutScreen() {
   const [streetAddress, setStreetAddress] = useState('');
 
   useEffect(() => {
+    // Classifieds mode: nothing here can be reached, so don't even fetch.
+    if (!PAYMENTS_ENABLED) { setLoading(false); return; }
     async function loadData() {
       if (!productId) return;
       try {
@@ -215,6 +219,11 @@ export default function CheckoutScreen() {
       setSubmitting(false);
     }
   };
+
+  // Classifieds mode: no checkout exists right now (see PLAN-CLASSIFIEDS-MODE.md).
+  if (!PAYMENTS_ENABLED) {
+    return <NotAvailableYet />;
+  }
 
   if (loading) {
     return (

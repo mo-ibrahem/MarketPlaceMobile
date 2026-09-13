@@ -55,6 +55,8 @@ import {
   verifyMeetupPIN,
   type MarketplaceOrder,
 } from '../../src/services/lib/orderService';
+import NotAvailableYet from '../../src/components/NotAvailableYet';
+import { PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 
 // ──────────────────────────────────────────────────────────────
 // Bosta Tracking Stepper
@@ -220,7 +222,12 @@ export default function OrderDetailScreen() {
     }
   };
 
-  useEffect(() => { reload(); reloadReview(); }, [orderId]);
+  useEffect(() => {
+    // Classifieds mode: nothing here can be reached, so don't even fetch.
+    if (!PAYMENTS_ENABLED) { setLoading(false); return; }
+    reload();
+    reloadReview();
+  }, [orderId]);
 
   const isBuyer = user?.id === order?.buyer_id;
   const isSeller = user?.id === order?.seller_id;
@@ -307,6 +314,11 @@ export default function OrderDetailScreen() {
       setFilingDispute(false);
     }
   };
+
+  // Classifieds mode: there are no orders right now (see PLAN-CLASSIFIEDS-MODE.md).
+  if (!PAYMENTS_ENABLED) {
+    return <NotAvailableYet />;
+  }
 
   if (loading) {
     return (

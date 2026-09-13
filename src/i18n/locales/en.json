@@ -210,7 +210,8 @@
     "declineOffer": "Decline",
     "offerAccepted": "✅ Offer Accepted",
     "offerDeclined": "❌ Offer Declined",
-    "safetyReminder": "🛡️ EgyBay Tip: Meet in public places or use Paymob protected delivery. Never wire deposits directly."
+    "safetyReminder": "🛡️ EgyBay Tip: Meet in public places or use Paymob protected delivery. Never wire deposits directly.",
+    "safetyReminderClassifieds": "🛡️ Egbay tip: Meet in a public place, inspect the item first, and never send money in advance."
   },
   "payment": {
     "title": "Complete Payment",

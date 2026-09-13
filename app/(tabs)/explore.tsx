@@ -40,6 +40,7 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { getChatRooms, type ChatRoomInfo } from '../../src/services/lib/chatService';
+import { ChatList } from '../../src/components/ChatList';
 import {
   SELLER_TIERS,
   getSellerTier,
@@ -55,23 +56,13 @@ import {
 } from '../../src/services/lib/products';
 import { auth, supabase } from '../../src/services/lib/supabase';
 import { deleteMyAccount, isBackendMissing, SAFETY_EMAIL } from '../../src/services/lib/moderationService';
+import { PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatEGP(price: number | string): string {
   const n = Math.round(Number(price));
   return `EGP ${n.toLocaleString('en-EG')}`;
-}
-
-function timeAgoShort(dateStr?: string): string {
-  if (!dateStr) return '';
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'now';
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  return `${Math.floor(hrs / 24)}d`;
 }
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
@@ -123,14 +114,16 @@ export default function ProfileScreen() {
     if (!user) return;
     try {
       setIsLoading(true);
+      // Classifieds mode: there is no wallet, tier or completed-sale count
+      // right now, so don't even fetch them (see PLAN-CLASSIFIEDS-MODE.md).
       const [profileData, products, wishlist, chats, sold, userWallet, tier] = await Promise.all([
         profileService.getProfile(user.id),
         productService.getProductsBySeller(user.id),
         productService.getWishlist(),
         getChatRooms(),
-        productService.getSoldCountBySeller(user.id),
-        getUserWallet(user.id).catch(() => null),
-        getSellerTier(user.id),
+        PAYMENTS_ENABLED ? productService.getSoldCountBySeller(user.id) : Promise.resolve(0),
+        PAYMENTS_ENABLED ? getUserWallet(user.id).catch(() => null) : Promise.resolve(null),
+        PAYMENTS_ENABLED ? getSellerTier(user.id) : Promise.resolve(SELLER_TIERS[1]),
       ]);
       setProfile(profileData);
       setUserProducts(products);
@@ -385,49 +378,7 @@ export default function ProfileScreen() {
     );
   };
 
-  const renderChatList = () => {
-    if (chatRooms.length === 0) {
-      return (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>💬</Text>
-          <Text style={styles.emptyTitle}>{t('chat.noConversations')}</Text>
-          <Text style={styles.emptySubtitle}>{t('chat.startConversation')}</Text>
-        </View>
-      );
-    }
-    return chatRooms.map(chat => (
-      <TouchableOpacity
-        key={chat.room_id}
-        style={styles.chatCard}
-        onPress={() => router.push(`/chat/${chat.room_id}`)}
-        activeOpacity={0.85}
-      >
-        <Image
-          source={{ uri: chat.other_user_avatar_url || 'https://placehold.co/100x100/EEF2FF/6366F1?text=U' }}
-          style={styles.chatAvatar}
-        />
-        <View style={styles.chatInfo}>
-          <Text style={styles.chatName}>{chat.other_user_name}</Text>
-          {/* Conversations are scoped to a listing, so the inbox has to say
-              which one -- otherwise two threads with the same seller are
-              indistinguishable. Legacy rooms have no product and show none. */}
-          {!!chat.product_title && (
-            <Text style={styles.chatProduct} numberOfLines={1}>
-              {chat.product_title}
-            </Text>
-          )}
-          <Text style={styles.chatPreview} numberOfLines={1}>
-            {chat.last_message ? chat.last_message : t('chat.startConversation')}
-          </Text>
-        </View>
-        {chat.last_message_time ? (
-          <Text style={styles.chatTime}>{timeAgoShort(chat.last_message_time)}</Text>
-        ) : (
-          <ChevronRight color="#CBD5E1" size={20} />
-        )}
-      </TouchableOpacity>
-    ));
-  };
+  const renderChatList = () => <ChatList chatRooms={chatRooms} />;
 
   const renderSettings = () => (
     <View style={{ gap: 16 }}>
@@ -563,6 +514,17 @@ export default function ProfileScreen() {
           <Text style={styles.legalText}>🛡️ Privacy Policy • سياسة الخصوصية</Text>
           <ChevronRight size={16} color="#94A3B8" />
         </TouchableOpacity>
+
+        <View style={styles.legalDivider} />
+
+        <TouchableOpacity
+          style={styles.legalRow}
+          onPress={() => router.push('/safety' as any)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.legalText}>🤝 Safety Tips • نصائح الأمان</Text>
+          <ChevronRight size={16} color="#94A3B8" />
+        </TouchableOpacity>
       </View>
 
       {/* Account Actions */}
@@ -628,14 +590,22 @@ export default function ProfileScreen() {
             onPress={() => setActiveTab('products')}
           />
           <View style={styles.statDivider} />
-          <StatCard
-            value={soldCount}
-            label={t('profile.statSold')}
-            icon={<Package color="#10B981" size={20} />}
-            bg="#D1FAE5"
-            onPress={() => setActiveTab('products')}
-          />
-          <View style={styles.statDivider} />
+          {/* "Sold" requires a completed order, which cannot happen right
+              now -- see PLAN-CLASSIFIEDS-MODE.md. Showing a stat that can
+              only ever read zero is confusing rather than dishonest, but
+              there is no reason to keep it while payments are paused. */}
+          {PAYMENTS_ENABLED && (
+            <>
+              <StatCard
+                value={soldCount}
+                label={t('profile.statSold')}
+                icon={<Package color="#10B981" size={20} />}
+                bg="#D1FAE5"
+                onPress={() => setActiveTab('products')}
+              />
+              <View style={styles.statDivider} />
+            </>
+          )}
           <StatCard
             value={wishlistProducts.length}
             label={t('profile.statSaved')}
@@ -653,7 +623,10 @@ export default function ProfileScreen() {
           />
         </View>
 
-        {/* ════════ MY WALLET & ESCROW BALANCE WIDGET ════════ */}
+        {/* ════════ MY WALLET & ESCROW BALANCE WIDGET ════════
+            Hidden while PAYMENTS_ENABLED is false: there is no wallet right
+            now (see PLAN-CLASSIFIEDS-MODE.md). */}
+        {PAYMENTS_ENABLED && (
         <TouchableOpacity onPress={() => router.push('/wallet' as any)} activeOpacity={0.88} style={{ marginHorizontal: 20, marginTop: 14 }}>
           <LinearGradient
             colors={['#3665F3', '#5B3DDB']}
@@ -681,6 +654,7 @@ export default function ProfileScreen() {
             </View>
           </LinearGradient>
         </TouchableOpacity>
+        )}
 
         {/* ════════ SELLER TRUST TIER CARD ════════
             Every field here used to be hardcoded: it told each user they were a
@@ -688,7 +662,10 @@ export default function ProfileScreen() {
             National ID Verified" subtitle, no matter what the database said.
             This account, for one, is tier 1 with is_verified_seller = false and
             no verification request on file. It now reports the real tier and
-            only claims verification when the profile actually carries it. */}
+            only claims verification when the profile actually carries it.
+            Hidden entirely while PAYMENTS_ENABLED is false: there is no tier
+            or verification system right now (see PLAN-CLASSIFIEDS-MODE.md). */}
+        {PAYMENTS_ENABLED && (
         <TouchableOpacity
           style={styles.sellerTierCard}
           onPress={() => router.push('/seller-verification' as any)}
@@ -716,6 +693,7 @@ export default function ProfileScreen() {
           </View>
           <ChevronRight size={16} color="#94A3B8" />
         </TouchableOpacity>
+        )}
 
         {/* ════════ TABS ════════ */}
         <View style={styles.tabBar}>
