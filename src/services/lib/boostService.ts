@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { API_BASE } from './apiBase';
 import { getUserWallet, type UserWallet } from './walletService';
 
 export interface BoostPackage {
@@ -85,7 +86,7 @@ export async function boostProduct(
 
   const { data: { session } } = await supabase.auth.getSession();
 
-  const res = await fetch('https://egbay.shop/api/boost', {
+  const res = await fetch(`${API_BASE}/api/boost`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

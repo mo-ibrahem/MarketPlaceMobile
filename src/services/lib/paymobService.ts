@@ -13,6 +13,7 @@ export interface BillingData {
 }
 
 import { supabase } from './supabase';
+import { API_BASE } from './apiBase';
 
 export interface PaymobSession {
   paymentToken: string;
@@ -51,7 +52,7 @@ export async function startPaymobCheckoutSession(
   }
 
   try {
-    const res = await fetch('https://egbay.shop/api/paymob/session', {
+    const res = await fetch(`${API_BASE}/api/paymob/session`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',

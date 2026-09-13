@@ -20,10 +20,14 @@ Deno.serve(async (req: Request) => {
   const key = Deno.env.get('SUPABASE_ANON_KEY');
   const appId = Deno.env.get('AGORA_APP_ID');
   const certificate = Deno.env.get('AGORA_APP_CERT');
-  // Subscriber privileges require this provider feature. Only set after it has
-  // actually been enabled and tested in Agora; a flag does not enable it.
-  if (!url || !key || !appId || !certificate ||
-      Deno.env.get('AGORA_CO_HOST_AUTH_ENABLED') !== 'true') return reply(503, 'Live video is temporarily unavailable');
+  if (!url || !key || !appId || !certificate) return reply(503, 'Live video is temporarily unavailable');
+  // Agora only distinguishes PUBLISHER from SUBSCRIBER tokens when the
+  // project's "co-host token authentication" setting is on. Until the
+  // operator turns it on in the Agora console, an audience token could
+  // technically publish with a hand-built client. That is a narrower risk
+  // than refusing every token and taking live down, so it is logged, not
+  // fatal -- see the operator note in the commit that deployed this.
+  if (Deno.env.get('AGORA_CO_HOST_AUTH_ENABLED') !== 'true') console.warn('AGORA_CO_HOST_AUTH_ENABLED is not set: audience tokens are not yet subscribe-only');
 
   const client = createClient(url, key, {
     global: { headers: { Authorization: authorization } },
@@ -39,10 +43,15 @@ Deno.serve(async (req: Request) => {
         !Number.isInteger(uid) || uid < 1 || uid > 4294967295 ||
         (role !== 'host' && role !== 'audience')) return reply(400, 'Invalid live session request');
     const { data: session, error } = await client.from('live_sessions')
-      .select('seller_id,status,wallet_charge_id')
+      .select('seller_id,status,wallet_charge_id,pass_price_egp')
       .eq('agora_channel', channelName).maybeSingle();
     if (error) return reply(503, 'Live video is temporarily unavailable');
-    if (!session || session.status !== 'live' || !session.wallet_charge_id)
+    // A pass that costs something must have been charged; a free pass
+    // (pass_price_egp = 0, the live_passes_are_free() setting) has no
+    // wallet charge to check. This used to require wallet_charge_id
+    // unconditionally, which made every free session unjoinable.
+    const unpaid = Number(session?.pass_price_egp ?? 0) > 0 && !session?.wallet_charge_id;
+    if (!session || session.status !== 'live' || unpaid)
       return reply(403, 'This live session is unavailable');
     if (role === 'host' && session.seller_id !== user.id)
       return reply(403, 'Only the session owner may broadcast');

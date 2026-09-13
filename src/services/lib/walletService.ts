@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { API_BASE } from './apiBase';
 
 export interface UserWallet {
   id: string;
@@ -304,7 +305,7 @@ export async function requestPayout(
   }
 
   const { data: { session } } = await supabase.auth.getSession();
-  const res = await fetch('https://egbay.shop/api/wallet/action', {
+  const res = await fetch(`${API_BASE}/api/wallet/action`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -364,7 +365,7 @@ export async function deductWalletSpendableFunds(
   // only thing that moves the balance. A failed call is a failed deduction --
   // this used to swallow the error and report the purchase as applied.
   const { data: { session } } = await supabase.auth.getSession();
-  const res = await fetch('https://egbay.shop/api/wallet/action', {
+  const res = await fetch(`${API_BASE}/api/wallet/action`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

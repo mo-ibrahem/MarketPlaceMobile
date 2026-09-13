@@ -213,14 +213,26 @@ async function test(name, run) { await run(); count++; console.log('PASS', name)
     liveSession.status = 'ended'; assert.equal((await handler(liveRequest({ role: 'audience' }))).status, 403);
     liveSession.status = 'live';
   });
-  await test('Missing provider audience protection fails closed', async () => {
-    liveEnv.AGORA_CO_HOST_AUTH_ENABLED = 'false'; assert.equal((await handler(liveRequest({ role: 'audience' }))).status, 503);
+  await test('Missing provider audience protection warns but still serves live', async () => {
+    liveEnv.AGORA_CO_HOST_AUTH_ENABLED = 'false'; assert.equal((await handler(liveRequest({ role: 'audience' }))).status, 200);
     liveEnv.AGORA_CO_HOST_AUTH_ENABLED = 'true';
   });
   await test('Owner receives publisher token for paid live session', async () => {
     liveUser = { id: 'seller' };
     const response = await handler(liveRequest());
     assert.equal(response.status, 200); assert.equal((await response.json()).token, 'test-role-1');
+  });
+  await test('Unpaid priced session is unavailable', async () => {
+    liveSession = { seller_id: 'seller', status: 'live', wallet_charge_id: null, pass_price_egp: 149 };
+    assert.equal((await handler(liveRequest())).status, 403);
+    assert.equal((await handler(liveRequest({ role: 'audience' }))).status, 403);
+  });
+  await test('Free session (price 0, no charge) serves host and audience', async () => {
+    liveSession = { seller_id: 'seller', status: 'live', wallet_charge_id: null, pass_price_egp: 0 };
+    assert.equal((await handler(liveRequest())).status, 200);
+    liveUser = { id: 'viewer' };
+    assert.equal((await handler(liveRequest({ role: 'audience' }))).status, 200);
+    assert.equal((await handler(liveRequest({ role: 'host' }))).status, 403);
   });
 
   console.log(count + ' security checks passed.');

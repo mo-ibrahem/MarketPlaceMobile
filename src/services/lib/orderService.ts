@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { API_BASE } from './apiBase';
 
 export interface MarketplaceOrder {
   id: string;
@@ -60,7 +61,7 @@ export interface MarketplaceOrder {
 async function postOrderAction(body: Record<string, unknown>): Promise<any> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Not authenticated');
-  const res = await fetch('https://egbay.shop/api/orders', {
+  const res = await fetch(`${API_BASE}/api/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
     body: JSON.stringify(body),

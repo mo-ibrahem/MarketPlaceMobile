@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletion_jobs: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          lease_until: string | null
+          receipt: string
+          requested_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          lease_until?: string | null
+          receipt?: string
+          requested_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          lease_until?: string | null
+          receipt?: string
+          requested_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       blocked_users: {
         Row: {
           blocked_id: string
@@ -352,7 +382,7 @@ export type Database = {
       orders: {
         Row: {
           amount: number | null
-          buyer_id: string
+          buyer_id: string | null
           created_at: string | null
           delivered_at: string | null
           handover_method: string | null
@@ -364,7 +394,7 @@ export type Database = {
           paymob_transaction_id: number | null
           product_id: string
           product_snapshot: Json | null
-          seller_id: string
+          seller_id: string | null
           shipped_at: string | null
           shipping_address: Json | null
           status: string
@@ -373,7 +403,7 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
-          buyer_id: string
+          buyer_id?: string | null
           created_at?: string | null
           delivered_at?: string | null
           handover_method?: string | null
@@ -385,7 +415,7 @@ export type Database = {
           paymob_transaction_id?: number | null
           product_id: string
           product_snapshot?: Json | null
-          seller_id: string
+          seller_id?: string | null
           shipped_at?: string | null
           shipping_address?: Json | null
           status?: string
@@ -394,7 +424,7 @@ export type Database = {
         }
         Update: {
           amount?: number | null
-          buyer_id?: string
+          buyer_id?: string | null
           created_at?: string | null
           delivered_at?: string | null
           handover_method?: string | null
@@ -406,7 +436,7 @@ export type Database = {
           paymob_transaction_id?: number | null
           product_id?: string
           product_snapshot?: Json | null
-          seller_id?: string
+          seller_id?: string | null
           shipped_at?: string | null
           shipping_address?: Json | null
           status?: string
@@ -433,7 +463,7 @@ export type Database = {
       payments: {
         Row: {
           amount: number
-          buyer_id: string
+          buyer_id: string | null
           completed_at: string | null
           created_at: string | null
           currency: string
@@ -441,7 +471,7 @@ export type Database = {
           metadata: Json | null
           payment_method_id: string | null
           product_id: string
-          seller_id: string
+          seller_id: string | null
           status: string
           stripe_customer_id: string | null
           stripe_payment_intent_id: string | null
@@ -449,7 +479,7 @@ export type Database = {
         }
         Insert: {
           amount: number
-          buyer_id: string
+          buyer_id?: string | null
           completed_at?: string | null
           created_at?: string | null
           currency?: string
@@ -457,7 +487,7 @@ export type Database = {
           metadata?: Json | null
           payment_method_id?: string | null
           product_id: string
-          seller_id: string
+          seller_id?: string | null
           status?: string
           stripe_customer_id?: string | null
           stripe_payment_intent_id?: string | null
@@ -465,7 +495,7 @@ export type Database = {
         }
         Update: {
           amount?: number
-          buyer_id?: string
+          buyer_id?: string | null
           completed_at?: string | null
           created_at?: string | null
           currency?: string
@@ -473,7 +503,7 @@ export type Database = {
           metadata?: Json | null
           payment_method_id?: string | null
           product_id?: string
-          seller_id?: string
+          seller_id?: string | null
           status?: string
           stripe_customer_id?: string | null
           stripe_payment_intent_id?: string | null
@@ -582,7 +612,7 @@ export type Database = {
           reference_id: string | null
           status: string
           updated_at: string | null
-          user_id: string
+          user_id: string | null
           wallet_id: string
         }
         Insert: {
@@ -594,7 +624,7 @@ export type Database = {
           reference_id?: string | null
           status?: string
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
           wallet_id: string
         }
         Update: {
@@ -606,7 +636,7 @@ export type Database = {
           reference_id?: string | null
           status?: string
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
           wallet_id?: string
         }
         Relationships: [
@@ -625,6 +655,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      product_image_cleanup_jobs: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          lease_until: string | null
+          old_record: Json
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          lease_until?: string | null
+          old_record: Json
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          lease_until?: string | null
+          old_record?: Json
+        }
+        Relationships: []
       }
       products: {
         Row: {
@@ -698,8 +752,8 @@ export type Database = {
           order_id: string
           product_id: string | null
           rating: number
-          reviewer_id: string
-          seller_id: string
+          reviewer_id: string | null
+          seller_id: string | null
           seller_responded_at: string | null
           seller_response: string | null
         }
@@ -711,8 +765,8 @@ export type Database = {
           order_id: string
           product_id?: string | null
           rating: number
-          reviewer_id: string
-          seller_id: string
+          reviewer_id?: string | null
+          seller_id?: string | null
           seller_responded_at?: string | null
           seller_response?: string | null
         }
@@ -724,8 +778,8 @@ export type Database = {
           order_id?: string
           product_id?: string | null
           rating?: number
-          reviewer_id?: string
-          seller_id?: string
+          reviewer_id?: string | null
+          seller_id?: string | null
           seller_responded_at?: string | null
           seller_response?: string | null
         }
@@ -902,7 +956,7 @@ export type Database = {
           paymob_order_id: string | null
           paymob_transaction_id: number | null
           status: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           amount: number
@@ -915,7 +969,7 @@ export type Database = {
           paymob_order_id?: string | null
           paymob_transaction_id?: number | null
           status?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           amount?: number
@@ -928,7 +982,7 @@ export type Database = {
           paymob_order_id?: string | null
           paymob_transaction_id?: number | null
           status?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1064,7 +1118,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
-          full_name?: string | null
+          full_name?: never
           id?: string | null
           is_verified_seller?: boolean | null
           rating_avg?: number | null
@@ -1073,7 +1127,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
-          full_name?: string | null
+          full_name?: never
           id?: string | null
           is_verified_seller?: boolean | null
           rating_avg?: number | null
@@ -1084,6 +1138,21 @@ export type Database = {
       }
     }
     Functions: {
+      account_deletion_status: {
+        Args: { p_receipt: string }
+        Returns: {
+          completed_at: string
+          status: string
+        }[]
+      }
+      account_is_active: { Args: { p_user_id: string }; Returns: boolean }
+      account_storage_objects: {
+        Args: { p_user_id: string }
+        Returns: {
+          bucket_id: string
+          name: string
+        }[]
+      }
       admin_resolve_dispute: {
         Args: {
           p_admin_id: string
@@ -1102,6 +1171,11 @@ export type Database = {
         }
         Returns: Json
       }
+      authorize_cleanup_worker: { Args: { p_secret: string }; Returns: boolean }
+      begin_account_deletion: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       block_user: { Args: { p_user_id: string }; Returns: undefined }
       book_live_session: {
         Args: {
@@ -1116,6 +1190,7 @@ export type Database = {
         }
         Returns: Json
       }
+      can_interact_with: { Args: { p_other: string }; Returns: boolean }
       cancel_abandoned_orders: { Args: never; Returns: undefined }
       cancel_and_restore_order: {
         Args: { p_order_id: string }
@@ -1124,6 +1199,40 @@ export type Database = {
       checkout_with_wallet: {
         Args: { p_order_id: string; p_user_id: string }
         Returns: Json
+      }
+      claim_account_deletions: {
+        Args: { p_user_id?: string }
+        Returns: {
+          attempts: number
+          completed_at: string | null
+          lease_until: string | null
+          receipt: string
+          requested_at: string
+          status: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "account_deletion_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      claim_product_image_cleanups: {
+        Args: never
+        Returns: {
+          attempts: number
+          created_at: string
+          id: string
+          lease_until: string | null
+          old_record: Json
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "product_image_cleanup_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       cleanup_old_notifications: { Args: never; Returns: undefined }
       create_marketplace_order: {
@@ -1148,6 +1257,7 @@ export type Database = {
         Returns: undefined
       }
       delete_my_account: { Args: never; Returns: undefined }
+      dispatch_cleanup_jobs: { Args: never; Returns: undefined }
       edit_review: {
         Args: { p_comment?: string; p_rating: number; p_review_id: string }
         Returns: undefined
@@ -1164,6 +1274,7 @@ export type Database = {
       live_passes_are_free: { Args: never; Returns: boolean }
       mark_all_notifications_read: { Args: never; Returns: undefined }
       mark_notifications_read: { Args: { p_ids: string[] }; Returns: undefined }
+      my_account_is_active: { Args: never; Returns: boolean }
       process_paymob_order_payment: {
         Args: {
           p_amount_cents: number
@@ -1182,10 +1293,15 @@ export type Database = {
         }
         Returns: Json
       }
+      product_image_cleanup_paths: {
+        Args: { p_paths: string[]; p_seller_id: string }
+        Returns: string[]
+      }
       purchase_boost: {
         Args: { p_package_id: string; p_product_id: string; p_user_id: string }
         Returns: Json
       }
+      purge_account_data: { Args: { p_user_id: string }; Returns: undefined }
       release_escrow: {
         Args: { p_order_id: string; p_user_id: string }
         Returns: Json
@@ -1202,6 +1318,7 @@ export type Database = {
         }
         Returns: Json
       }
+      require_active_account: { Args: never; Returns: undefined }
       respond_to_review: {
         Args: { p_response: string; p_review_id: string }
         Returns: undefined

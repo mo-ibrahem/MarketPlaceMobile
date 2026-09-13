@@ -270,24 +270,28 @@ export default function ProfileScreen() {
     // Guideline 5.1.1(v): deletion must be real and in-app. The RPC either
     // removes the account or throws; nothing is claimed on a thrown error.
     const doDelete = async () => {
+      let deletionStatus: 'complete' | 'pending';
       try {
-        await deleteMyAccount();
+        deletionStatus = await deleteMyAccount();
       } catch (err: any) {
         const msg = isBackendMissing(err)
-          ? `In-app deletion is temporarily unavailable. Email ${SAFETY_EMAIL} from your registered address and we will delete your account within 72 hours.`
+          ? `In-app deletion is temporarily unavailable. Please try again or contact ${SAFETY_EMAIL}.`
           : (err?.message || 'Failed to delete account');
         if (Platform.OS === 'web') window.alert(msg);
         else Alert.alert('Account not deleted', msg);
         return;
       }
       await auth.signOut();
-      Toast.show({ type: 'success', text1: 'Account deleted', text2: 'Your personal data has been removed.' });
+      Toast.show({ type: 'success',
+        text1: deletionStatus === 'complete' ? 'Account deleted' : 'Deletion requested',
+        text2: deletionStatus === 'complete' ? 'Your account and uploaded content have been removed.' : 'Access is disabled. Cleanup finishes automatically within a few minutes.',
+      });
       router.replace('/login');
     };
 
     const body =
-      'This permanently removes your profile, listings, saved items and notifications, and you will not be able to sign in again. ' +
-      'Completed order records are kept as required by Egyptian commercial law but are no longer linked to any personal data.';
+      'This permanently deletes your account, listings, uploaded images and the messages you sent. You lose access immediately. ' +
+      'Records of completed transactions are kept as Egyptian commercial law requires, but are no longer linked to you. This cannot be undone.';
 
     if (Platform.OS === 'web') {
       if (window.confirm(body)) await doDelete();
