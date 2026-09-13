@@ -14,6 +14,7 @@ export interface Product {
   status: string
   created_at: string
   updated_at: string
+  view_count?: number
   seller?: {
     full_name: string
     avatar_url?: string

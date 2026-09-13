@@ -131,6 +131,16 @@ export default function ProductDetailScreen() {
         setSimilarProducts(similar);
       }
 
+      // Real engagement signal for the home hero's "Trending" ranking (see
+      // (tabs)/index.tsx) -- fire-and-forget, never blocks the listing from
+      // rendering. Skipped for the owner viewing their own listing so a
+      // seller can't inflate their own item's rank by repeatedly opening it.
+      if (data && data.seller_id !== user?.id) {
+        supabase.rpc('increment_product_view', { p_product_id: id }).then(({ error }) => {
+          if (error) console.warn('[ProductDetail] view count increment failed:', error);
+        });
+      }
+
       if (PAYMENTS_ENABLED) {
         // Reviews are supporting detail -- a failure here must not blank the
         // listing, so they load beside the product rather than gating it.

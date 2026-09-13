@@ -131,7 +131,7 @@ export default function HomeScreen() {
    *   1. a stream that is genuinely live
    *   2. an order of theirs on its way (buyer side)
    *   3. a sale of theirs waiting to be shipped (seller side)
-   *   4. otherwise, the newest listings with photographs, swipeable
+   *   4. otherwise, a small swipeable set of listings with photographs
    * That is what the top of a marketplace is for: Uber shows your ride,
    * Amazon shows your delivery. Nothing matters more to a buyer than where
    * their money went, and nothing matters more to supply than a seller
@@ -143,7 +143,40 @@ export default function HomeScreen() {
   const toShip = useMemo(() =>
     user ? orders.find(o => o.seller_id === user.id && o.status === 'escrow_secured') : undefined,
   [orders, user]);
-  const heroListings = useMemo(() => products.filter(p => p.images?.[0]).slice(0, 3), [products]);
+
+  /**
+   * Case 4's pool used to be "whatever was posted most recently" -- literally
+   * .slice(0, 3) off a created_at-desc query. That means the single largest,
+   * most prominent thing on the app was decided entirely by who happened to
+   * tap "Post" last, with no signal that the item is any good, priced right,
+   * or something anyone wants to look at.
+   *
+   * Every marketplace/feed app that actually does this ranks freshness by
+   * engagement rather than by clock time alone: Facebook Marketplace gives a
+   * new listing a short "honeymoon" visibility window, then ranking shifts to
+   * real signals (saves, messages, views) once they exist. Egbay already
+   * tracks view_count per listing (real numbers, incremented on the product
+   * page -- see products/[id].tsx), so the same idea is applied at Egbay's
+   * scale: pick from listings posted in the last two weeks, ranked by views,
+   * falling back to plain recency as the tiebreak (and as the whole ranking
+   * for a brand-new listing with zero views yet, so it still gets a shot at
+   * the hero instead of being buried by an old item's view count forever).
+   * If the fresh pool is too small (a slow week), widen to everything with a
+   * photo rather than leave the hero looking empty.
+   */
+  const HERO_FRESH_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+  const heroListings = useMemo(() => {
+    const withPhotos = products.filter(p => p.images?.[0]);
+    const now = Date.now();
+    const fresh = withPhotos.filter(p => now - new Date(p.created_at).getTime() < HERO_FRESH_WINDOW_MS);
+    const pool = fresh.length >= 3 ? fresh : withPhotos;
+    return [...pool]
+      .sort((a, b) => {
+        const byViews = (b.view_count ?? 0) - (a.view_count ?? 0);
+        return byViews !== 0 ? byViews : new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      })
+      .slice(0, 3);
+  }, [products]);
   const hero = heroListings[0];
   const heroW = Math.min(width, 520);
 
@@ -276,13 +309,19 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               onMomentumScrollEnd={e => setHeroIndex(Math.round(e.nativeEvent.contentOffset.x / heroW))}
             >
-              {heroListings.map((item, i) => (
+              {heroListings.map((item) => (
                 <TouchableOpacity key={item.id} activeOpacity={0.95} onPress={() => router.push(`/products/${item.id}` as any)} style={[s.hero, { width: heroW, height: heroW * 1.25 }]}>
                   <Image source={{ uri: item.images![0] }} style={StyleSheet.absoluteFill} resizeMode="cover" />
                   <LinearGradient colors={['transparent', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.8)']} locations={[0.35, 0.6, 1]} style={StyleSheet.absoluteFill} />
                   <View style={s.heroBody}>
                     <Text style={s.heroKicker}>
-                      {i === 0 ? (isArabic ? 'أُضيف حديثاً' : 'Just listed') : (isArabic ? 'جديد' : 'New')} · {tileLabel((item as any).category ?? '')}
+                      {/* Honest about *why* this card is here: a real view
+                          count earns "Trending", not a made-up position-based
+                          label. Everything else is "New" -- true regardless
+                          of rank, since the pool is the last two weeks. */}
+                      {(item.view_count ?? 0) >= 2
+                        ? (isArabic ? 'رائج' : 'Trending')
+                        : (isArabic ? 'جديد' : 'New')} · {tileLabel((item as any).category ?? '')}
                     </Text>
                     <Text style={s.heroTitle} numberOfLines={2}>{item.title}</Text>
                     <View style={s.heroRow}>
