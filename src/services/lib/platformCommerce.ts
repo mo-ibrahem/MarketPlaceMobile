@@ -40,8 +40,27 @@ export const PHYSICAL_CHECKOUT_ENABLED = true;
  * constant. See PLAN-CLASSIFIEDS-MODE.md for the full list of what is gated
  * and how it was verified.
  *
- * Set to true when the Paymob merchant account is approved. Everything
- * gated on this constant is intact and was working on 2026-09-13 (build 21)
- * -- flipping this flag and rebuilding is the entire re-launch process.
+ * Read from a build-time env var, NOT hardcoded, so there is one branch
+ * (master) and two build profiles instead of two long-lived branches that
+ * would drift apart every time either one gets a fix. See eas.json:
+ *   - "production"       -> EXPO_PUBLIC_PAYMENTS_ENABLED unset -> false.
+ *                            What ships to the App Store while Paymob is
+ *                            pending. This is also plain `expo start`'s
+ *                            behaviour with no local override, so a fresh
+ *                            checkout defaults to the safe, submittable mode.
+ *   - "payments-preview" -> EXPO_PUBLIC_PAYMENTS_ENABLED=true, internal
+ *                            distribution. For testing the full payment flow
+ *                            (Paymob, escrow, wallet, boosts, live) without
+ *                            touching the live App Store listing.
+ * To test payments locally, set EXPO_PUBLIC_PAYMENTS_ENABLED=true in your own
+ * untracked .env -- never commit that.
+ *
+ * Fails closed on purpose: any unset, misspelled, or unrecognised value
+ * resolves to false. A build that forgot to set the flag should look like
+ * classifieds mode, never accidentally ship broken payment UI.
+ *
+ * Once Paymob approves the merchant account, retire this by making
+ * "production" default to true (or removing the flag and this file's gates
+ * entirely) -- there is no branch to merge back.
  */
-export const PAYMENTS_ENABLED = false;
+export const PAYMENTS_ENABLED = process.env.EXPO_PUBLIC_PAYMENTS_ENABLED === 'true';
