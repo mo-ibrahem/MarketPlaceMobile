@@ -113,11 +113,7 @@ export default function ProductDetailScreen() {
   const [trustModalVisible, setTrustModalVisible] = useState(false);
 
   // Heart scale animation
-  const heartScale = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    if (id) loadProduct();
-  }, [id, user]);
+  const [heartScale] = useState(() => new Animated.Value(1));
 
   const loadProduct = async () => {
     if (!id) return;
@@ -146,6 +142,10 @@ export default function ProductDetailScreen() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (id) loadProduct();
+  }, [id, user]);
 
   // ── Actions ──────────────────────────────────────────────────────────────────
 

@@ -66,10 +66,6 @@ export default function EditProductScreen() {
   const [saving,  setSaving]  = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  useEffect(() => {
-    if (id) loadProduct();
-  }, [id]);
-
   const loadProduct = async () => {
     try {
       setLoading(true);
@@ -90,6 +86,10 @@ export default function EditProductScreen() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (id) loadProduct();
+  }, [id]);
 
   const handlePickImage = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({

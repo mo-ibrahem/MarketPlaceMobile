@@ -494,7 +494,7 @@ export default function ProductsScreen() {
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function SkeletonCard() {
-  const opacity = useRef(new Animated.Value(0.35)).current;
+  const [opacity] = useState(() => new Animated.Value(0.35));
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([

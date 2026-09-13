@@ -372,3 +372,8 @@ entrypoint = "./functions/create-payment-key/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/paymob-webhook/index.ts"
+
+[functions.generate-agora-token]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/generate-agora-token/index.ts"

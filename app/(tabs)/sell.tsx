@@ -102,9 +102,9 @@ export default function SellScreen() {
   const [done,      setDone]      = useState(false);
 
   // Progress animation
-  const progressAnim = useRef(new Animated.Value(0)).current;
+  const [progressAnim] = useState(() => new Animated.Value(0));
   // Submit button scale
-  const submitScale = useRef(new Animated.Value(1)).current;
+  const [submitScale] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
     Animated.spring(progressAnim, {
@@ -375,7 +375,7 @@ export default function SellScreen() {
         {step === 2 && (
           <View>
             <Text style={styles.stepHeading}>Item details</Text>
-            <Text style={styles.stepSub}>Tell buyers exactly what you're selling.</Text>
+            <Text style={styles.stepSub}>Tell buyers exactly what you&apos;re selling.</Text>
 
             {/* Title */}
             <FormField icon={<Tag color="#6366F1" size={18} />} label={t("sell.productTitle")}>

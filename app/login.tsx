@@ -97,7 +97,7 @@ export default function LoginScreen() {
                 style={{ width: 175, height: 60, resizeMode: 'contain' }}
               />
             </View>
-            <Text style={styles.heroTagline}>Egypt's #1 Marketplace 🇪🇬</Text>
+            <Text style={styles.heroTagline}>Egypt&apos;s #1 Marketplace 🇪🇬</Text>
             <Text style={styles.heroSub}>Buy & sell anything, anywhere in Egypt</Text>
           </LinearGradient>
 

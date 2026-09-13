@@ -1,3 +1,4 @@
+import { inlineScriptValue } from '../../src/services/lib/paymentSafety';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
@@ -33,7 +34,7 @@ import { supabase } from '../../src/services/lib/supabase';
 // The WebView loads a self-contained Agora WebRTC host page
 const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID ?? '';
 
-function buildStudioHTML(appId: string, token: string, channel: string): string {
+function buildStudioHTML(appId: string, token: string, channel: string, uid: number): string {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -51,14 +52,15 @@ function buildStudioHTML(appId: string, token: string, channel: string): string 
 <script src="https://cdn.agora.io/sdk/release/AgoraRTC_N.js"></script>
 <script>
 const client = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
-const appId = '${appId}';
-const token = '${token}';
-const channel = '${channel}';
+const appId = ${inlineScriptValue(appId)};
+const token = ${inlineScriptValue(token)};
+const channel = ${inlineScriptValue(channel)};
+const uid = ${inlineScriptValue(uid)};
 let localVideoTrack, localAudioTrack;
 async function start() {
   try {
     await client.setClientRole('host');
-    await client.join(appId, channel, token, null);
+    await client.join(appId, channel, token, uid);
     [localAudioTrack, localVideoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
     const video = document.getElementById('local-video');
     const stream = new MediaStream([localVideoTrack.getMediaStreamTrack(), localAudioTrack.getMediaStreamTrack()]);
@@ -89,6 +91,7 @@ export default function StudioScreen() {
   const insets = useSafeAreaInsets();
 
   const [session, setSession] = useState<LiveSession | null>(null);
+  const [hostUid, setHostUid] = useState(0);
   const [agoraToken, setAgoraToken] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
   const [micOn, setMicOn] = useState(true);
@@ -139,11 +142,12 @@ export default function StudioScreen() {
     setStarting(true);
     setError('');
     try {
-      const uid = Math.floor(Math.random() * 1000000);
+      const uid = 1 + Math.floor(Math.random() * 1000000);
+      setHostUid(uid);
       const { token, channel } = await startLiveSession(sessionId, uid);
       setAgoraToken(token);
       setIsLive(true);
-      await sendChatMessage({ sessionId, userId: user.id, username: 'EgyBay', message: '🔴 البث انطلق! مرحباً بالجميع 🎉', isHost: true, msgType: 'system' });
+      await sendChatMessage({ sessionId, userId: user.id, username: 'EgyBay', message: '🔴 البث انطلق! مرحباً بالجميع 🎉', isHost: true, msgType: 'chat' });
     } catch (err: any) {
       setError(err?.message || 'تعذر بدء البث');
     } finally {
@@ -207,7 +211,7 @@ export default function StudioScreen() {
   };
 
   const studioHTML = isLive && agoraToken && session?.agora_channel
-    ? buildStudioHTML(AGORA_APP_ID, agoraToken, session.agora_channel)
+    ? buildStudioHTML(AGORA_APP_ID, agoraToken, session.agora_channel, hostUid)
     : null;
 
   return (

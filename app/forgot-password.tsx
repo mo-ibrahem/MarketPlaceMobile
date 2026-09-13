@@ -121,7 +121,7 @@ export default function ForgotPasswordScreen() {
                   <CheckCircle2 size={54} color="#10B981" style={{ marginBottom: 14 }} />
                   <Text style={styles.formTitle}>Check your inbox</Text>
                   <Text style={styles.successDesc}>
-                    We've sent password reset instructions to{' '}
+                    We&apos;ve sent password reset instructions to{' '}
                     <Text style={{ fontWeight: '700', color: '#1E293B' }}>{email}</Text>. Click the
                     link in the email to set a new password.
                   </Text>

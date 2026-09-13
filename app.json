@@ -47,7 +47,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow Egbay to access your photos so you can upload product images for your listings.",
-          "cameraPermission": "Allow Egbay to access your camera so you can take pictures of the items you want to sell."
+          "cameraPermission": "Allow Egbay to access your camera so you can take pictures of the items you want to sell.",
+          "microphonePermission": false
         }
       ],
       "expo-localization",

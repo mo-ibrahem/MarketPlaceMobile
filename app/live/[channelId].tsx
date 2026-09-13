@@ -1,3 +1,4 @@
+import { inlineScriptValue } from '../../src/services/lib/paymentSafety';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -57,9 +58,9 @@ function buildViewerHTML(appId: string, token: string, channel: string, uid: num
 <script src="https://cdn.agora.io/sdk/release/AgoraRTC_N.js"></script>
 <script>
 const client = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
-const appId = '${appId}';
-const token = '${token}';
-const channel = '${channel}';
+const appId = ${inlineScriptValue(appId)};
+const token = ${inlineScriptValue(token)};
+const channel = ${inlineScriptValue(channel)};
 const uid = ${uid};
 
 async function join() {
@@ -133,7 +134,7 @@ export default function LiveViewerScreen() {
         const activePin = s.pinned_products?.find(p => !p.unpinned_at);
         if (activePin) setPinnedProduct(activePin);
 
-        const uid = Math.floor(Math.random() * 1000000);
+        const uid = 1 + Math.floor(Math.random() * 1000000);
         setViewerUid(uid);
 
         const token = await joinLiveSession(channelId, uid);
@@ -200,7 +201,7 @@ export default function LiveViewerScreen() {
     }
   };
 
-  const sendReaction = (emoji: string) => {
+  const handleReaction = (emoji: string) => {
     const id = Date.now();
     const x = Math.random() * 70 + 15;
     setReactions(prev => [...prev, { id, emoji, x }]);
@@ -318,7 +319,7 @@ export default function LiveViewerScreen() {
         {/* Floating Quick Reactions */}
         <View style={[styles.reactionBar, { bottom: showChat ? 170 : 20 }]}>
           {['❤️', '🔥', '👏', '😮', '🎉'].map(emoji => (
-            <TouchableOpacity key={emoji} onPress={() => sendReaction(emoji)} style={styles.emojiBtn}>
+            <TouchableOpacity key={emoji} onPress={() => handleReaction(emoji)} style={styles.emojiBtn}>
               <Text style={{ fontSize: 18 }}>{emoji}</Text>
             </TouchableOpacity>
           ))}

@@ -23,7 +23,7 @@ const ExpoSecureStoreAdapter = {
       }
       return
     }
-    SecureStore.setItemAsync(key, value)
+    return SecureStore.setItemAsync(key, value)
   },
   removeItem: (key: string) => {
     if (Platform.OS === 'web') {
@@ -32,7 +32,7 @@ const ExpoSecureStoreAdapter = {
       }
       return
     }
-    SecureStore.deleteItemAsync(key)
+    return SecureStore.deleteItemAsync(key)
   },
 }
 

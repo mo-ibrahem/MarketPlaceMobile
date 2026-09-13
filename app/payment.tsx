@@ -22,52 +22,9 @@ const PAYMOB_IFRAME_ID = process.env.EXPO_PUBLIC_PAYMOB_IFRAME_ID || '957263';
 const VERIFY_INTERVAL_MS = 2000;
 const VERIFY_TIMEOUT_MS = 40000;
 
-/**
- * What a URL from the Paymob flow actually tells us.
- *
- * 'declined'  -- Paymob explicitly said the transaction failed.
- * 'returned'  -- the flow ended and the browser came back to our redirect URL.
- *                This is NOT proof of success: Paymob sends declines to the very
- *                same redirect URL (`https://egbay.shop/wallet?success=false&...`),
- *                and even an approved card can fail server-side afterwards. The
- *                only thing it proves is that the checkout is over, so go ask the
- *                database what really happened.
- * 'none'      -- still inside the checkout, keep the WebView going.
- *
- * Exported so the classification can be tested without a WebView.
- */
-export type PaymobUrlOutcome = 'declined' | 'returned' | 'none';
-
-export function classifyPaymobUrl(rawUrl: string): PaymobUrlOutcome {
-  const url = (rawUrl || '').toLowerCase();
-  if (!url) return 'none';
-
-  // Failure is tested FIRST and biased to fail closed. Previously the success
-  // branch ran first and matched on the bare host, so a declined redirect to
-  // egbay.shop was reported to the user as "Payment Successful".
-  if (
-    url.includes('success=false') ||
-    url.includes('declined') ||
-    url.includes('error_occured=true') ||
-    url.includes('is_voided=true') ||
-    url.includes('is_refunded=true')
-  ) {
-    return 'declined';
-  }
-
-  if (
-    url.includes('success=true') ||
-    url.includes('txn_response_code=approved') ||
-    url.includes('egbay.shop') ||
-    url.includes('egbay.market') ||
-    url.includes('/wallet') ||
-    url.includes('callback/paymob')
-  ) {
-    return 'returned';
-  }
-
-  return 'none';
-}
+import { classifyPaymobUrl, isTrustedPaymentOrigin, paymentBackendState, type PaymobUrlOutcome } from '../src/services/lib/paymentSafety';
+import { DIGITAL_PURCHASES_ENABLED } from '../src/services/lib/platformCommerce';
+export { classifyPaymobUrl } from '../src/services/lib/paymentSafety';
 
 type Phase = 'paying' | 'verifying' | 'confirmed' | 'unconfirmed' | 'declined';
 type BackendState = 'confirmed' | 'failed' | 'pending';
@@ -89,6 +46,7 @@ export default function PaymentScreen() {
   const [phase, setPhase] = useState<Phase>('paying');
   const [declineReason, setDeclineReason] = useState('');
   const phaseRef = useRef<Phase>('paying');
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const setPhaseOnce = useCallback((next: Phase) => {
     // The WebView fires both onShouldStartLoadWithRequest and
@@ -98,7 +56,7 @@ export default function PaymentScreen() {
     setPhase(next);
   }, []);
 
-  const paymentUrl = `https://accept.paymob.com/api/acceptance/iframes/${PAYMOB_IFRAME_ID}?payment_token=${paymentToken}`;
+  const paymentUrl = `https://accept.paymob.com/api/acceptance/iframes/${PAYMOB_IFRAME_ID}?payment_token=${encodeURIComponent(paymentToken || '')}`;
 
   // Boosts never reach this screen: they are wallet-balance-only, because a
   // card-paid boost has no activation path on the webhook side. See
@@ -121,9 +79,7 @@ export default function PaymentScreen() {
           .maybeSingle();
         if (error || !data) return 'pending';
         const status = (data as any).status;
-        if (status === 'paid') return 'confirmed';
-        if (status === 'failed' || status === 'cancelled') return 'failed';
-        return 'pending';
+        return paymentBackendState(status, true);
       }
 
       if (orderId) {
@@ -134,9 +90,7 @@ export default function PaymentScreen() {
           .maybeSingle();
         if (error || !data) return 'pending';
         const status = (data as any).status;
-        if (status === 'pending_payment') return 'pending';
-        if (status === 'cancelled' || status === 'payment_failed') return 'failed';
-        return 'confirmed';
+        return paymentBackendState(status, false);
       }
     } catch (err) {
       console.warn('[PaymentScreen] Verification read failed:', err);
@@ -150,41 +104,32 @@ export default function PaymentScreen() {
     if (phase !== 'verifying') return;
 
     let cancelled = false;
-    let elapsed = 0;
-
-    const tick = async () => {
+    let polling: ReturnType<typeof setTimeout> | undefined;
+    const finish = (next: Phase) => {
       if (cancelled) return;
+      cancelled = true;
+      clearTimeout(deadline);
+      clearTimeout(polling);
+      phaseRef.current = next;
+      setPhase(next);
+    };
+    // Independent deadline also handles stalled network requests.
+    const deadline = setTimeout(() => finish('unconfirmed'), VERIFY_TIMEOUT_MS);
+    const tick = async () => {
       const state = await readBackendState();
       if (cancelled) return;
-
-      if (state === 'confirmed') {
-        clearInterval(interval);
-        phaseRef.current = 'confirmed';
-        setPhase('confirmed');
-        return;
-      }
+      if (state === 'confirmed') return finish('confirmed');
       if (state === 'failed') {
-        clearInterval(interval);
         setDeclineReason('Your bank did not complete this payment.');
-        phaseRef.current = 'declined';
-        setPhase('declined');
-        return;
+        return finish('declined');
       }
-
-      elapsed += VERIFY_INTERVAL_MS;
-      if (elapsed >= VERIFY_TIMEOUT_MS) {
-        clearInterval(interval);
-        phaseRef.current = 'unconfirmed';
-        setPhase('unconfirmed');
-      }
+      polling = setTimeout(tick, VERIFY_INTERVAL_MS);
     };
-
-    const interval = setInterval(tick, VERIFY_INTERVAL_MS);
     void tick();
-
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearTimeout(deadline);
+      clearTimeout(polling);
     };
   }, [phase, readBackendState]);
 
@@ -233,6 +178,7 @@ export default function PaymentScreen() {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
     const handleMsg = (e: MessageEvent) => {
+      if (!isTrustedPaymentOrigin(e.origin) || e.source !== iframeRef.current?.contentWindow) return;
       const data =
         typeof e.data === 'string' ? e.data.toLowerCase() : JSON.stringify(e.data || {}).toLowerCase();
       if (data.includes('declined') || data.includes('success:false') || data.includes('"success":false')) {
@@ -254,10 +200,10 @@ export default function PaymentScreen() {
     handleUrl(navState?.url || '');
   };
 
-  if (!paymentToken) {
+  if (!paymentToken || !orderId || (isTopUp && !DIGITAL_PURCHASES_ENABLED)) {
     return (
       <SafeAreaView style={styles.center}>
-        <Text style={styles.errorText}>Invalid payment session token.</Text>
+        <Text style={styles.errorText}>This payment session is unavailable. Please return to checkout.</Text>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Text style={styles.backBtnText}>Return to Checkout</Text>
         </TouchableOpacity>
@@ -332,7 +278,7 @@ export default function PaymentScreen() {
           <Text style={styles.statusBody}>
             {declineReason || 'The transaction was not completed.'}
           </Text>
-          <Text style={styles.statusBody}>You have not been charged for this attempt.</Text>
+          <Text style={styles.statusBody}>Check your bank and order status before retrying. A temporary bank authorization may still appear.</Text>
           <TouchableOpacity style={styles.primaryBtn} onPress={() => router.back()}>
             <Text style={styles.primaryBtnText}>Try Another Method</Text>
           </TouchableOpacity>
@@ -363,7 +309,7 @@ export default function PaymentScreen() {
           <Text style={styles.headerTitle}>{headerTitle}</Text>
           <View style={styles.secureRow}>
             <ShieldCheck color="#10B981" size={13} />
-            <Text style={styles.secureText}>256-Bit Encrypted Escrow</Text>
+            <Text style={styles.secureText}>Secure Paymob checkout</Text>
           </View>
         </View>
         {totalEgp && <Text style={styles.headerPrice}>EGP {Number(totalEgp).toLocaleString()}</Text>}
@@ -376,6 +322,7 @@ export default function PaymentScreen() {
         ) : Platform.OS === 'web' ? (
           <View style={{ flex: 1 }}>
             <iframe
+              ref={iframeRef}
               src={paymentUrl}
               style={{ width: '100%', height: '100%', border: 'none' }}
               title="Paymob Payment"
@@ -398,6 +345,9 @@ export default function PaymentScreen() {
             source={{ uri: paymentUrl }}
             onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
             onNavigationStateChange={handleNavigationStateChange}
+            mixedContentMode="never"
+            onError={() => setPhaseOnce('unconfirmed')}
+            onHttpError={() => setPhaseOnce('unconfirmed')}
             startInLoadingState={true}
             renderLoading={() => (
               <View style={styles.loadingWrap}>
