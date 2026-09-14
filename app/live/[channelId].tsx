@@ -407,7 +407,10 @@ export default function LiveViewerScreen() {
 
       {/* Chat Overlay Panel (Semi-transparent over bottom) */}
       {showChat && (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.chatSheet}>
+        // Full-screen avoider, panel at its bottom: the keyboard lifts the
+        // panel instead of padding inside its fixed height (see studio.tsx).
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} pointerEvents="box-none" style={styles.chatLayer}>
+        <View style={[styles.chatSheet, { paddingBottom: insets.bottom }]}>
           <View style={styles.chatHeader}>
             <TouchableOpacity onPress={() => setShowChat(false)} style={styles.chatClose} accessibilityLabel="Close live chat">
               <X color="white" size={18} />
@@ -477,6 +480,7 @@ export default function LiveViewerScreen() {
               <Text style={styles.loginToChatText}>سجّل الدخول للمشاركة في الدردشة والشراء</Text>
             </TouchableOpacity>
           )}
+        </View>
         </KeyboardAvoidingView>
       )}
     </SafeAreaView>
@@ -590,12 +594,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  chatLayer: { position: 'absolute', zIndex: 40, left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'flex-end' },
   chatSheet: {
-    position: 'absolute',
-    zIndex: 40,
-    left: 0,
-    right: 0,
-    bottom: 0,
     height: 220,
     backgroundColor: 'rgba(3,7,18,0.96)',
     borderTopLeftRadius: 22,

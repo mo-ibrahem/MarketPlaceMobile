@@ -425,7 +425,13 @@ export default function StudioScreen() {
 
       {/* Chat Panel */}
       {showChat && isLive && (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.chatPanel}>
+        // The avoider is a full-screen layer and the panel sits at its bottom,
+        // so the keyboard pushes the whole panel up. Putting the avoider on
+        // the fixed-height panel itself made it pad *inside* 280px: on iOS
+        // the list, emoji strip and input collapsed to nothing the moment the
+        // keyboard opened (build 27).
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} pointerEvents="box-none" style={s.chatLayer}>
+        <View style={[s.chatPanel, { paddingBottom: insets.bottom }]}>
           <View style={s.chatHeader}>
             <TouchableOpacity onPress={() => setShowChat(false)} style={s.chatClose} accessibilityLabel="Close live chat">
               <X color="white" size={18} />
@@ -494,6 +500,7 @@ export default function StudioScreen() {
               <Send color="white" size={14} />
             </TouchableOpacity>
           </View>
+        </View>
         </KeyboardAvoidingView>
       )}
 
@@ -531,7 +538,8 @@ const s = StyleSheet.create({
   ctrlOff: { backgroundColor: '#EF4444' },
   ctrlEnd: { backgroundColor: '#EF4444', width: 48, height: 48, borderRadius: 24 },
   mediaNotice: { position: 'absolute', zIndex: 25, top: 52, left: 12, right: 12, minHeight: 42, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: 'rgba(120,53,15,0.94)', flexDirection: 'row', alignItems: 'center', gap: 8 },
-  chatPanel: { position: 'absolute', zIndex: 40, left: 0, right: 0, bottom: 0, height: 280, backgroundColor: 'rgba(3,7,18,0.96)', borderTopLeftRadius: 22, borderTopRightRadius: 22, overflow: 'hidden', borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
+  chatLayer: { position: 'absolute', zIndex: 40, left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'flex-end' },
+  chatPanel: { height: 280, backgroundColor: 'rgba(3,7,18,0.96)', borderTopLeftRadius: 22, borderTopRightRadius: 22, overflow: 'hidden', borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   chatHeader: { minHeight: 42, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
   chatClose: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
   chatTitle: { color: 'white', fontSize: 14, fontWeight: '800' },
