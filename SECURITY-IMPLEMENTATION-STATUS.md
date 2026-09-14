@@ -30,7 +30,7 @@ The worker retries each minute; completion time depends on service availability.
 | SEC-05 unsupported financial endpoint | create-payment-key v10 returns 410; mobile financial flag stays false; web payments preserved | Local retirement test and deployed version checked. No real provider purchase was attempted. |
 | SEC-06 exposed credentials | Client secret references removed; public-name build guards; local web env uses server-only names | 99 built files scanned for five configured private credential literal values: none found. Historical artifact exposure is not disproved. Paymob API key and Agora certificate rotation are STILL REQUIRED. Agora is last. |
 | SEC-07 webhook binding | paymob-webhook v6 verifies signed transaction against provider; amount/currency/idempotency checks in SQL | Mocked signature/provider/outage/replay tests and transactional database tests passed. No Paymob sandbox or real-card end-to-end transaction was run. |
-| SEC-08 live/KYC privileges | Server live transition, safe columns, host-message/pin ownership, pending-only verification policies | Real free booking, audience chat, host forgery and reopen denial passed. Claude deployed Agora v3 with owner checks but a warning-only co-host flag. Audience publish prevention remains UNVERIFIED. |
+| SEC-08 live/KYC privileges | Server live transition, safe columns, host-message/pin ownership, pending-only verification policies | Real free booking, audience chat, host forgery and reopen denial passed. Agora co-host authentication is Active; strict v5 deployed with the correct project credential pair. Token issuance and non-owner denial pass. Actual audience publish rejection remains a device test. |
 | SEC-09 moderation | Deployed report action RPC, removal policies and baseline text filter; web /admin/reports queue built | Five HTTP checks against the local production web build + deployed Supabase passed, including admin-only access and no seller republish. Queue UI still needs web deployment. Owners must staff report review, image/live review and support; a phrase filter is not comprehensive media moderation. |
 | SEC-10 hardening | Fixed search paths; web Next 15.5.24 / React 19.3.0 and PostCSS 8.5.28; dependency audit clean on web | Web audit: 0 findings. Mobile production audit earlier in this implementation: 18 moderate, 0 high/critical. Supabase Postgres patch upgrade and available leaked-password protection remain operator tasks; no paid upgrade authorized. |
 
@@ -58,31 +58,35 @@ Production Auth cannot scan PostgreSQL infinity into banned_until. The finite
 access. The live smoke test, not the local database harness, caught this issue.
 
 Current deployed functions: delete-account v1, delete-product-images v8,
-create-payment-key v10, paymob-webhook v6, generate-agora-token v3.
+create-payment-key v10, paymob-webhook v6, generate-agora-token v5.
 
-## IMPORTANT: Agora source and deployment differ deliberately
+## Agora provider verification — 2026-09-14
 
-The release source in both repositories refuses tokens unless
-AGORA_CO_HOST_AUTH_ENABLED=true. It supports zero-price passes without a wallet
-charge. The currently deployed v3 function warns instead of enforcing that flag,
-as deployed by Claude while live was restored.
+The egbay-live console now shows Co-Host Authentication Active. The provider
+warns activation can take five minutes and cannot be disabled afterward.
+AGORA_CO_HOST_AUTH_ENABLED=true is set and strict generate-agora-token v5 is
+deployed with owner-only publishing and free-pass support.
 
-**Do not redeploy generate-agora-token or all functions until the actual Agora
-co-host authentication setting is enabled and verified.** Merely setting the
-environment flag does not enable the provider control. Leaving it unset in the
-strict release source returns 503 and would stop live joins.
+A new live HTTP test discovered that Supabase still used an old Agora App ID
+(35c2991d17a04410b3810e9ec3c6fc8f), while the console and build use
+f9fd0dadb9674b698d234f4551d6100b. Supabase was synchronized with the existing
+App ID/certificate pair in the web server's local configuration. This is NOT
+certificate rotation. No credential values were logged or committed.
 
-The Agora console was opened in Codex's browser, but is signed out. The owner
-must sign in so the project setting can be checked. No password or certificate
-should be pasted into chat. Rotate the exposed Agora certificate only at the
-final provider step, update the server secret, and verify the old certificate
-can no longer mint accepted tokens and an audience token cannot publish.
+Host and audience token issuance now pass for the correct App ID, and a
+non-owner host-token request returns 403. These tests do not establish actual
+Agora stream acceptance or audience publish rejection; verify both on devices.
+The reported exposed certificate still requires final rotation.
+
+EAS build 27 (ab3a7744-7962-4bbe-940a-d171ede8da86) was observed IN_PROGRESS
+from mobile commit 394a23d. The changes in this pass affect backend configuration,
+verification scripts and this document; they do not require restarting that build.
 
 ## Verification evidence
 
 - 56 security harness checks.
 - 29 PGlite database checks against schema/grants fixtures.
-- 15 actual Supabase smoke checks with disposable accounts and uploads.
+- 19 actual Supabase smoke checks with disposable accounts and uploads.
 - 5 moderation HTTP checks against the local production web build and Supabase.
 - Mobile TypeScript passes; lint has 0 errors and 121 warnings. Narrow lint
   exceptions document event-only randomness and request loading-state updates.

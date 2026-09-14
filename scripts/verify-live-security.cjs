@@ -69,6 +69,22 @@ async function scalar(table,id){return checked(await admin.from(table).select('*
  const live=checked(await admin.rpc('book_live_session',{p_seller_id:C.id,p_title:'Security verification — temporary',p_title_ar:null,p_description:null,p_tier:'flash',p_category:'Other',p_scheduled_at:null,p_thumbnail_url:null}));
  await ok('Free live remains bookable without a charge',async()=>{assert.equal(live.pass_price_egp,0);assert.equal(live.wallet_charge_id,null);});
  checked(await C.client.from('live_sessions').update({status:'live',started_at:new Date().toISOString()}).eq('id',live.id));
+ await ok('Agora host and audience tokens use the expected public App ID',async()=>{
+   for(const [who,role,uid] of [[C,'host',918201],[B,'audience',918202]]){
+     const result=checked(await who.client.functions.invoke('generate-agora-token',{body:{channelName:live.agora_channel,role,uid}}));
+     assert.equal(result.channel,live.agora_channel);
+     assert.equal(result.token.slice(0,3),'007');
+     const payload=require('node:zlib').inflateSync(Buffer.from(result.token.slice(3),'base64'));
+     const signatureLength=payload.readUInt16LE(0), offset=2+signatureLength;
+     const appIdLength=payload.readUInt16LE(offset);
+     assert.equal(payload.subarray(offset+2,offset+2+appIdLength).toString(),'f9fd0dadb9674b698d234f4551d6100b');
+     assert.ok(result.expireTs>Date.now()/1000);
+   }
+ });
+ await ok('Agora rejects a non-owner requesting host privileges',async()=>{
+   const result=await B.client.functions.invoke('generate-agora-token',{body:{channelName:live.agora_channel,role:'host',uid:918203}});
+   assert.equal(result.error?.context?.status,403);
+ });
  await ok('Live chat host impersonation denied',async()=>assert.ok((await B.client.from('live_chat_messages').insert({session_id:live.id,user_id:B.id,username:'forged',message:'forged',is_host:true,msg_type:'chat'})).error));
  await ok('Normal audience chat still works',async()=>checked(await B.client.from('live_chat_messages').insert({session_id:live.id,user_id:B.id,username:'test',message:'hello',is_host:false,msg_type:'chat'})));
  // The studio reverts a session whose broadcast never started (what build 26
