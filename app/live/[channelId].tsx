@@ -18,6 +18,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import {
   ArrowLeft,
+  AlertCircle,
   Flag,
   ChevronDown,
   Heart,
@@ -70,8 +71,30 @@ const uid = ${inlineScriptValue(uid)};
 const loading = document.getElementById('loading');
 client.on('connection-state-change', (cur) => {
   if (cur === 'RECONNECTING') { loading.textContent = 'إعادة الاتصال بالبث...'; loading.style.display = 'block'; }
-  else if (cur === 'CONNECTED') { loading.style.display = 'none'; }
   window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'STATE', state: cur }));
+});
+
+// Register media listeners before joining. A host who is already publishing
+// can be announced immediately during join, and installing these afterwards
+// can leave the viewer connected to a black screen.
+client.on('user-published', async (user, mediaType) => {
+  await client.subscribe(user, mediaType);
+  if (mediaType === 'video') {
+    client.setStreamFallbackOption(user.uid, 2).catch(() => {});
+    user.videoTrack.play(document.getElementById('remote-video'), { fit: 'cover' });
+    loading.style.display = 'none';
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'VIDEO_STARTED' }));
+  }
+  if (mediaType === 'audio') user.audioTrack.play();
+});
+client.on('stream-fallback', (uidF, direction) => {
+  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'FALLBACK', direction }));
+});
+client.on('user-unpublished', (user, mediaType) => {
+  if (mediaType === 'video') {
+    loading.textContent = 'تم إيقاف كاميرا المضيف مؤقتاً';
+    loading.style.display = 'flex';
+  }
 });
 
 async function join() {
@@ -80,29 +103,7 @@ async function join() {
     // rather than the 2-4s of plain broadcast. The host pays the same either way.
     await client.setClientRole('audience', { level: 1 });
     await client.join(appId, channel, token, uid);
-    loading.style.display = 'none';
-
-    client.on('user-published', async (user, mediaType) => {
-      await client.subscribe(user, mediaType);
-      if (mediaType === 'video') {
-        // On a weak connection drop to the host's low-quality stream, then to
-        // audio-only, instead of freezing on a frame.
-        client.setStreamFallbackOption(user.uid, 2).catch(() => {});
-        user.videoTrack.play(document.getElementById('remote-video'), { fit: 'cover' });
-      }
-      if (mediaType === 'audio') {
-        user.audioTrack.play();
-      }
-    });
-    client.on('stream-fallback', (uidF, direction) => {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'FALLBACK', direction }));
-    });
-
-    client.on('user-unpublished', (user, mediaType) => {
-      if (mediaType === 'video') {
-        // host stopped video
-      }
-    });
+    loading.textContent = 'متصل — في انتظار كاميرا المضيف...';
   } catch (e) {
     document.getElementById('loading').textContent = 'تعذر الاتصال بالبث: ' + e.message;
     window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', error: e.message }));
@@ -130,6 +131,7 @@ export default function LiveViewerScreen() {
   const [pinnedProduct, setPinnedProduct] = useState<LivePinnedProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [reactions, setReactions] = useState<{ id: number; emoji: string; x: number }[]>([]);
+  const [streamError, setStreamError] = useState('');
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -216,8 +218,9 @@ export default function LiveViewerScreen() {
         username: user.user_metadata?.full_name || 'مشتري',
         message: msg,
       });
-    } catch {
+    } catch (err: any) {
       setChatInput(msg); // give the text back; nothing was sent
+      Toast.show({ type: 'error', text1: 'لم يتم إرسال الرسالة', text2: err?.message || 'حاول مرة أخرى' });
     }
   };
 
@@ -268,10 +271,24 @@ export default function LiveViewerScreen() {
             style={{ flex: 1 }}
             allowsInlineMediaPlayback
             mediaPlaybackRequiresUserAction={false}
+            onMessage={(event) => {
+              try {
+                const message = JSON.parse(event.nativeEvent.data);
+                if (message.type === 'ERROR') setStreamError(message.error || 'تعذر تشغيل البث');
+                if (message.type === 'VIDEO_STARTED') setStreamError('');
+              } catch { /* Ignore SDK status strings from older builds. */ }
+            }}
           />
         ) : (
           <View style={{ flex: 1, backgroundColor: '#0B0F19', alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ color: '#94A3B8', fontSize: 13 }}>البث غير متوفر حالياً</Text>
+          </View>
+        )}
+
+        {!!streamError && (
+          <View style={styles.streamError}>
+            <AlertCircle color="#FCA5A5" size={16} />
+            <Text style={{ color: '#FECACA', fontSize: 12, flex: 1, textAlign: 'right' }}>{streamError}</Text>
           </View>
         )}
 
@@ -351,7 +368,7 @@ export default function LiveViewerScreen() {
 
         {/* Pinned Product Card (Bottom left / overlay) */}
         {pinnedProduct && (
-          <View style={[styles.pinnedCard, { bottom: showChat ? 220 : 70 }]}>
+          <View style={[styles.pinnedCard, { bottom: showChat ? 276 : 70 }]}>
             {pinnedProduct.product?.images?.[0] ? (
               <Image source={{ uri: pinnedProduct.product.images[0] }} style={styles.pinnedImg} />
             ) : (
@@ -376,7 +393,7 @@ export default function LiveViewerScreen() {
         )}
 
         {/* Floating Quick Reactions */}
-        <View style={[styles.reactionBar, { bottom: showChat ? 170 : 20 }]}>
+        <View style={[styles.reactionBar, { bottom: showChat ? 230 : 20 }]}>
           {['❤️', '🔥', '👏', '😮', '🎉'].map(emoji => (
             <TouchableOpacity key={emoji} onPress={() => handleReaction(emoji)} style={styles.emojiBtn}>
               <Text style={{ fontSize: 18 }}>{emoji}</Text>
@@ -391,6 +408,12 @@ export default function LiveViewerScreen() {
       {/* Chat Overlay Panel (Semi-transparent over bottom) */}
       {showChat && (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.chatSheet}>
+          <View style={styles.chatHeader}>
+            <TouchableOpacity onPress={() => setShowChat(false)} style={styles.chatClose} accessibilityLabel="Close live chat">
+              <X color="white" size={18} />
+            </TouchableOpacity>
+            <Text style={styles.chatTitle}>دردشة البث</Text>
+          </View>
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -472,6 +495,7 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: 'rgba(0,0,0,0.4)',
     paddingBottom: 8,
+    zIndex: 20,
   },
   iconCircle: {
     width: 34,
@@ -532,6 +556,7 @@ const styles = StyleSheet.create({
     gap: 10,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
+    zIndex: 20,
   },
   pinnedImg: { width: 44, height: 44, borderRadius: 10 },
   pinnedTitle: { fontSize: 12, fontWeight: '700', color: 'white' },
@@ -554,6 +579,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    zIndex: 25,
   },
   emojiBtn: {
     width: 36,
@@ -565,11 +591,23 @@ const styles = StyleSheet.create({
   },
 
   chatSheet: {
-    height: 160,
-    backgroundColor: 'rgba(0,0,0,0.85)',
+    position: 'absolute',
+    zIndex: 40,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 220,
+    backgroundColor: 'rgba(3,7,18,0.96)',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    overflow: 'hidden',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
   },
+  chatHeader: { minHeight: 42, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  chatClose: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
+  chatTitle: { color: 'white', fontSize: 14, fontWeight: '800' },
+  streamError: { position: 'absolute', zIndex: 24, top: 58, left: 12, right: 12, borderRadius: 12, padding: 10, backgroundColor: 'rgba(127,29,29,0.94)', flexDirection: 'row', alignItems: 'center', gap: 8 },
   chatAvatar: {
     width: 20,
     height: 20,

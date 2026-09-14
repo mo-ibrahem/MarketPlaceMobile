@@ -78,9 +78,17 @@ non-owner host-token request returns 403. These tests do not establish actual
 Agora stream acceptance or audience publish rejection; verify both on devices.
 The reported exposed certificate still requires final rotation.
 
-EAS build 27 (ab3a7744-7962-4bbe-940a-d171ede8da86) was observed IN_PROGRESS
-from mobile commit 394a23d. The changes in this pass affect backend configuration,
-verification scripts and this document; they do not require restarting that build.
+EAS build 27 (ab3a7744-7962-4bbe-940a-d171ede8da86) finished successfully
+from mobile commit 394a23d. It includes the App ID correction and uses the corrected
+backend configuration, but it predates the subsequent live UI/media repair below.
+
+The live studio now renders the Agora camera track into a supported container,
+starts camera and microphone independently, reports their real state back to the
+native controls, and lets a host retry the microphone after ending a phone call.
+The viewer installs media listeners before joining so an already-live host is not
+missed. Host and viewer chat panels use explicit touch layering above WKWebView,
+include close controls, and expose send/media failures. These source changes require
+a build after 27 and still need the two-device iPhone check before submission.
 
 ## Verification evidence
 

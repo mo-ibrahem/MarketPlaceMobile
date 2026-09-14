@@ -44,12 +44,13 @@ function buildStudioHTML(appId: string, token: string, channel: string, uid: num
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #000; overflow: hidden; }
-  #local-video { width: 100vw; height: 100vh; object-fit: cover; }
+  #local-video { width: 100vw; height: 100vh; background: #050505; overflow: hidden; }
+  #local-video video { width: 100% !important; height: 100% !important; object-fit: cover !important; }
   #status { position: fixed; top: 12px; left: 12px; background: rgba(0,0,0,0.7); color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-family: sans-serif; }
 </style>
 </head>
 <body>
-<video id="local-video" autoplay muted playsinline></video>
+<div id="local-video"></div>
 <div id="status">جاري الاتصال...</div>
 <script src="https://cdn.agora.io/sdk/release/AgoraRTC_N.js"></script>
 <script>
@@ -61,7 +62,9 @@ const token = ${inlineScriptValue(token)};
 const channel = ${inlineScriptValue(channel)};
 const uid = ${inlineScriptValue(uid)};
 let localVideoTrack, localAudioTrack;
+let micEnabled = false, cameraEnabled = false;
 const status = (t) => { document.getElementById('status').textContent = t; };
+const emit = (type, extra = {}) => window.ReactNativeWebView.postMessage(JSON.stringify({ type, ...extra }));
 client.on('connection-state-change', (cur) => {
   if (cur === 'RECONNECTING') status('⚠️ إعادة الاتصال...');
   else if (cur === 'CONNECTED' && localVideoTrack) status('🔴 LIVE');
@@ -75,29 +78,77 @@ async function start() {
   try {
     await client.setClientRole('host');
     await client.join(appId, channel, token, uid);
-    [localAudioTrack, localVideoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
-      { AEC: true, ANS: true, AGC: true },
-      { facingMode: 'user', encoderConfig: { width: 720, height: 1280, frameRate: 24, bitrateMin: 600, bitrateMax: 1800 }, optimizationMode: 'motion' }
-    );
-    const video = document.getElementById('local-video');
-    const stream = new MediaStream([localVideoTrack.getMediaStreamTrack(), localAudioTrack.getMediaStreamTrack()]);
-    video.srcObject = stream;
-    await client.publish([localAudioTrack, localVideoTrack]);
+    // Start video independently. A phone call can temporarily reserve the
+    // microphone on iOS; that must not also suppress the camera preview.
+    localVideoTrack = await AgoraRTC.createCameraVideoTrack({
+      facingMode: 'user',
+      encoderConfig: { width: 720, height: 1280, frameRate: 24, bitrateMin: 600, bitrateMax: 1800 },
+      optimizationMode: 'motion'
+    });
+    localVideoTrack.play('local-video', { fit: 'cover', mirror: true });
+    cameraEnabled = true;
+    emit('CAMERA_STATE', { enabled: true });
+
+    try {
+      localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({ AEC: true, ANS: true, AGC: true });
+      micEnabled = true;
+      emit('MIC_STATE', { enabled: true });
+    } catch (audioError) {
+      // Video can still go live. Tell the native UI exactly why it is silent.
+      micEnabled = false;
+      emit('MIC_UNAVAILABLE', { error: audioError?.message || 'Microphone unavailable' });
+    }
+
+    await client.publish(localAudioTrack ? [localAudioTrack, localVideoTrack] : [localVideoTrack]);
     status('🔴 LIVE');
-    window.ReactNativeWebView.postMessage('LIVE_STARTED');
+    emit('LIVE_STARTED', { hasAudio: !!localAudioTrack });
   } catch (e) {
     status('Error: ' + e.message);
-    window.ReactNativeWebView.postMessage('ERROR:' + e.message);
+    emit('ERROR', { error: e?.message || 'Unable to start live video' });
   }
 }
-window.addEventListener('message', (e) => {
-  if (e.data === 'TOGGLE_MIC') localAudioTrack?.setEnabled(!localAudioTrack?.enabled);
-  if (e.data === 'TOGGLE_CAM') localVideoTrack?.setEnabled(!localVideoTrack?.enabled);
-  if (e.data === 'FLIP_CAM' && localVideoTrack) {
-    const cur = localVideoTrack.getMediaStreamTrack().getSettings().facingMode;
-    localVideoTrack.setDevice({ facingMode: cur === 'environment' ? 'user' : 'environment' }).catch(() => {});
+window.addEventListener('message', async (e) => {
+  if (e.data === 'TOGGLE_MIC') {
+    try {
+      if (!localAudioTrack) {
+        localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({ AEC: true, ANS: true, AGC: true });
+        await client.publish(localAudioTrack);
+        micEnabled = true;
+      } else {
+        micEnabled = !micEnabled;
+        await localAudioTrack.setEnabled(micEnabled);
+      }
+      emit('MIC_STATE', { enabled: micEnabled });
+    } catch (audioError) {
+      localAudioTrack?.close();
+      localAudioTrack = undefined;
+      micEnabled = false;
+      emit('MIC_UNAVAILABLE', { error: audioError?.message || 'Microphone unavailable' });
+    }
   }
-  if (e.data === 'END') { client.leave(); }
+  if (e.data === 'TOGGLE_CAM' && localVideoTrack) {
+    cameraEnabled = !cameraEnabled;
+    await localVideoTrack.setEnabled(cameraEnabled);
+    emit('CAMERA_STATE', { enabled: cameraEnabled });
+  }
+  if (e.data === 'FLIP_CAM' && localVideoTrack) {
+    try {
+      const cameras = await AgoraRTC.getCameras();
+      if (cameras.length > 1) {
+        const current = localVideoTrack.getMediaStreamTrack().getSettings().deviceId;
+        const currentIndex = cameras.findIndex(camera => camera.deviceId === current);
+        await localVideoTrack.setDevice(cameras[(currentIndex + 1) % cameras.length].deviceId);
+        emit('CAMERA_FLIPPED');
+      }
+    } catch (cameraError) {
+      emit('MEDIA_WARNING', { error: cameraError?.message || 'Could not switch camera' });
+    }
+  }
+  if (e.data === 'END') {
+    localAudioTrack?.close();
+    localVideoTrack?.close();
+    await client.leave();
+  }
 });
 start();
 </script>
@@ -129,6 +180,7 @@ export default function StudioScreen() {
   const [showProductPicker, setShowProductPicker] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
+  const [mediaNotice, setMediaNotice] = useState('');
 
   const webViewRef = useRef<any>(null);
   const flatListRef = useRef<FlatList>(null);
@@ -209,12 +261,10 @@ export default function StudioScreen() {
 
   const toggleMic = () => {
     webViewRef.current?.postMessage('TOGGLE_MIC');
-    setMicOn(v => !v);
   };
 
   const toggleCam = () => {
     webViewRef.current?.postMessage('TOGGLE_CAM');
-    setCamOn(v => !v);
   };
 
   const handleSendChat = async (customText?: string) => {
@@ -275,10 +325,25 @@ export default function StudioScreen() {
             // the web view.
             mediaCapturePermissionGrantType="grant"
             onMessage={(e) => {
-              const d = e.nativeEvent.data;
-              if (d === 'LIVE_STARTED') { setIsLive(true); setPublished(true); }
-              else if (d.startsWith('ERROR:')) {
-                const message = d.slice(6);
+              const raw = e.nativeEvent.data;
+              let event: { type?: string; error?: string; enabled?: boolean; hasAudio?: boolean } = {};
+              try { event = JSON.parse(raw); } catch { event = { type: raw }; }
+              if (event.type === 'LIVE_STARTED') {
+                setIsLive(true);
+                setPublished(true);
+                setMicOn(event.hasAudio !== false);
+              } else if (event.type === 'MIC_STATE') {
+                setMicOn(event.enabled === true);
+                if (event.enabled) setMediaNotice('');
+              } else if (event.type === 'CAMERA_STATE') {
+                setCamOn(event.enabled === true);
+              } else if (event.type === 'MIC_UNAVAILABLE') {
+                setMicOn(false);
+                setMediaNotice('الميكروفون غير متاح. أنهِ المكالمة ثم اضغط زر الميكروفون للمحاولة مرة أخرى.');
+              } else if (event.type === 'MEDIA_WARNING') {
+                setMediaNotice(event.error || 'تعذر تغيير إعداد الكاميرا');
+              } else if (event.type === 'ERROR') {
+                const message = event.error || 'تعذر بدء البث';
                 if (published) { setError(message); return; }
                 // Agora never started the broadcast (build 26 hit this with an
                 // empty App ID). Take the session out of `live` so the viewer
@@ -313,7 +378,7 @@ export default function StudioScreen() {
 
         {/* Top Overlay */}
         {isLive && (
-          <View style={{ position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View pointerEvents="box-none" style={{ position: 'absolute', zIndex: 20, top: 12, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <View style={{ backgroundColor: published ? '#EF4444' : '#B45309', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: 'white' }} />
               <Text style={{ fontSize: 11, fontWeight: '900', color: 'white' }}>{published ? 'LIVE' : 'جارٍ الاتصال…'}</Text>
@@ -325,13 +390,21 @@ export default function StudioScreen() {
           </View>
         )}
 
+        {!!mediaNotice && isLive && (
+          <TouchableOpacity onPress={() => setMediaNotice('')} style={s.mediaNotice} accessibilityLabel="Dismiss media warning">
+            <AlertCircle color="#FDE68A" size={15} />
+            <Text style={{ color: '#FEF3C7', fontSize: 12, flex: 1, textAlign: 'right' }}>{mediaNotice}</Text>
+            <X color="#FDE68A" size={14} />
+          </TouchableOpacity>
+        )}
+
         {/* Bottom Controls */}
         {isLive && (
-          <View style={{ position: 'absolute', bottom: insets.bottom + 8, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 14 }}>
-            <TouchableOpacity onPress={toggleMic} style={[s.ctrl, !micOn && s.ctrlOff]}>
+          <View style={{ position: 'absolute', zIndex: 20, bottom: insets.bottom + 8, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
+            <TouchableOpacity onPress={toggleMic} disabled={!published} style={[s.ctrl, !micOn && s.ctrlOff]} accessibilityLabel={micOn ? 'Mute microphone' : 'Unmute microphone'}>
               {micOn ? <Mic color="white" size={20} /> : <MicOff color="white" size={20} />}
             </TouchableOpacity>
-            <TouchableOpacity onPress={toggleCam} style={[s.ctrl, !camOn && s.ctrlOff]}>
+            <TouchableOpacity onPress={toggleCam} disabled={!published} style={[s.ctrl, !camOn && s.ctrlOff]} accessibilityLabel={camOn ? 'Turn camera off' : 'Turn camera on'}>
               {camOn ? <Video color="white" size={20} /> : <VideoOff color="white" size={20} />}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => webViewRef.current?.postMessage('FLIP_CAM')} style={s.ctrl} accessibilityLabel="Switch camera">
@@ -340,7 +413,7 @@ export default function StudioScreen() {
             <TouchableOpacity onPress={() => setShowProductPicker(true)} style={[s.ctrl, { backgroundColor: '#0F172A' }]}>
               <Pin color="white" size={20} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowChat(!showChat)} style={s.ctrl}>
+            <TouchableOpacity onPress={() => setShowChat(true)} style={[s.ctrl, showChat && s.ctrlActive]} accessibilityLabel="Open live chat">
               <MessageSquare color="white" size={20} />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleEndStream} style={[s.ctrl, s.ctrlEnd]}>
@@ -353,6 +426,12 @@ export default function StudioScreen() {
       {/* Chat Panel */}
       {showChat && isLive && (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.chatPanel}>
+          <View style={s.chatHeader}>
+            <TouchableOpacity onPress={() => setShowChat(false)} style={s.chatClose} accessibilityLabel="Close live chat">
+              <X color="white" size={18} />
+            </TouchableOpacity>
+            <Text style={s.chatTitle}>دردشة البث</Text>
+          </View>
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -447,10 +526,15 @@ export default function StudioScreen() {
 }
 
 const s = StyleSheet.create({
-  ctrl: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  ctrl: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(15,23,42,0.82)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  ctrlActive: { backgroundColor: '#2563EB', borderColor: '#60A5FA' },
   ctrlOff: { backgroundColor: '#EF4444' },
-  ctrlEnd: { backgroundColor: '#EF4444', width: 56, height: 56, borderRadius: 28 },
-  chatPanel: { height: 240, backgroundColor: 'rgba(0,0,0,0.92)' },
+  ctrlEnd: { backgroundColor: '#EF4444', width: 48, height: 48, borderRadius: 24 },
+  mediaNotice: { position: 'absolute', zIndex: 25, top: 52, left: 12, right: 12, minHeight: 42, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: 'rgba(120,53,15,0.94)', flexDirection: 'row', alignItems: 'center', gap: 8 },
+  chatPanel: { position: 'absolute', zIndex: 40, left: 0, right: 0, bottom: 0, height: 280, backgroundColor: 'rgba(3,7,18,0.96)', borderTopLeftRadius: 22, borderTopRightRadius: 22, overflow: 'hidden', borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
+  chatHeader: { minHeight: 42, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  chatClose: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
+  chatTitle: { color: 'white', fontSize: 14, fontWeight: '800' },
   productPickerOverlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   productPickerSheet: { backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16 },
   productRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9', marginBottom: 6 },
