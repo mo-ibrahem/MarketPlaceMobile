@@ -73,9 +73,9 @@ export const getBlockedUserIds = async (): Promise<Set<string>> => {
 };
 
 /**
- * Deletes (or, where financial records reference the account, anonymises and
- * permanently bans) the signed-in account. Resolves only after the database
- * confirmed; the caller signs out afterwards.
+ * Requests deletion of the signed-in account. A receipt allows progress checks
+ * after sign-out. Complete means storage, personal content and auth were erased;
+ * pending means the durable worker still has cleanup to finish.
  */
 export const deleteMyAccount = async (): Promise<{ status: 'complete' | 'pending'; receipt?: string }> => {
   await requireUser();

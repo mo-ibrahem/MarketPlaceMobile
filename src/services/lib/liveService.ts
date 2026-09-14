@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { API_BASE } from './apiBase';
 
 // ──────────────────────────────────────────────────────────────
 // Types
@@ -170,7 +171,7 @@ export async function bookLiveSession(params: {
   // anyway, then returned a fabricated session object if that failed too.
   const { data: { session: auth } } = await supabase.auth.getSession();
   if (!auth) throw new Error('Not authenticated');
-  const res = await fetch('https://egbay.shop/api/live/book', {
+  const res = await fetch(`${API_BASE}/api/live/book`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.access_token}` },
     body: JSON.stringify({

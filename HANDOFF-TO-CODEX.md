@@ -256,3 +256,4 @@ step 2, drop the `active_account_required` policies, the `private` schema,
 `account_deletion_jobs`, `product_image_cleanup_jobs`, the three cleanup
 RPCs and the cron job; `delete_my_account` and `public_profiles` should be
 restored from `app_review_compliance` / `allow_users_to_edit_own_profile`.
+> Current status (2026-09-14): see [SECURITY-IMPLEMENTATION-STATUS.md](SECURITY-IMPLEMENTATION-STATUS.md). This file contains historical findings and release instructions that may be superseded.

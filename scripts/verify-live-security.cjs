@@ -31,6 +31,27 @@ async function scalar(table,id){return checked(await admin.from(table).select('*
  const product=checked(await B.client.from('products').insert({title:'Security verification — temporary',description:'Disposable test listing',category:'Other',price:100,stock:1,seller_id:B.id,images:[url+'/storage/v1/object/public/product-images/'+objects[1].name]}).select('id').single()).id;
  products.push(product);
  const room=checked(await A.client.from('chat_rooms').insert({participant_ids:[A.id,B.id],product_id:product}).select('id').single()).id;
+ await ok('Product deletion worker removes an owned unused image',async()=>{
+   const name=B.id+'/'+randomUUID()+'.png';
+   checked(await B.client.storage.from('product-images').upload(name,tiny,{contentType:'image/png'}));objects.push({bucket:'product-images',name});
+   const id=checked(await B.client.from('products').insert({title:'Security verification — temporary',description:'Queue fixture',category:'Other',price:10,stock:1,seller_id:B.id,images:[url+'/storage/v1/object/public/product-images/'+name]}).select('id').single()).id;products.push(id);
+   checked(await B.client.from('products').delete().eq('id',id));checked(await admin.rpc('dispatch_cleanup_jobs'));
+   for(let i=0;i<20;i++){
+     if(!checked(await admin.storage.from('product-images').list(B.id,{search:name.split('/')[1]})).length)return;
+     await new Promise(r=>setTimeout(r,1500));
+   }
+   throw Error('Image cleanup worker did not remove the fixture');
+ });
+ await ok('Deletion worker preserves an image still used by another listing',async()=>{
+   const id=checked(await B.client.from('products').insert({title:'Security verification — temporary',description:'Shared image fixture',category:'Other',price:10,stock:1,seller_id:B.id,images:[url+'/storage/v1/object/public/product-images/'+objects[1].name]}).select('id').single()).id;products.push(id);
+   checked(await B.client.from('products').delete().eq('id',id));checked(await admin.rpc('dispatch_cleanup_jobs'));
+   for(let i=0;i<20;i++){
+     const jobs=checked(await admin.from('product_image_cleanup_jobs').select('id').contains('old_record',{seller_id:B.id}));
+     if(!jobs.length){checked(await B.client.storage.from('product-images').download(objects[1].name));return;}
+     await new Promise(r=>setTimeout(r,1500));
+   }
+   throw Error('Shared image queue did not finish');
+ });
  checked(await A.client.from('messages').insert({room_id:room,sender_id:A.id,content:'Disposable A message'}));
  checked(await B.client.from('messages').insert({room_id:room,sender_id:B.id,content:'Disposable B message'}));
  await ok('Third account cannot read private messages',async()=>assert.equal(checked(await C.client.from('messages').select('id').eq('room_id',room)).length,0));
@@ -59,6 +80,13 @@ async function scalar(table,id){return checked(await admin.from(table).select('*
  let receipt;
  await ok('Account deletion erases auth, uploads and owned messages without changing counterparty balance',async()=>{
    const response=checked(await A.client.functions.invoke('delete-account',{body:{user_id:B.id}}));receipt=response.receipt;
+   if(response.status==='pending'){
+     checked(await admin.rpc('dispatch_cleanup_jobs'));
+     for(let i=0;i<20 && response.status!=='complete';i++){
+       await new Promise(r=>setTimeout(r,1500));
+       const row=checked(await admin.from('account_deletion_jobs').select('status').eq('user_id',A.id).single());response.status=row.status;
+     }
+   }
    assert.equal(response.status,'complete');
    const lookup=await admin.auth.admin.getUserById(A.id);assert.ok(lookup.error);
    assert.ok((await admin.storage.from('avatars').download(objects[0].name)).error);
@@ -92,11 +120,20 @@ async function scalar(table,id){return checked(await admin.from(table).select('*
  for(const id of orders)await admin.from('orders').delete().eq('id',id);
  for(const id of products)await admin.from('products').delete().eq('id',id);
  for(const o of objects)await admin.storage.from(o.bucket).remove([o.name]);
- for(const id of users){
-   await admin.from('live_sessions').delete().eq('seller_id',id);
-   await admin.from('chat_rooms').delete().contains('participant_ids',[id]);
-   await admin.auth.admin.deleteUser(id);
- }
- console.log('Disposable fixture cleanup attempted.');
+ try{
+   for(const id of users){
+     await admin.from('live_sessions').delete().eq('seller_id',id);
+     await admin.from('chat_rooms').delete().contains('participant_ids',[id]);
+     const lookup=await admin.auth.admin.getUserById(id);
+     if(lookup.data?.user)checked(await admin.rpc('begin_account_deletion',{p_user_id:id}));
+     else if(lookup.error?.status!==404 && lookup.error?.code!=='user_not_found')throw Error('Could not verify fixture account removal');
+   }
+   checked(await admin.rpc('dispatch_cleanup_jobs'));
+   for(let i=0;i<20;i++){
+     const jobs=checked(await admin.from('account_deletion_jobs').select('user_id').in('user_id',users).neq('status','complete'));
+     if(!jobs.length){console.log('Disposable fixture account cleanup confirmed.');return;}
+     await new Promise(r=>setTimeout(r,1500));
+   }
+   throw Error('Fixture cleanup remains pending');
+ }catch(e){console.error('Cleanup:',e.message);process.exitCode=1;}
 });
-

@@ -44,6 +44,7 @@ import { deductWalletSpendableFunds, getUserWallet, type UserWallet } from '../s
 import EscrowTrustModal from '../src/components/EscrowTrustModal';
 import NotAvailableYet from '../src/components/NotAvailableYet';
 import { PAYMENTS_ENABLED } from '../src/services/lib/platformCommerce';
+import { API_BASE } from '../src/services/lib/apiBase';
 
 const GOVERNORATES = ['Cairo', 'Giza', 'Alexandria', 'Dakahlia', 'Sharqia', 'Qalyubia', 'Gharbia', 'Red Sea'];
 
@@ -158,7 +159,7 @@ export default function CheckoutScreen() {
       if (useWalletBalance && remainingDue === 0) {
         // Backend handles all fee/escrow deductions securely via the Phase 4 RPC
         const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch('https://egbay.shop/api/wallet/action', {
+        const res = await fetch(`${API_BASE}/api/wallet/action`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',

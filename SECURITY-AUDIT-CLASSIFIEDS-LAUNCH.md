@@ -126,3 +126,4 @@ Deliver a closure table for SEC-01 through SEC-10 showing: code change, migratio
 
 - [App Review Guidelines: user-generated content, accurate metadata and review access](https://developer.apple.com/app-store/review/guidelines/)
 - [Offering account deletion in your app](https://developer.apple.com/support/offering-account-deletion-in-your-app/)
+> Current status (2026-09-14): see [SECURITY-IMPLEMENTATION-STATUS.md](SECURITY-IMPLEMENTATION-STATUS.md). This file contains historical findings and release instructions that may be superseded.

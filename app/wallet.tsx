@@ -55,6 +55,7 @@ import {
   type WalletTransaction,
 } from '../src/services/lib/walletService';
 import { DIGITAL_PURCHASES_ENABLED, PAYMENTS_ENABLED } from '../src/services/lib/platformCommerce';
+import { API_BASE } from '../src/services/lib/apiBase';
 import NotAvailableYet from '../src/components/NotAvailableYet';
 import { supabase } from '../src/services/lib/supabase';
 export default function WalletScreen() {
@@ -167,7 +168,7 @@ export default function WalletScreen() {
     setToppingUp(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('https://egbay.shop/api/wallet/topup/create', {
+      const res = await fetch(`${API_BASE}/api/wallet/topup/create`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

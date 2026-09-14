@@ -222,8 +222,21 @@ async function test(name, run) { await run(); count++; console.log('PASS', name)
     const response = await handler(liveRequest());
     assert.equal(response.status, 200); assert.equal((await response.json()).token, 'test-role-1');
   });
+  await test('Unpaid priced session is unavailable', async () => {
+    liveSession = { seller_id: 'seller', status: 'live', wallet_charge_id: null, pass_price_egp: 149 };
+    assert.equal((await handler(liveRequest())).status, 403);
+    assert.equal((await handler(liveRequest({ role: 'audience' }))).status, 403);
+  });
+  await test('Free session (price 0, no charge) serves host and audience', async () => {
+    liveSession = { seller_id: 'seller', status: 'live', wallet_charge_id: null, pass_price_egp: 0 };
+    assert.equal((await handler(liveRequest())).status, 200);
+    liveUser = { id: 'viewer' };
+    assert.equal((await handler(liveRequest({ role: 'audience' }))).status, 200);
+    assert.equal((await handler(liveRequest({ role: 'host' }))).status, 403);
+  });
 
   await test('Free live session can issue its owner a host token', async () => {
+    liveUser = { id: 'seller' };
     liveSession.wallet_charge_id = null; liveSession.pass_price_egp = 0;
     assert.equal((await handler(liveRequest())).status, 200);
   });

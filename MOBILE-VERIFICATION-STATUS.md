@@ -143,3 +143,32 @@ tiers are KYC-gated, not purchased, so no IAP question arises.
 
 Restore the review account (dashboard) → enter its new password in App Store
 Connect → device pass, payment flow first → `eas submit`.
+
+
+## 10. 2026-09-13 late: backend hardening is LIVE; the apex-domain bug
+
+The Codex session applied the corrected `security/codex-hardening`
+migrations plus four of its own to production and deployed the deletion
+pipeline (see EgbayWeb `ff85e3c` for the exact SQL and function sources).
+So the branch is no longer "proposed": account deletion now queues a job,
+denies access immediately, and a cron worker purges storage and rows
+within a minute; blocking is enforced server-side; live has owner-only
+host tokens and a state-transition trigger. `HANDOFF-TO-CODEX.md` on that
+branch is now history, not a plan.
+
+**Bug found while verifying live booking against production, present in
+every build up to 24:** `https://egbay.shop` answers with a 307 to
+`https://www.egbay.shop`, and a cross-origin redirect drops the
+Authorization header. Every API call the app made to the apex --
+checkout, order actions, wallet, boosts, live booking -- reached the
+server without a token and got 401. All eight call sites now go through
+`src/services/lib/apiBase.ts` (`API_BASE = 'https://www.egbay.shop'`).
+Build 25 is the first build where those calls work. Do not submit 24.
+
+| # | Item | State |
+|---|------|-------|
+| 10 | API origin | ✅ fixed in 25 |
+| 11 | Live: free passes, owner-only tokens, viewer report button | ✅ verified end to end on production with two disposable accounts (booking, tokens, chat, forgery/hijack refused) |
+| 12 | Live hosting from a real iPhone (camera/mic in the WebView) | ⏳ **user** -- only thing left that no harness can prove |
+| 13 | Agora console: enable "co-host token authentication", then `supabase secrets set AGORA_CO_HOST_AUTH_ENABLED=true`; rotate the App Certificate | ⏳ user |
+> Current status (2026-09-14): see [SECURITY-IMPLEMENTATION-STATUS.md](SECURITY-IMPLEMENTATION-STATUS.md). This file contains historical findings and release instructions that may be superseded.
