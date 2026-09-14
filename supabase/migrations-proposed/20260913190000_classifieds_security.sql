@@ -91,7 +91,7 @@ BEGIN
  RETURN NEW;
 END $$;
 CREATE OR REPLACE VIEW public.public_profiles AS
- SELECT id, CASE WHEN position('@' in coalesce(full_name,''))>0 THEN 'EgyBay User' ELSE full_name END AS full_name,
+ SELECT id, (CASE WHEN position('@' in coalesce(full_name,''))>0 THEN 'EgyBay User' ELSE full_name END)::varchar(255) AS full_name,
  avatar_url,tier,is_verified_seller,rating_avg,rating_count
  FROM public.user_profiles p WHERE EXISTS(SELECT 1 FROM auth.users u WHERE u.id=p.id
  AND u.deleted_at IS NULL AND (u.banned_until IS NULL OR u.banned_until<=now()))
@@ -125,6 +125,7 @@ RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
  IF NOT EXISTS(SELECT 1 FROM auth.users WHERE id=p_user_id) THEN RAISE EXCEPTION 'Account not found'; END IF;
  INSERT INTO public.account_deletion_jobs(user_id) VALUES(p_user_id) ON CONFLICT(user_id) DO NOTHING;
+ UPDATE auth.users SET banned_until='infinity'::timestamptz WHERE id=p_user_id;
  UPDATE public.products SET status='removed',updated_at=now() WHERE seller_id=p_user_id;
  DELETE FROM auth.sessions WHERE user_id=p_user_id;
 END $$;

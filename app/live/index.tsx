@@ -16,10 +16,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { displayName } from '../../src/services/lib/displayName';
-import { DIGITAL_PURCHASES_ENABLED, PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
+import { DIGITAL_PURCHASES_ENABLED, LIVE_ENABLED, PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 import NotAvailableYet from '../../src/components/NotAvailableYet';
 import {
   getActiveLiveSessions,
+  getLivePassesAreFree,
   isGenuinelyLive,
   type LiveSession,
 } from '../../src/services/lib/liveService';
@@ -55,12 +56,15 @@ export default function LiveDiscoveryScreen() {
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [passesFree, setPassesFree] = useState(false);
 
   const load = useCallback(async () => {
-    // Classifieds mode: nothing here can be reached, so don't even fetch.
-    if (!PAYMENTS_ENABLED) { setLoading(false); setRefreshing(false); return; }
+    // Live is off in this build: nothing here can be reached, so don't even fetch.
+    if (!LIVE_ENABLED) return;
     try {
-      setSessions(await getActiveLiveSessions());
+      const [list, free] = await Promise.all([getActiveLiveSessions(), getLivePassesAreFree()]);
+      setSessions(list);
+      setPassesFree(free);
     } catch (err) {
       console.warn('[Live] load failed:', err);
     } finally {
@@ -69,13 +73,17 @@ export default function LiveDiscoveryScreen() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Starts the remote discovery request and its loading lifecycle.
   useEffect(() => { load(); }, [load]);
 
-  // Classifieds mode: live broadcasting does not exist right now (see
-  // PLAN-CLASSIFIEDS-MODE.md).
-  if (!PAYMENTS_ENABLED) {
+  // Live is off in this build (LIVE_ENABLED).
+  if (!LIVE_ENABLED) {
     return <NotAvailableYet />;
   }
+
+  // A free pass is not a purchase, so the iOS IAP rule does not bite; a paid
+  // one is, and does. The server decides which it is today.
+  const canPitchSelling = !!user && (passesFree || DIGITAL_PURCHASES_ENABLED);
 
   const liveNow = sessions.filter(isGenuinelyLive);
   const upcoming = sessions.filter(s => s.status === 'scheduled');
@@ -83,27 +91,29 @@ export default function LiveDiscoveryScreen() {
   const T = isRTL
     ? {
         title: 'البث المباشر',
-        sub: 'اشترِ مباشرة من التجار بضمان مالي كامل',
+        sub: PAYMENTS_ENABLED ? 'اشترِ مباشرة من التجار بضمان مالي كامل' : 'شاهد البائعين يعرضون منتجاتهم مباشرة وراسلهم من البث',
         liveNow: 'يبث الآن',
         upcoming: 'بثوث قادمة',
         noneTitle: 'لا يوجد بث مباشر الآن',
         noneSub: 'البث المباشر جديد على إيجي باي. تظهر البثوث هنا فور بدئها — عُد لاحقاً.',
         sellTitle: 'تبيع على إيجي باي؟',
-        sellSub: 'اعرض منتجاتك مباشرة وبِع بضمان مالي وشحن بوسطة.',
+        sellSub: PAYMENTS_ENABLED ? 'اعرض منتجاتك مباشرة وبِع بضمان مالي وشحن بوسطة.' : 'اعرض منتجاتك على الهواء وتحدث مع المشترين مباشرة.',
         sellCta: 'ابدأ البث',
+        freeNow: 'مجاناً حالياً',
         viewers: 'مشاهد',
         scheduled: 'مجدول',
       }
     : {
         title: 'Live',
-        sub: 'Buy directly from sellers, with full escrow protection',
+        sub: PAYMENTS_ENABLED ? 'Buy directly from sellers, with full escrow protection' : 'Watch sellers show their items live and message them from the stream',
         liveNow: 'Live now',
         upcoming: 'Scheduled',
         noneTitle: 'Nobody is live right now',
         noneSub: 'Live selling is new on EgyBay. Streams appear here the moment they start — check back soon.',
         sellTitle: 'Sell on EgyBay?',
-        sellSub: 'Show your items on camera and sell with escrow and Bosta delivery.',
+        sellSub: PAYMENTS_ENABLED ? 'Show your items on camera and sell with escrow and Bosta delivery.' : 'Show your items on camera and talk to buyers directly.',
         sellCta: 'Start streaming',
+        freeNow: 'Free for now',
         viewers: 'watching',
         scheduled: 'scheduled',
       };
@@ -154,10 +164,12 @@ export default function LiveDiscoveryScreen() {
           <Text style={s.h1}>{T.title}</Text>
           <Text style={s.h1sub}>{T.sub}</Text>
         </View>
-        <View style={s.escrowChip}>
-          <ShieldCheck color="#059669" size={13} />
-          <Text style={s.escrowChipText}>{isRTL ? 'ضمان' : 'Escrow'}</Text>
-        </View>
+        {PAYMENTS_ENABLED && (
+          <View style={s.escrowChip}>
+            <ShieldCheck color="#059669" size={13} />
+            <Text style={s.escrowChipText}>{isRTL ? 'ضمان' : 'Escrow'}</Text>
+          </View>
+        )}
       </View>
 
       {loading ? (
@@ -229,7 +241,7 @@ export default function LiveDiscoveryScreen() {
                   one-to-many real-time service (3.1.3(d)); both require
                   in-app purchase. The seller pitch is hidden on iOS until
                   passes go through StoreKit. */}
-              {!!user && DIGITAL_PURCHASES_ENABLED && (
+              {canPitchSelling && (
                 <TouchableOpacity
                   style={s.sellCard}
                   activeOpacity={0.9}
@@ -239,7 +251,12 @@ export default function LiveDiscoveryScreen() {
                     <Video color="#FFFFFF" size={18} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.sellTitle}>{T.sellTitle}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={s.sellTitle}>{T.sellTitle}</Text>
+                      {passesFree && (
+                        <View style={s.freePill}><Text style={s.freePillText}>{T.freeNow}</Text></View>
+                      )}
+                    </View>
                     <Text style={s.sellSub}>{T.sellSub}</Text>
                   </View>
                   <ChevronRight color="#94A3B8" size={18} />
@@ -342,5 +359,7 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   sellTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+  freePill: { backgroundColor: '#ECFDF5', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  freePillText: { fontSize: 10, fontWeight: '800', color: '#047857', letterSpacing: 0.3 },
   sellSub: { fontSize: 12.5, color: '#64748B', lineHeight: 17, marginTop: 2 },
 });

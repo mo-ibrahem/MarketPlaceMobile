@@ -58,7 +58,8 @@ const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222
    if(f.auth_execute)await db.exec('GRANT EXECUTE ON FUNCTION public.'+f.name+' TO authenticated');
  }
  for(const id of [A,B,C])await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2)",[id,id+'@example.invalid']);
- for(const name of ['20260913190000_classifieds_security.sql','20260913190100_guard_rpcs_and_delete_data.sql','20260913190200_cleanup_queue.sql'])
+ await db.exec(fs.readFileSync('supabase/migrations-proposed/20260913220000_live_passes_free_switch.sql','utf8'));
+ for(const name of ['20260913190000_classifieds_security.sql','20260913190100_guard_rpcs_and_delete_data.sql','20260913190200_cleanup_queue.sql','20260913190400_live_security.sql','20260913190500_account_erasure.sql','20260913190600_auth_compatible_deletion_ban.sql'])
    await db.exec(fs.readFileSync('supabase/migrations-proposed/'+name,'utf8'));
  await test('Anonymous public names mask legacy email fallback',async()=>{
    const r=await as('anon',null,'SELECT full_name FROM public.public_profiles');
@@ -91,8 +92,14 @@ const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222
    await denied('authenticated',A,'SELECT * FROM private.worker_credentials');
    await denied('authenticated',A,'SELECT public.authorize_cleanup_worker($1)',['x'.repeat(72)]);
  });
+ await test('Free live booking creates a real zero-priced session without a wallet debit',async()=>{
+   const b=(await db.query('SELECT available_balance FROM public.user_wallets WHERE user_id=$1',[C])).rows[0];
+   const result=await as('service_role',null,"SELECT public.book_live_session($1,'Free live',NULL,NULL,'mega','Other',NULL,NULL) s",[C]);
+   assert.equal(result.rows[0].s.pass_price_egp,0);assert.equal(result.rows[0].s.wallet_charge_id,null);
+   assert.deepEqual((await db.query('SELECT available_balance FROM public.user_wallets WHERE user_id=$1',[C])).rows[0],b);
+ });
  await test('Client may update live session labels/status but not price, channel or charge',async()=>{
-   await db.query("INSERT INTO public.live_sessions(id,seller_id,title,pass_tier,pass_price_egp,max_viewers,agora_channel) VALUES('00000000-0000-4000-8000-00000000aaaa',$1,'s','flash',10,5,'ch')",[A]);
+   await db.query("INSERT INTO public.live_sessions(id,seller_id,title,pass_tier,pass_price_egp,max_viewers,agora_channel) VALUES('00000000-0000-4000-8000-00000000aaaa',$1,'s','flash',0,5,'ch')",[A]);
    await as('authenticated',A,"UPDATE public.live_sessions SET status='live',started_at=now() WHERE id='00000000-0000-4000-8000-00000000aaaa'");
    await denied('authenticated',A,"UPDATE public.live_sessions SET pass_price_egp=0 WHERE id='00000000-0000-4000-8000-00000000aaaa'");
    await denied('authenticated',A,"UPDATE public.live_sessions SET agora_channel='hijack' WHERE id='00000000-0000-4000-8000-00000000aaaa'");
@@ -120,40 +127,57 @@ const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222
  await test('Stale JWT cannot upload storage objects',()=>denied('authenticated',A,"INSERT INTO storage.objects(bucket_id,name,owner_id) VALUES('product-images','x',$1)",[A]));
  await test('Pending deletion profile is no longer public',async()=>assert.equal((await as('anon',null,'SELECT * FROM public.public_profiles WHERE id=$1',[A])).rows.length,0));
  await as('service_role',null,'SELECT * FROM public.claim_account_deletions($1)',[A]);
- await test('Account cleanup is retryable, scrubs the person, keeps the marketplace record',async()=>{
-   const bBefore=(await db.query('SELECT available_balance,pending_balance FROM public.user_wallets WHERE user_id=$1',[B])).rows[0];
+ await test('Buyer deletion keeps counterpart messages, orders and balances but removes auth identity',async()=>{
+   const bBefore=(await db.query('SELECT * FROM public.user_wallets WHERE user_id=$1',[B])).rows[0];
    const bMsgsBefore=(await db.query('SELECT count(*)::int n FROM public.messages WHERE sender_id=$1',[B])).rows[0].n;
    await as('service_role',null,'SELECT public.purge_account_data($1)',[A]);
    await as('service_role',null,'SELECT public.purge_account_data($1)',[A]);
-   // The other party: untouched.
-   assert.equal((await db.query('SELECT * FROM auth.users WHERE id=$1',[B])).rows.length,1);
-   assert.deepEqual((await db.query('SELECT available_balance,pending_balance FROM public.user_wallets WHERE user_id=$1',[B])).rows[0],bBefore);
+   await db.query('DELETE FROM auth.users WHERE id=$1',[A]); // admin.deleteUser boundary
+   assert.deepEqual((await db.query('SELECT * FROM public.user_wallets WHERE user_id=$1',[B])).rows[0],bBefore);
    assert.equal((await db.query('SELECT count(*)::int n FROM public.messages WHERE sender_id=$1',[B])).rows[0].n,bMsgsBefore);
-   assert.ok((await db.query("SELECT content FROM public.messages WHERE sender_id=$1",[B])).rows.every(r=>r.content!=='[Message deleted]'));
-   // The record of the transaction: kept, de-identified.
    const o=(await db.query('SELECT status,shipping_address,notes,buyer_id FROM public.orders WHERE id=$1',[order])).rows[0];
-   assert.equal(o.status,'completed'); assert.equal(o.shipping_address,null); assert.equal(o.notes,null); assert.equal(o.buyer_id,A);
+   assert.equal(o.status,'completed');assert.equal(o.shipping_address,null);assert.equal(o.notes,null);assert.equal(o.buyer_id,null);
    assert.equal((await db.query('SELECT count(*)::int n FROM public.wallet_transactions WHERE paymob_transaction_id=555')).rows[0].n,1);
-   assert.equal((await db.query('SELECT status FROM public.products WHERE id=$1',[soldProduct])).rows[0].status,'active'); // B's listing, not A's
-   // The person: gone from everything that identifies them, and locked out.
-   const msgs=(await db.query('SELECT content FROM public.messages WHERE sender_id=$1',[A])).rows;
-   assert.ok(msgs.length>0 && msgs.every(r=>r.content==='[Message deleted]'));
-   const prof=(await db.query('SELECT full_name,email,phone,avatar_url FROM public.user_profiles WHERE id=$1',[A])).rows[0];
-   assert.deepEqual(prof,{full_name:'Deleted user',email:null,phone:null,avatar_url:null});
-   const u=(await db.query("SELECT email,encrypted_password,banned_until='infinity' AS banned FROM auth.users WHERE id=$1",[A])).rows[0];
-   assert.ok(u.email.startsWith('deleted+')&&u.email.endsWith('@egbay.invalid')); assert.equal(u.encrypted_password,null); assert.equal(u.banned,true);
-   assert.equal((await db.query('SELECT count(*)::int n FROM auth.sessions WHERE user_id=$1',[A])).rows[0].n,0);
-   assert.equal((await db.query('SELECT count(*)::int n FROM public.live_sessions WHERE seller_id=$1',[A])).rows[0].n,0);
-   assert.equal((await as('anon',null,'SELECT * FROM public.public_profiles WHERE id=$1',[A])).rows.length,0);
+   assert.equal((await db.query('SELECT * FROM auth.users WHERE id=$1',[A])).rows.length,0);
+   assert.equal((await db.query('SELECT * FROM public.user_profiles WHERE id=$1',[A])).rows.length,0);
+   assert.equal((await db.query('SELECT * FROM public.messages WHERE sender_id=$1',[A])).rows.length,0);
  });
- await test('A seller with orders keeps the order rows and loses the listing content',async()=>{
+ await test('Seller deletion preserves financial history without retaining the auth account',async()=>{
    await as('service_role',null,'SELECT public.begin_account_deletion($1)',[B]);
    await as('service_role',null,'SELECT * FROM public.claim_account_deletions($1)',[B]);
    await as('service_role',null,'SELECT public.purge_account_data($1)',[B]);
-   const p=(await db.query('SELECT status,images,description FROM public.products WHERE id=$1',[soldProduct])).rows[0];
-   assert.deepEqual(p,{status:'removed',images:[],description:''});
-   assert.equal((await db.query('SELECT count(*)::int n FROM public.orders WHERE id=$1',[order])).rows[0].n,1);
+   await db.query('DELETE FROM auth.users WHERE id=$1',[B]);
+   const p=(await db.query('SELECT status,images,description,seller_id FROM public.products WHERE id=$1',[soldProduct])).rows[0];
+   assert.deepEqual(p,{status:'removed',images:[],description:'',seller_id:null});
+   assert.equal((await db.query('SELECT * FROM public.orders WHERE id=$1',[order])).rows[0].seller_id,null);
    assert.equal((await db.query('SELECT count(*)::int n FROM public.wallet_transactions WHERE paymob_transaction_id=555')).rows[0].n,1);
+ });
+ await db.exec(fs.readFileSync('supabase/migrations-proposed/20260913190700_moderation_controls.sql','utf8'));
+ const moderator='55555555-5555-4555-8555-555555555555';
+ await db.query("INSERT INTO auth.users(id,email) VALUES($1,'moderator@example.invalid')",[moderator]);
+ await db.query('UPDATE public.user_profiles SET is_admin=true WHERE id=$1',[moderator]);
+ await test('Content filtering covers direct listing and message writes',async()=>{
+   await denied('authenticated',C,"INSERT INTO public.products(title,description,category,price,seller_id) VALUES('buy cocaine','test','Other',10,$1)",[C]);
+   const testRoom=(await as('authenticated',C,'INSERT INTO public.chat_rooms(participant_ids) VALUES(ARRAY[$1::uuid,$2::uuid]) RETURNING id',[C,moderator])).rows[0].id;
+   await denied('authenticated',C,"INSERT INTO public.messages(room_id,sender_id,content) VALUES($1,$2,'child pornography')",[testRoom,C]);
+   await as('authenticated',C,"INSERT INTO public.messages(room_id,sender_id,content) VALUES($1,$2,'Is the item still available?')",[testRoom,C]);
+ });
+ await test('Moderator actions are server-only and removal cannot be reversed by the seller',async()=>{
+   const listing=(await as('authenticated',C,"INSERT INTO public.products(title,description,category,price,seller_id) VALUES('Review fixture','test','Other',10,$1) RETURNING id",[C])).rows[0].id;
+   const report=(await as('authenticated',moderator,"SELECT public.report_content('listing',$1,'Review fixture')",[listing])).rows[0].report_content;
+   await denied('authenticated',C,"SELECT public.admin_review_content_report($1,$2,'remove',NULL)",[moderator,report]);
+   await denied('service_role',null,"SELECT public.admin_review_content_report($1,$2,'remove',NULL)",[C,report]);
+   await as('service_role',null,"SELECT public.admin_review_content_report($1,$2,'remove','Test removal')",[moderator,report]);
+   assert.equal((await as('authenticated',C,'SELECT id FROM public.products WHERE id=$1',[listing])).rows.length,0);
+   await as('authenticated',C,"UPDATE public.products SET status='active' WHERE id=$1",[listing]);
+   assert.equal((await db.query('SELECT status FROM public.products WHERE id=$1',[listing])).rows[0].status,'removed');
+   assert.equal((await as('authenticated',C,'SELECT id FROM public.content_reports WHERE id=$1',[report])).rows.length,0);
+ });
+ await test('Moderator suspension rejects old tokens',async()=>{
+   const report=(await as('authenticated',moderator,"SELECT public.report_content('user',$1,'Repeated abuse')",[C])).rows[0].report_content;
+   await as('service_role',null,"SELECT public.admin_review_content_report($1,$2,'suspend','Test suspension')",[moderator,report]);
+   assert.equal((await as('service_role',null,'SELECT public.account_is_active($1) active',[C])).rows[0].active,false);
+   await denied('authenticated',C,"SELECT public.update_my_profile('changed',NULL,NULL)");
  });
  console.log(checks+' database security checks passed.');await db.close();
 })().catch(async e=>{console.error(e.message);process.exitCode=1;await db.close();});

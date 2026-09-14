@@ -53,7 +53,7 @@ export default function PayoutSettingsScreen() {
 
   const loadData = async () => {
     // Classifieds mode: nothing here can be reached, so don't even fetch.
-    if (!PAYMENTS_ENABLED) { setLoading(false); return; }
+    if (!PAYMENTS_ENABLED) return;
     if (!user) return;
     try {
       const [methodsData, walletData] = await Promise.all([
@@ -70,6 +70,7 @@ export default function PayoutSettingsScreen() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Starts the user's remote payout-settings request.
     loadData();
   }, [user]);
 

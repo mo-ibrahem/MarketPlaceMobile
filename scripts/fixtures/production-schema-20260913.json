@@ -1366,7 +1366,7 @@
       "nullable": "YES"
     },
     {
-      "type": "varchar",
+      "type": "varchar(255)",
       "table": "user_profiles",
       "column": "full_name",
       "default": null,
@@ -1527,7 +1527,7 @@
       "nullable": "YES"
     },
     {
-      "type": "varchar",
+      "type": "varchar(255)",
       "table": "public_profiles",
       "column": "full_name",
       "default": null,

@@ -270,9 +270,9 @@ export default function ProfileScreen() {
     // Guideline 5.1.1(v): deletion must be real and in-app. The RPC either
     // removes the account or throws; nothing is claimed on a thrown error.
     const doDelete = async () => {
-      let deletionStatus: 'complete' | 'pending';
+      let result: { status: 'complete' | 'pending'; receipt?: string };
       try {
-        deletionStatus = await deleteMyAccount();
+        result = await deleteMyAccount();
       } catch (err: any) {
         const msg = isBackendMissing(err)
           ? `In-app deletion is temporarily unavailable. Please try again or contact ${SAFETY_EMAIL}.`
@@ -283,15 +283,15 @@ export default function ProfileScreen() {
       }
       await auth.signOut();
       Toast.show({ type: 'success',
-        text1: deletionStatus === 'complete' ? 'Account deleted' : 'Deletion requested',
-        text2: deletionStatus === 'complete' ? 'Your account and uploaded content have been removed.' : 'Access is disabled. Cleanup finishes automatically within a few minutes.',
+        text1: result.status === 'complete' ? 'Account deleted' : 'Deletion requested',
+        text2: result.status === 'complete' ? 'Your account and uploaded content have been removed.' : 'Access is disabled. You can check cleanup progress on the next screen.',
       });
-      router.replace('/login');
+      router.replace(result.receipt ? { pathname: '/account-deletion', params: { receipt: result.receipt } } : '/login');
     };
 
     const body =
       'This permanently deletes your account, listings, uploaded images and the messages you sent. You lose access immediately. ' +
-      'Records of completed transactions are kept as Egyptian commercial law requires, but are no longer linked to you. This cannot be undone.';
+      'Transaction records remain without your account identity; other people keep their own messages. Cleanup may continue automatically if a service is temporarily unavailable. This cannot be undone.';
 
     if (Platform.OS === 'web') {
       if (window.confirm(body)) await doDelete();

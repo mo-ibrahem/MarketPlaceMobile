@@ -1,52 +1,24 @@
-# Egbay Privacy Policy
+# Egbay privacy policy
+Updated 2026-09-13 — mobile classifieds and free live release.
 
-**Last updated:** August 2026
+Egbay uses account contact details, profile information, listings, photos, saved items and messages to operate the marketplace. Your chosen display name, avatar and active listings are public. Private conversations are restricted to participants. Do not place private contact information in your public display name or listings.
 
-Welcome to **Egbay** (com.moibrahem.MarketPlaceMobile). We take your privacy and data protection very seriously. This Privacy Policy outlines how your personal data is collected, used, protected, and your rights under applicable data protection regulations and Apple App Store guidelines.
+Free live sessions use the camera and microphone while broadcasting. Agora transmits live audio/video and Supabase stores session information and live-chat messages. Egbay does not offer recording in this release. Camera and microphone permissions are requested for the features that use them.
 
----
+The mobile release does not offer checkout, wallet top-ups, payouts or paid boosts. The Egbay website has separate payment features; payment-related records may exist for accounts used on the website. Payment card details are handled by Paymob.
 
-## 1. Information We Collect
+We use Supabase for authentication, storage and database hosting and Agora for streaming. Access policies restrict private account data. HTTPS/TLS protects data in transit. We do not sell your personal data.
 
-To provide a safe, secure, and reliable marketplace experience, we collect the following data:
+## Account deletion
+In the app, open Profile → Settings → Delete Account. Access is disabled as soon as the request is accepted. Cleanup removes the auth account, profile, uploaded objects and authored messages/reviews. Other participants keep their own messages. Transaction records remain without the deleted account identity; counterparty balances are not changed.
 
-- **Contact Information:** Full name, email address, phone number, and physical shipping address (for delivery and courier fulfillment).
-- **Authentication & Identifiers:** Account credentials (managed securely via Supabase Auth) and User ID.
-- **Financial & Transaction Information:** Purchase history, escrow status, and payout records. (Note: Payment card details are processed directly and securely by certified payment gateways like Paymob and are never stored on our servers).
-- **User Content:** Photos of items listed for sale and in-app chat messages between buyers and sellers.
-- **Identity Verification (Optional for Verified Sellers):** Identification documents required strictly for seller fraud prevention.
+Cleanup normally finishes during the request. Temporary service failures are retried automatically each minute. A status screen confirms completion or shows that cleanup is pending. Contact info@egbay.shop with the support reference if you need assistance. Provider backups follow the hosting provider's retention lifecycle and are not promised to disappear immediately.
 
----
+## العربية
+يجمع إيجي باي بيانات الحساب والملف الشخصي والإعلانات والصور والمفضلة والرسائل لتشغيل الخدمة. الاسم المعروض والصورة والإعلانات النشطة عامة، والمحادثات الخاصة متاحة للمشاركين فقط.
 
-## 2. How We Use Your Information
+يستخدم البث المباشر المجاني الكاميرا والميكروفون أثناء البث. تنقل Agora الصوت والفيديو، وتُحفظ بيانات الجلسة والدردشة عبر Supabase. لا يتيح هذا الإصدار تسجيل البث. لا يقدم إصدار الهاتف الدفع أو شحن المحفظة أو السحب أو ترويج الإعلانات المدفوع؛ للموقع خدمات دفع منفصلة.
 
-We use collected information solely for the following purposes:
-- Enabling secure sign-in and account management.
-- Processing product listings, buyer-seller communications, and order deliveries.
-- Managing escrow payments and seller earnings payouts.
-- Preventing fraud, spam, and ensuring platform trust and safety.
+لحذف الحساب: الملف الشخصي ← الإعدادات ← حذف الحساب. يُوقف الوصول عند قبول الطلب، ثم يُحذف الحساب والصور والمحتوى الذي أرسلته. يحتفظ الآخرون برسائلهم، وتبقى سجلات المعاملات دون ربطها بهوية الحساب المحذوف أو تغيير أرصدة الأطراف الأخرى. تُعاد المحاولة تلقائياً كل دقيقة عند حدوث عطل مؤقت، وتعرض شاشة الحالة اكتمال الحذف أو استمرار المعالجة. تخضع النسخ الاحتياطية لسياسة مزود الاستضافة.
 
----
-
-## 3. Third-Party Data Sharing
-
-We do **not** sell, rent, or trade your personal data with advertisers or data brokers. Data is shared exclusively with certified service providers essential for app operations:
-- **Payment Processing (Paymob):** For processing electronic card transactions securely.
-- **Courier & Logistics:** Delivery address and phone number provided to shipping partners solely to fulfill package delivery.
-- **Cloud Infrastructure & Backend (Supabase):** Secure database and authentication hosting with industry-standard 256-bit encryption.
-
----
-
-## 4. User Rights & Account Deletion
-
-In full compliance with Apple App Store Guidelines and global privacy laws:
-- You have the right to access, update, or permanently delete your account and all associated personal data at any time.
-- **Account Deletion:** You can delete your account instantly inside the app by going to **Profile → Delete Account (حذف الحساب نهائياً)** or by emailing us at **info@egbay.shop**.
-
----
-
-## 5. Contact Us
-
-If you have any questions, concerns, or requests regarding this Privacy Policy, please contact our privacy and support team:
-- **Email:** info@egbay.shop
-- **Support GitHub:** https://github.com/mo-ibrahem/MarketPlaceMobile
+Support and privacy contact: info@egbay.shop

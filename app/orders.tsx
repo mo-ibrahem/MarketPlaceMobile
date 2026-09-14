@@ -188,7 +188,7 @@ export default function OrdersScreen() {
 
   const fetchOrders = useCallback(async () => {
     // Classifieds mode: nothing here can be reached, so don't even fetch.
-    if (!PAYMENTS_ENABLED) { setLoading(false); setRefreshing(false); return; }
+    if (!PAYMENTS_ENABLED) return;
     if (!user) return;
     try {
       const data = await getUserOrders(user.id);
@@ -203,6 +203,7 @@ export default function OrdersScreen() {
   }, [user]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Synchronizes orders and loading state with the authenticated user.
     fetchOrders();
   }, [fetchOrders]);
 

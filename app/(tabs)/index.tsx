@@ -24,7 +24,7 @@ import { productService, type Product } from '../../src/services/lib/products';
 import { getUserOrders, type MarketplaceOrder } from '../../src/services/lib/orderService';
 import { getActiveLiveSessions, isGenuinelyLive, type LiveSession } from '../../src/services/lib/liveService';
 import { useAuth } from '../../hooks/useAuth';
-import { PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
+import { LIVE_ENABLED, PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 
 /**
  * Home, rebuilt around the product instead of around the marketplace.
@@ -90,13 +90,13 @@ export default function HomeScreen() {
   // What the hero shows depends on the viewer's state, so the home loads the
   // two things that can change it: their orders, and whether anyone is live.
   const loadContext = useCallback(async () => {
-    // Classifieds mode: no orders and no live sessions exist right now, so
-    // don't even fetch (see PLAN-CLASSIFIEDS-MODE.md).
-    if (!PAYMENTS_ENABLED) { setOrders([]); setLiveNow(null); return; }
+    // Each hero input has its own switch: orders exist only with payments,
+    // live sessions only with live. Neither is fetched when its feature is
+    // off in this build.
     try {
       const [o, l] = await Promise.all([
-        user ? getUserOrders(user.id) : Promise.resolve([]),
-        getActiveLiveSessions().catch(() => [] as LiveSession[]),
+        PAYMENTS_ENABLED && user ? getUserOrders(user.id) : Promise.resolve([] as MarketplaceOrder[]),
+        LIVE_ENABLED ? getActiveLiveSessions().catch(() => [] as LiveSession[]) : Promise.resolve([] as LiveSession[]),
       ]);
       setOrders(o);
       setLiveNow(l.find(isGenuinelyLive) ?? null);
@@ -165,9 +165,10 @@ export default function HomeScreen() {
    * photo rather than leave the hero looking empty.
    */
   const HERO_FRESH_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+  const [heroReferenceTime] = useState(() => Date.now());
   const heroListings = useMemo(() => {
     const withPhotos = products.filter(p => p.images?.[0]);
-    const now = Date.now();
+    const now = heroReferenceTime;
     const fresh = withPhotos.filter(p => now - new Date(p.created_at).getTime() < HERO_FRESH_WINDOW_MS);
     const pool = fresh.length >= 3 ? fresh : withPhotos;
     return [...pool]
@@ -176,7 +177,7 @@ export default function HomeScreen() {
         return byViews !== 0 ? byViews : new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       })
       .slice(0, 3);
-  }, [products]);
+  }, [products, heroReferenceTime]);
   const hero = heroListings[0];
   const heroW = Math.min(width, 520);
 

@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../hooks/useAuth";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { color, font, space, weight } from "../../src/design/tokens";
-import { PAYMENTS_ENABLED } from "../../src/services/lib/platformCommerce";
+import { LIVE_ENABLED, PAYMENTS_ENABLED } from "../../src/services/lib/platformCommerce";
 
 // Custom Sell tab icon — floating action button matching the web app
 function SellTabIcon({ label }: { label: string }) {
@@ -94,16 +94,15 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* Paused with orders while PAYMENTS_ENABLED is false: nobody can book
-          a stream without a wallet, so this would be a permanently empty tab
-          -- see PLAN-CLASSIFIEDS-MODE.md. href: null hides it from the bar
+      {/* Live has its own switch: it came back before payments did, with
+          passes free for now (see LIVE_ENABLED). href: null hides the tab
           without unregistering the route, so a stale link to /live still
-          resolves (and shows its own NotAvailableYet guard). */}
+          resolves and shows its own guard. */}
       <Tabs.Screen
         name="live"
         options={{
           title: L.live,
-          href: PAYMENTS_ENABLED ? undefined : null,
+          href: LIVE_ENABLED ? undefined : null,
           tabBarIcon: ({ color, focused }) => (
             <View style={{ position: 'relative' }}>
               <Video color={focused ? '#EF4444' : color} size={22} />

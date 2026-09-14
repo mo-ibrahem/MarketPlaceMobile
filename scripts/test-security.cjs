@@ -223,5 +223,50 @@ async function test(name, run) { await run(); count++; console.log('PASS', name)
     assert.equal(response.status, 200); assert.equal((await response.json()).token, 'test-role-1');
   });
 
+  await test('Free live session can issue its owner a host token', async () => {
+    liveSession.wallet_charge_id = null; liveSession.pass_price_egp = 0;
+    assert.equal((await handler(liveRequest())).status, 200);
+  });
+  await test('Unpaid non-free session cannot issue a token', async () => {
+    liveSession.pass_price_egp = 79;
+    assert.equal((await handler(liveRequest())).status, 403);
+  });
+
+  let deletionTarget, authDeleted = false, cleanupFailed = false, claimed = true;
+  load('supabase/functions/delete-account/index.ts', {
+    Deno: { env: { get: key => env[key] }, serve: callback => { handler = callback; } },
+    require: () => ({ createClient: () => ({
+      auth: { getUser: async () => ({ data: { user: { id: 'actual-user' } }, error: null }),
+        admin: { deleteUser: async () => { authDeleted = true; return { error: null }; } } },
+      rpc: async (name, params) => {
+        if(name === 'authorize_cleanup_worker') return { data: false, error: null };
+        if(name === 'begin_account_deletion') { deletionTarget = params.p_user_id; return { error: null }; }
+        if(name === 'claim_account_deletions') return { data: claimed ? [{ user_id: 'actual-user' }] : [], error: null };
+        if(name === 'account_storage_objects') return { data: [], error: cleanupFailed ? new Error('storage outage') : null };
+        return { error: null };
+      },
+      from: () => ({ select: () => ({ eq: () => ({ single: async () => ({ data: { receipt: 'private-receipt' } }) }) }),
+        update: () => ({ eq: async () => ({ error: null }) }) }),
+    }) }),
+  });
+  const deleteRequest = headers => new Request('https://example.test', { method: 'POST', headers,
+    body: JSON.stringify({ user_id: 'someone-else' }) });
+  await test('Account deletion requires authentication', async () => assert.equal((await handler(deleteRequest({}))).status,401));
+  await test('Forged cleanup worker cannot delete accounts', async () => assert.equal((await handler(deleteRequest({'x-cleanup-secret':'forged'}))).status,401));
+  await test('Deletion ignores caller-supplied target and confirms real auth removal', async () => {
+    const response=await handler(deleteRequest({authorization:'Bearer test-user'}));
+    assert.equal(deletionTarget,'actual-user');assert.equal(authDeleted,true);
+    assert.equal((await response.json()).status,'complete');
+  });
+  await test('Storage failure is pending, never falsely complete', async () => {
+    authDeleted=false;cleanupFailed=true;
+    const response=await handler(deleteRequest({authorization:'Bearer test-user'}));
+    assert.equal(response.status,202);assert.equal(authDeleted,false);assert.equal((await response.json()).status,'pending');
+  });
+  await test('An already leased deletion remains pending', async () => {
+    claimed=false;cleanupFailed=false;
+    const response=await handler(deleteRequest({authorization:'Bearer test-user'}));
+    assert.equal(response.status,202);assert.equal(authDeleted,false);
+  });
   console.log(count + ' security checks passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -15,6 +15,7 @@ Deno.serve(async (req: Request) => {
   if (!url || !key) return reply(503, { error: 'Account deletion unavailable' });
   const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   let userId: string | null = null;
+  let receipt: string | undefined;
   const workerSecret = req.headers.get('x-cleanup-secret');
   if (workerSecret) {
     const { data, error } = await admin.rpc('authorize_cleanup_worker', { p_secret: workerSecret });
@@ -29,9 +30,11 @@ Deno.serve(async (req: Request) => {
     userId = user.id;
     const { error: beginError } = await admin.rpc('begin_account_deletion', { p_user_id: userId });
     if (beginError) return reply(503, { error: 'Could not start account deletion. Please try again.' });
+    const { data: job } = await admin.from('account_deletion_jobs').select('receipt').eq('user_id', userId).single();
+    receipt = job?.receipt;
   }
   const { data: jobs, error: claimError } = await admin.rpc('claim_account_deletions', { p_user_id: userId });
-  if (claimError) return reply(userId ? 202 : 503, { status: 'pending' });
+  if (claimError) return reply(userId ? 202 : 503, { status: 'pending', receipt });
   let completed = false;
   for (const job of jobs ?? []) {
     try {
@@ -48,14 +51,15 @@ Deno.serve(async (req: Request) => {
         }
       }
       if (!drained) throw new Error('More storage cleanup remains');
-      // purge_account_data scrubs the person's data, keeps the marketplace's
-      // records of their transactions with other people, and ends by
-      // anonymising + permanently banning the auth row. It does not delete
-      // auth.users: orders.buyer_id/seller_id are ON DELETE RESTRICT, so a
-      // hard delete would fail for any user with history, and cascading
-      // through products would take other people's orders with it.
+      // Erase personal content before deleting auth. Nullable financial FKs
+      // retain transaction records without deleting counterpart balances.
       const { error: purgeError } = await admin.rpc('purge_account_data', { p_user_id: job.user_id });
       if (purgeError) throw purgeError;
+      const { error: deleteError } = await admin.auth.admin.deleteUser(job.user_id);
+      if (deleteError) {
+        const { error: lookupError } = await admin.auth.admin.getUserById(job.user_id);
+        if (lookupError?.status !== 404 && lookupError?.code !== 'user_not_found') throw deleteError;
+      }
       const { error: finishError } = await admin.from('account_deletion_jobs').update({
         status: 'complete', completed_at: new Date().toISOString(), lease_until: null,
       }).eq('user_id', job.user_id);
@@ -67,6 +71,5 @@ Deno.serve(async (req: Request) => {
       await admin.from('account_deletion_jobs').update({ status: 'pending', lease_until: null }).eq('user_id', job.user_id);
     }
   }
-  return reply(userId && !completed ? 202 : 200, { status: completed ? 'complete' : userId ? 'pending' : 'processed' });
+  return reply(userId && !completed ? 202 : 200, { status: completed ? 'complete' : userId ? 'pending' : 'processed', receipt });
 });
-

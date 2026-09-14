@@ -83,7 +83,7 @@ export default function CheckoutScreen() {
 
   useEffect(() => {
     // Classifieds mode: nothing here can be reached, so don't even fetch.
-    if (!PAYMENTS_ENABLED) { setLoading(false); return; }
+    if (!PAYMENTS_ENABLED) return;
     async function loadData() {
       if (!productId) return;
       try {

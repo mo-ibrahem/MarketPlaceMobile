@@ -163,6 +163,7 @@ export default function ProductDetailScreen() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Loading state belongs to the request for the new product/user.
     if (id) loadProduct();
   }, [id, user]);
 

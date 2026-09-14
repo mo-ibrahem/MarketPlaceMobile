@@ -61,6 +61,7 @@ export default function NotificationsScreen() {
     }
   }, [user, isRTL]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Reload also clears private results when the authenticated user changes.
   useEffect(() => { load(); }, [load]);
 
   const handleOpen = async (n: AppNotification) => {

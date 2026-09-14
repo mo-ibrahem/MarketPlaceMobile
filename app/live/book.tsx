@@ -14,8 +14,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle2, AlertCircle, Video, Wallet } from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
-import { bookLiveSession, LIVE_PASSES, type LivePassTier } from '../../src/services/lib/liveService';
-import { DIGITAL_PURCHASES_ENABLED, PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
+import { bookLiveSession, getLivePassesAreFree, LIVE_PASSES, type LivePassTier } from '../../src/services/lib/liveService';
+import { DIGITAL_PURCHASES_ENABLED, LIVE_ENABLED, PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 import NotAvailableYet from '../../src/components/NotAvailableYet';
 import { getUserWallet } from '../../src/services/lib/walletService';
 import { supabase } from '../../src/services/lib/supabase';
@@ -39,26 +39,36 @@ export default function BookLiveScreen() {
   const [titleAr, setTitleAr] = useState('');
   const [category, setCategory] = useState('Electronics');
   const [balance, setBalance] = useState(0);
+  // Server-decided. While true the RPC books at 0 and nothing is debited;
+  // the screen only says "free" because the database did.
+  const [passesFree, setPassesFree] = useState(false);
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Classifieds mode: nothing here can be reached, so don't even fetch.
-    if (!PAYMENTS_ENABLED) { setLoading(false); return; }
+    // Live is off in this build: nothing here can be reached, so don't even fetch.
+    if (!LIVE_ENABLED) return;
     if (!user) return;
-    getUserWallet(user.id)
-      .then((wallet) => {
-        setBalance(wallet?.available_balance ?? 0);
+    (async () => {
+      try {
+        const free = await getLivePassesAreFree();
+        setPassesFree(free);
+        // The wallet only matters when a pass costs something -- and in
+        // classifieds mode there is no wallet to read at all.
+        if (!free && PAYMENTS_ENABLED) {
+          const wallet = await getUserWallet(user.id).catch(() => null);
+          setBalance(wallet?.available_balance ?? 0);
+        }
+      } finally {
         setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-      });
+      }
+    })();
   }, [user]);
 
   const selectedPass = LIVE_PASSES.find(p => p.tier === selectedTier)!;
-  const canAfford = balance >= selectedPass.priceEGP;
+  const priceNow = passesFree ? 0 : selectedPass.priceEGP;
+  const canAfford = passesFree || balance >= selectedPass.priceEGP;
 
   const handleBook = async () => {
     if (!user || !title.trim()) return;
@@ -80,9 +90,8 @@ export default function BookLiveScreen() {
     }
   };
 
-  // Classifieds mode: live booking is a paid digital feature that does not
-  // exist right now at all (see PLAN-CLASSIFIEDS-MODE.md).
-  if (!PAYMENTS_ENABLED) {
+  // Live is off in this build (LIVE_ENABLED).
+  if (!LIVE_ENABLED) {
     return <NotAvailableYet />;
   }
 
@@ -91,9 +100,10 @@ export default function BookLiveScreen() {
   }
 
   // App Store Review Guideline 3.1.1 / 3.1.3: paid digital features must use
-  // in-app purchase. This screen sells one without StoreKit, so on iOS it
-  // must not be reachable at all, deep links included. Say so plainly.
-  if (!DIGITAL_PURCHASES_ENABLED) {
+  // in-app purchase. A free pass is not a purchase, so the guard only applies
+  // the day the server starts charging; then on iOS this screen must not be
+  // reachable at all, deep links included. Say so plainly.
+  if (!passesFree && !DIGITAL_PURCHASES_ENABLED) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', padding: 28 }}>
         <Text style={{ fontSize: 20, fontWeight: '800', color: '#0F172A', letterSpacing: -0.4, textAlign: 'center' }}>Not available on iOS yet</Text>
@@ -121,7 +131,16 @@ export default function BookLiveScreen() {
 
       <ScrollView contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 80 }]} showsVerticalScrollIndicator={false}>
 
-        {/* Wallet Balance */}
+        {/* Free-for-now notice, or the wallet balance when a pass costs money */}
+        {passesFree ? (
+          <View style={[s.walletCard, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
+            <CheckCircle2 color="#059669" size={18} />
+            <View style={{ flex: 1 }}>
+              <Text style={[s.walletLabel, { color: '#047857' }]}>البث مجاني حالياً</Text>
+              <Text style={{ fontSize: 12, color: '#065F46', marginTop: 2 }}>لن يُخصم أي مبلغ. سنعلمك قبل أي تغيير في الأسعار.</Text>
+            </View>
+          </View>
+        ) : (
         <View style={s.walletCard}>
           <Wallet color="#10B981" size={18} />
           <View>
@@ -134,12 +153,13 @@ export default function BookLiveScreen() {
             </TouchableOpacity>
           )}
         </View>
+        )}
 
         {/* Pass Selection */}
         <Text style={s.sectionLabel}>اختر باقة البث</Text>
         {LIVE_PASSES.map(pass => {
           const isSelected = selectedTier === pass.tier;
-          const affordable = balance >= pass.priceEGP;
+          const affordable = passesFree || balance >= pass.priceEGP;
           return (
             <TouchableOpacity
               key={pass.tier}
@@ -161,8 +181,14 @@ export default function BookLiveScreen() {
                   </View>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={[s.passPrice, isSelected && { color: '#1D4ED8' }]}>{pass.priceEGP}</Text>
-                  <Text style={s.passCurrency}>ج.م</Text>
+                  {passesFree ? (
+                    <Text style={[s.passPrice, { color: '#059669', fontSize: 16 }]}>مجاناً</Text>
+                  ) : (
+                    <>
+                      <Text style={[s.passPrice, isSelected && { color: '#1D4ED8' }]}>{pass.priceEGP}</Text>
+                      <Text style={s.passCurrency}>ج.م</Text>
+                    </>
+                  )}
                 </View>
               </View>
               {isSelected && (
@@ -220,15 +246,18 @@ export default function BookLiveScreen() {
         <View style={s.summaryCard}>
           <View style={s.summaryRow}>
             <Text style={s.summaryLabel}>سعر الباس:</Text>
-            <Text style={s.summaryValue}>{selectedPass.priceEGP} ج.م</Text>
+            <Text style={[s.summaryValue, passesFree && { color: '#059669' }]}>{passesFree ? 'مجاناً' : `${selectedPass.priceEGP} ج.م`}</Text>
           </View>
-          <View style={s.summaryRow}>
-            <Text style={s.summaryLabel}>الرصيد بعد الدفع:</Text>
-            <Text style={[s.summaryValue, { color: balance - selectedPass.priceEGP < 0 ? '#EF4444' : '#10B981' }]}>
-              {(balance - selectedPass.priceEGP).toLocaleString()} ج.م
-            </Text>
-          </View>
-          <Text style={s.summaryNote}>* عمولة إيجي باي ٤٪ على كل سلعة مباعة خلال البث</Text>
+          {!passesFree && (
+            <View style={s.summaryRow}>
+              <Text style={s.summaryLabel}>الرصيد بعد الدفع:</Text>
+              <Text style={[s.summaryValue, { color: balance - selectedPass.priceEGP < 0 ? '#EF4444' : '#10B981' }]}>
+                {(balance - selectedPass.priceEGP).toLocaleString()} ج.م
+              </Text>
+            </View>
+          )}
+          {/* The 4% sale commission only exists when in-app checkout does. */}
+          {PAYMENTS_ENABLED && <Text style={s.summaryNote}>* عمولة إيجي باي ٤٪ على كل سلعة مباعة خلال البث</Text>}
         </View>
 
         {/* Book Button */}
@@ -240,9 +269,11 @@ export default function BookLiveScreen() {
         >
           {booking ? <ActivityIndicator color="white" size="small" /> : <Video color="white" size={18} />}
           <Text style={s.bookBtnText}>
-            {canAfford
-              ? `احجز البث وادفع ${selectedPass.priceEGP} ج.م من المحفظة`
-              : 'رصيد غير كافٍ — اشحن محفظتك أولاً'}
+            {passesFree
+              ? 'احجز البث — مجاناً'
+              : canAfford
+                ? `احجز البث وادفع ${priceNow} ج.م من المحفظة`
+                : 'رصيد غير كافٍ — اشحن محفظتك أولاً'}
           </Text>
         </TouchableOpacity>
 

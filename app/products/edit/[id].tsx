@@ -88,6 +88,7 @@ export default function EditProductScreen() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Loading state belongs to the request for the selected product.
     if (id) loadProduct();
   }, [id]);
 

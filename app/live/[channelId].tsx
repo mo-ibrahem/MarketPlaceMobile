@@ -2,6 +2,7 @@ import { inlineScriptValue } from '../../src/services/lib/paymentSafety';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -17,6 +18,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import {
   ArrowLeft,
+  Flag,
   ChevronDown,
   Heart,
   MessageSquare,
@@ -27,6 +29,8 @@ import {
   X,
 } from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
+import Toast from 'react-native-toast-message';
+import { isBackendMissing, reportContent, SAFETY_EMAIL } from '../../src/services/lib/moderationService';
 import {
   getLiveSessionByChannel,
   getRecentChatMessages,
@@ -38,7 +42,7 @@ import {
 } from '../../src/services/lib/liveService';
 import { supabase } from '../../src/services/lib/supabase';
 import NotAvailableYet from '../../src/components/NotAvailableYet';
-import { PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
+import { LIVE_ENABLED } from '../../src/services/lib/platformCommerce';
 
 const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || 'f9fd0dadb9674b698d234f4551d6100b';
 
@@ -59,27 +63,40 @@ function buildViewerHTML(appId: string, token: string, channel: string, uid: num
 <div id="remote-video"></div>
 <script src="https://cdn.agora.io/sdk/release/AgoraRTC_N.js"></script>
 <script>
-const client = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
+const client = AgoraRTC.createClient({ mode: 'live', codec: 'h264' });
 const appId = ${inlineScriptValue(appId)};
 const token = ${inlineScriptValue(token)};
 const channel = ${inlineScriptValue(channel)};
-const uid = ${uid};
+const uid = ${inlineScriptValue(uid)};
+const loading = document.getElementById('loading');
+client.on('connection-state-change', (cur) => {
+  if (cur === 'RECONNECTING') { loading.textContent = 'إعادة الاتصال بالبث...'; loading.style.display = 'block'; }
+  else if (cur === 'CONNECTED') { loading.style.display = 'none'; }
+  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'STATE', state: cur }));
+});
 
 async function join() {
   try {
-    await client.setClientRole('audience');
+    // level 1 = interactive-live latency (the TikTok/Instagram feel, ~1-2s),
+    // rather than the 2-4s of plain broadcast. The host pays the same either way.
+    await client.setClientRole('audience', { level: 1 });
     await client.join(appId, channel, token, uid);
-    document.getElementById('loading').style.display = 'none';
+    loading.style.display = 'none';
 
     client.on('user-published', async (user, mediaType) => {
       await client.subscribe(user, mediaType);
       if (mediaType === 'video') {
-        const playerContainer = document.getElementById('remote-video');
-        user.videoTrack.play(playerContainer);
+        // On a weak connection drop to the host's low-quality stream, then to
+        // audio-only, instead of freezing on a frame.
+        client.setStreamFallbackOption(user.uid, 2).catch(() => {});
+        user.videoTrack.play(document.getElementById('remote-video'), { fit: 'cover' });
       }
       if (mediaType === 'audio') {
         user.audioTrack.play();
       }
+    });
+    client.on('stream-fallback', (uidF, direction) => {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'FALLBACK', direction }));
     });
 
     client.on('user-unpublished', (user, mediaType) => {
@@ -118,8 +135,8 @@ export default function LiveViewerScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    // Classifieds mode: nothing here can be reached, so don't even fetch.
-    if (!PAYMENTS_ENABLED) { setLoading(false); return; }
+    // Live is off in this build: nothing here can be reached, so don't even fetch.
+    if (!LIVE_ENABLED) return;
     if (!channelId) return;
 
     (async () => {
@@ -206,7 +223,9 @@ export default function LiveViewerScreen() {
   };
 
   const handleReaction = (emoji: string) => {
+    // eslint-disable-next-line react-hooks/purity -- Called only by the reaction button's onPress event.
     const id = Date.now();
+    // eslint-disable-next-line react-hooks/purity -- Random animation placement is chosen on a user press.
     const x = Math.random() * 70 + 15;
     setReactions(prev => [...prev, { id, emoji, x }]);
     setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 2200);
@@ -222,9 +241,8 @@ export default function LiveViewerScreen() {
     }
   };
 
-  // Classifieds mode: live viewing does not exist right now (see
-  // PLAN-CLASSIFIEDS-MODE.md).
-  if (!PAYMENTS_ENABLED) {
+  // Live is off in this build (LIVE_ENABLED).
+  if (!LIVE_ENABLED) {
     return <NotAvailableYet />;
   }
 
@@ -298,6 +316,38 @@ export default function LiveViewerScreen() {
             <Users color="#60A5FA" size={11} />
             <Text style={styles.viewersNum}>{viewerCount}</Text>
           </View>
+
+          {/* A live stream is user-generated content (Guideline 1.2): the
+              viewer must be able to report the person broadcasting. Writes a
+              content_reports row; no toast unless the RPC actually resolved. */}
+          {!!session?.seller_id && user?.id !== session.seller_id && (
+            <TouchableOpacity
+              onPress={() => {
+                const sellerId = session.seller_id;
+                const send = async (reason: string) => {
+                  try {
+                    await reportContent('user', sellerId, `${reason} (live ${session.id})`);
+                  } catch (err: any) {
+                    Alert.alert('لم يتم إرسال البلاغ', isBackendMissing(err)
+                      ? `الإبلاغ غير متاح مؤقتاً. راسلنا على ${SAFETY_EMAIL}.`
+                      : (err?.message || 'حاول مرة أخرى.'));
+                    return;
+                  }
+                  Toast.show({ type: 'success', text1: 'تم إرسال البلاغ', text2: 'سيراجعه فريق الأمان خلال ٢٤ ساعة' });
+                };
+                Alert.alert('الإبلاغ عن هذا البث', 'ما سبب البلاغ؟', [
+                  { text: 'إلغاء', style: 'cancel' },
+                  { text: 'محتوى غير لائق', onPress: () => send('Inappropriate live content') },
+                  { text: 'احتيال أو تضليل', onPress: () => send('Scam or misleading') },
+                  { text: 'سلع محظورة', onPress: () => send('Prohibited items') },
+                ]);
+              }}
+              style={styles.iconCircle}
+              accessibilityLabel="Report this stream"
+            >
+              <Flag color="white" size={16} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Pinned Product Card (Bottom left / overlay) */}

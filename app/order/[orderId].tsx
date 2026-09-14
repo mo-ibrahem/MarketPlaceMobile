@@ -224,7 +224,8 @@ export default function OrderDetailScreen() {
 
   useEffect(() => {
     // Classifieds mode: nothing here can be reached, so don't even fetch.
-    if (!PAYMENTS_ENABLED) { setLoading(false); return; }
+    if (!PAYMENTS_ENABLED) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Starts the selected order's request and loading lifecycle.
     reload();
     reloadReview();
   }, [orderId]);

@@ -7,19 +7,31 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": { "EXPO_PUBLIC_PAYMENTS_ENABLED": "false" }
+      "env": {
+        "EXPO_PUBLIC_PAYMENTS_ENABLED": "false",
+        "EXPO_PUBLIC_LIVE_ENABLED": "true"
+      }
     },
     "preview": {
       "distribution": "internal",
-      "env": { "EXPO_PUBLIC_PAYMENTS_ENABLED": "false" }
+      "env": {
+        "EXPO_PUBLIC_PAYMENTS_ENABLED": "false",
+        "EXPO_PUBLIC_LIVE_ENABLED": "true"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_PAYMENTS_ENABLED": "false" }
+      "env": {
+        "EXPO_PUBLIC_PAYMENTS_ENABLED": "false",
+        "EXPO_PUBLIC_LIVE_ENABLED": "true"
+      }
     },
     "payments-preview": {
       "distribution": "internal",
-      "env": { "EXPO_PUBLIC_PAYMENTS_ENABLED": "true" }
+      "env": {
+        "EXPO_PUBLIC_PAYMENTS_ENABLED": "true",
+        "EXPO_PUBLIC_LIVE_ENABLED": "true"
+      }
     }
   },
   "submit": {

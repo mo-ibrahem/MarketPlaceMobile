@@ -41,6 +41,7 @@ export function useChatRooms() {
     }
   }, [user]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Reload clears private conversations when the user signs out.
   useEffect(() => { reload(); }, [reload]);
 
   return { chatRooms, loading, reload };

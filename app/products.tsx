@@ -89,6 +89,7 @@ export default function ProductsScreen() {
   }, [category, search]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- The spinner tracks a new network request when search/category changes.
     setLoading(true);
     fetchProducts().finally(() => setLoading(false));
   }, [fetchProducts]);

@@ -39,10 +39,10 @@ Deno.serve(async (req: Request) => {
         !Number.isInteger(uid) || uid < 1 || uid > 4294967295 ||
         (role !== 'host' && role !== 'audience')) return reply(400, 'Invalid live session request');
     const { data: session, error } = await client.from('live_sessions')
-      .select('seller_id,status,wallet_charge_id')
+      .select('seller_id,status,wallet_charge_id,pass_price_egp')
       .eq('agora_channel', channelName).maybeSingle();
     if (error) return reply(503, 'Live video is temporarily unavailable');
-    if (!session || session.status !== 'live' || !session.wallet_charge_id)
+    if (!session || session.status !== 'live' || (session.pass_price_egp !== 0 && !session.wallet_charge_id))
       return reply(403, 'This live session is unavailable');
     if (role === 'host' && session.seller_id !== user.id)
       return reply(403, 'Only the session owner may broadcast');

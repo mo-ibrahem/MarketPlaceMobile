@@ -91,7 +91,7 @@ export default function WalletScreen() {
 
   const loadWalletData = useCallback(async () => {
     // Classifieds mode: nothing here can be reached, so don't even fetch.
-    if (!PAYMENTS_ENABLED) { setLoading(false); return; }
+    if (!PAYMENTS_ENABLED) return;
     if (!user) return;
     try {
       const [w, txs, pms, tier] = await Promise.all([
@@ -127,6 +127,7 @@ export default function WalletScreen() {
   const searchParams = useLocalSearchParams<{ success?: string; amount_cents?: string; id?: string; order?: string; txn_response_code?: string }>();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Starts the user's remote wallet request and loading lifecycle.
     loadWalletData();
 
     // Check if returning from Paymob approval on web or deep link

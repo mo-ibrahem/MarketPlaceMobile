@@ -93,14 +93,14 @@ export default function PrivacyPolicyScreen() {
 • حق الوصول والتعديل: يمكنك تعديل بياناتك الشخصية وإعلاناتك في أي وقت عبر صفحة الملف الشخصي.
 • حق نقل البيانات: يمكنك طلب نسخة كاملة من سجل معاملاتك وبياناتك المسجلة.
 • حق الحذف النهائي للحساب والبيانات:
-  ١. عبر التطبيق: الملف الشخصي ← الإعدادات ← "حذف الحساب نهائياً". يتم حذف ملفك الشخصي وإعلاناتك وبياناتك المحفوظة فوراً.
-  ٢. عبر البريد الإلكتروني: مراسلتنا على info@egbay.shop من البريد المسجل، ويتم التنفيذ خلال ٧٢ ساعة.
-  تُحتفظ سجلات الطلبات المكتملة كما يقتضي قانون التجارة المصري، لكنها تُفصل نهائياً عن أي بيانات تعريفية.`,
+  ١. عبر التطبيق: الملف الشخصي ← الإعدادات ← "حذف الحساب نهائياً". يتم إيقاف الوصول إلى حسابك فوراً، ثم حذف الحساب والصور والمحتوى الذي أرسلته. إذا كان الحذف قيد التنفيذ، يعرض التطبيق حالة الطلب وتُعاد المحاولة تلقائياً.
+  ٢. عبر البريد الإلكتروني: مراسلتنا على info@egbay.shop من البريد المسجل، للمساعدة أو الاستفسار عن حالة طلب الحذف.
+  تُحتفظ سجلات المعاملات دون ربطها بهوية حسابك، ويحتفظ المشاركون الآخرون برسائلهم. تخضع النسخ الاحتياطية لسياسة الاحتفاظ الخاصة بمزود الاستضافة.`,
     },
     {
       id: 'security',
       title: '٦. معايير الأمان والتشفير',
-      content: `• يتم تشفير جميع الاتصالات عبر شهادات SSL/TLS 256-bit عالية الأمان.
+      content: `• تُحمى الاتصالات أثناء النقل باستخدام HTTPS/TLS.
 • المحادثات الخاصة بين المشترين والبائعين محمية بقواعد الأمان الصارمة على مستوى الصفوف (RLS).
 • مستندات إثبات الشخصية تخضع لمستويات حماية مشددة مع روابط مؤقتة ومنتهية الصلاحية.`,
     },
@@ -168,15 +168,15 @@ Data is shared strictly with authorized partners necessary for platform operatio
 • Right to Access & Rectify: Edit your profile details at any time in Profile Settings.
 • Right to Data Portability: Request an export of your order history.
 • Right to Permanent Erasure (Account Deletion):
-  1. In-App: Profile → Settings → "Delete Account". Your profile, listings and saved data are removed immediately.
-  2. By Email: Send a deletion request to info@egbay.shop from your registered address; we act within 72 hours.
-  Completed order records are retained as required by Egyptian commercial law but are permanently unlinked from any personal identifiers.`,
+  1. In-App: Profile → Settings → "Delete Account". Access to your account is disabled immediately. Your account, uploads and authored content are then deleted. If cleanup is pending, the app shows a status screen and automatically retries.
+  2. By Email: Send a deletion request to info@egbay.shop from your registered address; contact us for help or the status of a deletion request.
+  Transaction records remain without your account identity. Other participants keep their own messages. We do not promise immediate removal from provider backups; those follow the hosting provider’s retention lifecycle.`,
     },
     {
       id: 'security',
       title: '6. Security Architecture & Encryption',
-      content: `• 256-bit TLS/SSL encryption for all data in transit.
-• Database Row-Level Security (RLS) guarantees chat and order privacy.
+      content: `• HTTPS/TLS protects data in transit.
+• Database access policies restrict private conversations and account data to authorized users.
 • National ID documents stored in isolated private storage with expiring URLs.`,
     },
   ];
@@ -206,8 +206,9 @@ Data is shared strictly with authorized partners necessary for platform operatio
 • بيانات الحساب المشفرة عبر Supabase Authentication بنظام حماية Row-Level Security.
 • عنوان البروتوكول (IP) ونوع الجهاز لضمان أمان الحساب ومنع الاختراق.
 
-ج. بيانات الإعلانات والدردشة:
+ج. بيانات الإعلانات والدردشة والبث:
 • عناوين الإعلانات، الصور، الأسعار، ورسائل المحادثة بين المشترين والبائعين.
+• عند البث المباشر: الصوت والصورة أثناء البث (لا يتم تخزينهما)، ورسائل دردشة البث.
 
 لا تقوم إيجي باي حالياً بجمع أو معالجة أي بيانات دفع أو حسابات بنكية، لأن التطبيق لا يُجري أي عملية دفع بين المستخدمين.`,
     },
@@ -232,7 +233,7 @@ Data is shared strictly with authorized partners necessary for platform operatio
     {
       id: 'security',
       title: '٦. معايير الأمان والتشفير',
-      content: `• يتم تشفير جميع الاتصالات عبر شهادات SSL/TLS 256-bit عالية الأمان.
+      content: `• تُحمى الاتصالات أثناء النقل باستخدام HTTPS/TLS.
 • المحادثات الخاصة بين المشترين والبائعين محمية بقواعد الأمان الصارمة على مستوى الصفوف (RLS).`,
     },
   ];
@@ -252,8 +253,9 @@ B. Authentication & Security Data:
 • Passwords securely hashed via Supabase Auth with Row-Level Security (RLS).
 • Session tokens, device IP address for fraud prevention.
 
-C. Listings & Chat Data:
+C. Listings, Chat & Live Data:
 • Listing titles, photos, prices, and messages exchanged between buyers and sellers.
+• When you go live: your camera and microphone during the stream (not recorded), and the stream's chat messages.
 
 EgyBay does not currently collect or process any payment or bank account data, because the app does not run any payment between users.`,
     },
@@ -279,7 +281,7 @@ Data is shared strictly with authorized partners necessary for platform operatio
       id: 'security',
       title: '6. Security Architecture & Encryption',
       content: `• 256-bit TLS/SSL encryption for all data in transit.
-• Database Row-Level Security (RLS) guarantees chat and order privacy.`,
+• Database access controls restrict access to private chats and orders. No system can guarantee absolute security.`,
     },
   ];
 
