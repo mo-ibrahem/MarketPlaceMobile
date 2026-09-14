@@ -43,8 +43,7 @@ import {
 import { supabase } from '../../src/services/lib/supabase';
 import NotAvailableYet from '../../src/components/NotAvailableYet';
 import { LIVE_ENABLED } from '../../src/services/lib/platformCommerce';
-
-const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || 'f9fd0dadb9674b698d234f4551d6100b';
+import { AGORA_APP_ID } from '../../src/services/lib/agoraConfig';
 
 function buildViewerHTML(appId: string, token: string, channel: string, uid: number): string {
   return `<!DOCTYPE html>

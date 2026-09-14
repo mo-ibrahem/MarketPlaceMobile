@@ -200,6 +200,21 @@ export async function startLiveSession(sessionId: string, uid: number): Promise<
   return { token, channel: session.agora_channel };
 }
 
+/**
+ * The broadcast never started (Agora refused to join/publish), so put the
+ * session back to `scheduled`: viewers stop seeing a LIVE session with no
+ * video, and the seller can press Go Live again. `ended` would be final --
+ * validate_live_transition refuses to reopen an ended session.
+ */
+export async function revertLiveSessionToScheduled(sessionId: string): Promise<void> {
+  const { error } = await supabase
+    .from('live_sessions')
+    .update({ status: 'scheduled' })
+    .eq('id', sessionId)
+    .eq('status', 'live');
+  if (error) throw error;
+}
+
 export async function endLiveSession(sessionId: string): Promise<void> {
   const { error } = await supabase
     .from('live_sessions')

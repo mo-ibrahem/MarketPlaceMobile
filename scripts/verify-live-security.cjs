@@ -71,6 +71,20 @@ async function scalar(table,id){return checked(await admin.from(table).select('*
  checked(await C.client.from('live_sessions').update({status:'live',started_at:new Date().toISOString()}).eq('id',live.id));
  await ok('Live chat host impersonation denied',async()=>assert.ok((await B.client.from('live_chat_messages').insert({session_id:live.id,user_id:B.id,username:'forged',message:'forged',is_host:true,msg_type:'chat'})).error));
  await ok('Normal audience chat still works',async()=>checked(await B.client.from('live_chat_messages').insert({session_id:live.id,user_id:B.id,username:'test',message:'hello',is_host:false,msg_type:'chat'})));
+ // The studio reverts a session whose broadcast never started (what build 26
+ // hit with an empty Agora App ID). Only the owner may, and it must be
+ // re-livable afterwards -- an `ended` row would be final.
+ await ok('Non-owner cannot revert a live session to scheduled',async()=>{
+   checked(await B.client.from('live_sessions').update({status:'scheduled'}).eq('id',live.id).eq('status','live'));
+   assert.equal((await scalar('live_sessions',live.id)).status,'live');
+ });
+ await ok('Owner reverts a failed broadcast to scheduled and can go live again',async()=>{
+   checked(await C.client.from('live_sessions').update({status:'scheduled'}).eq('id',live.id).eq('status','live'));
+   assert.equal((await scalar('live_sessions',live.id)).status,'scheduled');
+   assert.ok((await B.client.from('live_chat_messages').insert({session_id:live.id,user_id:B.id,username:'test',message:'not live',is_host:false,msg_type:'chat'})).error,'chat must close while scheduled');
+   checked(await C.client.from('live_sessions').update({status:'live'}).eq('id',live.id));
+   assert.equal((await scalar('live_sessions',live.id)).status,'live');
+ });
  checked(await C.client.from('live_sessions').update({status:'ended',ended_at:new Date().toISOString()}).eq('id',live.id));
  await ok('Ended sessions cannot be reopened',async()=>assert.ok((await C.client.from('live_sessions').update({status:'live'}).eq('id',live.id)).error));
  // A pending test order, without Paymob or wallet fulfillment.

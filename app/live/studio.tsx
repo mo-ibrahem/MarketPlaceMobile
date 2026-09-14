@@ -22,7 +22,7 @@ import {
 } from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
 import {
-  startLiveSession, endLiveSession,
+  startLiveSession, endLiveSession, revertLiveSessionToScheduled,
   pinProduct, unpinProduct,
   sendChatMessage, getRecentChatMessages,
   type LiveSession, type LiveChatMessage
@@ -31,10 +31,10 @@ import { productService } from '../../src/services/lib/products';
 import { supabase } from '../../src/services/lib/supabase';
 import NotAvailableYet from '../../src/components/NotAvailableYet';
 import { LIVE_ENABLED } from '../../src/services/lib/platformCommerce';
+import { AGORA_APP_ID } from '../../src/services/lib/agoraConfig';
 
 // Agora Studio runs via WebView since react-native-agora requires native rebuild
 // The WebView loads a self-contained Agora WebRTC host page
-const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID ?? '';
 
 function buildStudioHTML(appId: string, token: string, channel: string, uid: number): string {
   return `<!DOCTYPE html>
@@ -115,6 +115,10 @@ export default function StudioScreen() {
   const [hostUid, setHostUid] = useState(0);
   const [agoraToken, setAgoraToken] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
+  // True only after the WebView reported that Agora accepted the publish.
+  // The LIVE badge waits for this: the row is `live` in the database from
+  // the moment Go Live is pressed, but nobody can see anything until then.
+  const [published, setPublished] = useState(false);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [viewerCount, setViewerCount] = useState(0);
@@ -165,6 +169,9 @@ export default function StudioScreen() {
     setStarting(true);
     setError('');
     try {
+      // Fail here with a readable message rather than inside the WebView with
+      // Agora's "Invalid appid" (what build 26 showed when the ID was empty).
+      if (!AGORA_APP_ID) throw new Error('Live video is not configured in this build');
       const uid = 1 + Math.floor(Math.random() * 1000000);
       setHostUid(uid);
       const { token, channel } = await startLiveSession(sessionId, uid);
@@ -185,8 +192,15 @@ export default function StudioScreen() {
         text: 'إنهاء البث',
         style: 'destructive',
         onPress: async () => {
+          // endLiveSession throws on a refused update; stay on the screen
+          // with the reason instead of navigating away from a still-live row.
+          try {
+            if (sessionId) await endLiveSession(sessionId);
+          } catch (err: any) {
+            setError(err?.message || 'تعذر إنهاء البث');
+            return;
+          }
           webViewRef.current?.postMessage('END');
-          if (sessionId) await endLiveSession(sessionId);
           router.replace('/live' as any);
         },
       },
@@ -262,8 +276,19 @@ export default function StudioScreen() {
             mediaCapturePermissionGrantType="grant"
             onMessage={(e) => {
               const d = e.nativeEvent.data;
-              if (d === 'LIVE_STARTED') setIsLive(true);
-              else if (d.startsWith('ERROR:')) setError(d.slice(6));
+              if (d === 'LIVE_STARTED') { setIsLive(true); setPublished(true); }
+              else if (d.startsWith('ERROR:')) {
+                const message = d.slice(6);
+                if (published) { setError(message); return; }
+                // Agora never started the broadcast (build 26 hit this with an
+                // empty App ID). Take the session out of `live` so the viewer
+                // list does not advertise a stream nobody can watch, and go
+                // back to the Go Live screen with the reason visible.
+                setIsLive(false);
+                setAgoraToken(null);
+                if (sessionId) revertLiveSessionToScheduled(sessionId).catch(() => {});
+                setError(message);
+              }
             }}
           />
         ) : (
@@ -289,9 +314,9 @@ export default function StudioScreen() {
         {/* Top Overlay */}
         {isLive && (
           <View style={{ position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{ backgroundColor: '#EF4444', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ backgroundColor: published ? '#EF4444' : '#B45309', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: 'white' }} />
-              <Text style={{ fontSize: 11, fontWeight: '900', color: 'white' }}>LIVE</Text>
+              <Text style={{ fontSize: 11, fontWeight: '900', color: 'white' }}>{published ? 'LIVE' : 'جارٍ الاتصال…'}</Text>
             </View>
             <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Users color="#60A5FA" size={11} />
