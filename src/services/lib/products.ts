@@ -17,6 +17,15 @@ export interface Product {
    *  never read as stock the seller is holding. */
   fulfilment?: 'in_hand' | 'sourced_to_order'
   lead_time_days?: number | null
+  /** Set when the listing is for a catalogued model. */
+  model_id?: string | null
+  variant?: string | null
+  /** Filled in by the queries below for listings that carry no photos of
+   *  their own: the catalogue's photos for the model, and the credit the
+   *  licence requires. Only ever populated for New listings -- the
+   *  database refuses the combination for used ones. */
+  catalogue_photos?: string[]
+  catalogue_credit?: string | null
   created_at: string
   updated_at: string
   view_count?: number
@@ -39,6 +48,32 @@ export interface UserProfile {
   address?: string
   created_at: string
   updated_at: string
+}
+
+/**
+ * Fills in catalogue photos for any listing that has none of its own, in
+ * one round trip for the whole page rather than one per card.
+ */
+async function attachCataloguePhotos(products: Product[]): Promise<Product[]> {
+  const needy = products.filter(p => !p.images?.length && p.model_id)
+  if (!needy.length) return products
+
+  const modelIds = [...new Set(needy.map(p => p.model_id as string))]
+  const { data: photos } = await supabase
+    .from('product_model_photos')
+    .select('model_id, variant, url, credit, position')
+    .in('model_id', modelIds)
+    .order('position', { ascending: true })
+  if (!photos?.length) return products
+
+  return products.map(p => {
+    if (p.images?.length || !p.model_id) return p
+    const mine = photos.filter(x => x.model_id === p.model_id)
+    const forVariant = p.variant ? mine.filter(x => x.variant === p.variant) : []
+    const chosen = forVariant.length ? forVariant : mine.filter(x => !x.variant)
+    if (!chosen.length) return p
+    return { ...p, catalogue_photos: chosen.map(c => c.url), catalogue_credit: chosen[0].credit }
+  })
 }
 
 export const productService = {
@@ -156,7 +191,7 @@ export const productService = {
           isWishlisted: wishlistedProductIds.includes(product.id),
         }))
 
-      return productsWithSellers as Product[]
+      return await attachCataloguePhotos(productsWithSellers as Product[])
     }
 
     return products as Product[]
@@ -196,11 +231,12 @@ export const productService = {
         }
       }
 
-      return {
+      const [withCatalogue] = await attachCataloguePhotos([{
         ...product,
         seller: sellerProfile || { full_name: "Unknown Seller" },
         isWishlisted,
-      } as Product
+      } as Product])
+      return withCatalogue
     }
 
     return product as Product

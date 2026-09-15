@@ -1,39 +1,39 @@
-title,category,condition,price_egp,lead_time_days,photos,description
-iPhone 13 Pro 256GB,Electronics,Used,32500,3,iphone-13-pro-1.jpg|iphone-13-pro-2.jpg,"Battery health and exact condition confirmed with you before anything is agreed. Photos of the actual unit sent in chat."
-iPhone 14 Pro 256GB,Electronics,Used,41000,3,iphone-14-pro-1.jpg,"Battery health, box contents and condition confirmed in chat, with photos of the actual unit, before you commit."
-iPhone 15 Pro Max 256GB,Electronics,Used,52000,3,iphone-15-pro-max-1.jpg|iphone-15-pro-max-2.jpg,"Sourced on request. Battery health and condition confirmed with photos of the actual unit before you commit."
-Samsung Galaxy S24 Ultra 256GB,Electronics,Used,44000,3,s24-ultra-1.jpg,"S Pen included. Photos and condition of the actual unit sent to you before you agree."
-Xiaomi Redmi Note 13 Pro 256GB,Electronics,New,15500,2,redmi-note-13-pro-1.jpg,"Sealed, with local warranty."
-MacBook Air 13-inch M3 16GB 256GB,Electronics,New,62500,5,macbook-air-m3-1.jpg,"Sealed. Serial and condition confirmed with you before you commit."
-MacBook Air 13-inch M2 8GB 256GB,Electronics,Used,41000,5,macbook-air-m2-1.jpg,"Cycle count and condition confirmed, with photos of the actual machine, before anything is agreed."
-AirPods Pro 2 USB-C,Electronics,New,11500,2,airpods-pro-2-1.jpg,"2nd generation, USB-C case, sealed."
-Sony WH-1000XM5 headphones,Electronics,New,19500,3,sony-xm5-1.jpg,"Sealed, with warranty. Noise cancelling over-ear."
-Apple Watch Series 9 45mm GPS,Electronics,Used,17500,3,apple-watch-s9-1.jpg,"Battery health and condition confirmed before you commit."
-Samsung 55-inch 4K smart TV,Electronics,New,26000,5,samsung-tv-55-1.jpg,"Sealed, with local warranty. Delivery and setup can be arranged."
-PlayStation 5 Slim disc edition,Toys,New,34500,4,ps5-slim-1.jpg,"Sealed, one DualSense controller. Ask about bundles with a second pad or a game."
-PlayStation 5 Slim digital edition,Toys,New,27500,4,ps5-digital-1.jpg,"Sealed, one DualSense controller. No disc drive, games are download only."
-Xbox Series S 512GB,Toys,New,17500,4,xbox-series-s-1.jpg,"Sealed, one controller. Digital only."
-Nintendo Switch OLED,Toys,New,21000,5,switch-oled-1.jpg,"Sealed, OLED model with dock and Joy-Cons."
-DualSense controller,Toys,New,3900,2,dualsense-1.jpg,"Sealed, for PS5. Colour options available, ask in chat."
-Air fryer 5.5L,Home,New,4200,3,air-fryer-1.jpg,"Sealed, with warranty. Ask about capacity options."
-Front-load washing machine 8kg,Home,New,24500,5,washing-machine-1.jpg,"Sealed, with warranty. Delivery and installation can be arranged."
-Refrigerator 16 cu ft no-frost,Home,New,38000,6,fridge-1.jpg,"Sealed, with warranty. Delivery arranged after we agree."
-Microwave oven 25L,Home,New,5800,3,microwave-1.jpg,"Sealed, with warranty."
-Robot vacuum cleaner,Home,New,12500,4,robot-vacuum-1.jpg,"Sealed, with warranty and app control."
-Espresso machine,Home,New,9500,4,espresso-machine-1.jpg,"Sealed, with warranty. Ask which model is in stock this week."
-Nike Air Force 1 sneakers,Fashion,New,4200,4,air-force-1-1.jpg,"Genuine, sizes 40-45. Tell me your size in chat and I confirm availability before you commit."
-Adidas Ultraboost running shoes,Fashion,New,5600,4,ultraboost-1.jpg,"Genuine, sizes 40-45. Confirm your size in chat first."
-Men's leather jacket,Fashion,New,3200,4,leather-jacket-1.jpg,"Real leather. Sizes M to XXL, confirm in chat."
-Women's handbag,Fashion,New,2400,4,handbag-1.jpg,"Ask in chat for the colours available this week."
-Hair dryer with diffuser,Beauty,New,3100,3,hair-dryer-1.jpg,"Sealed, with warranty."
-Hair straightener ceramic,Beauty,New,2300,3,hair-straightener-1.jpg,"Sealed, with warranty."
-Skincare set cleanser toner moisturiser,Beauty,New,1450,3,skincare-set-1.jpg,"Sealed. Ask in chat which brands are available."
-Electric shaver,Beauty,New,3800,3,shaver-1.jpg,"Sealed, with warranty. Rechargeable, washable head."
-Adjustable dumbbell set 24kg,Sports,New,6800,5,dumbbells-1.jpg,"Adjustable pair. Delivery arranged after we agree."
-Treadmill foldable,Sports,New,27000,7,treadmill-1.jpg,"Foldable, with warranty. Delivery and setup arranged."
-Mountain bike 29-inch,Sports,New,12500,6,mountain-bike-1.jpg,"21-speed, aluminium frame. Assembled before delivery."
-Yoga mat and resistance band set,Sports,New,900,3,yoga-set-1.jpg,"Non-slip mat with a set of bands."
-Dashcam 1080p,Automotive,New,2900,3,dashcam-1.jpg,"Front-facing, loop recording, night vision."
-Car vacuum cleaner,Automotive,New,1400,3,car-vacuum-1.jpg,"12V, with attachments."
-Car phone holder magnetic,Automotive,New,450,2,phone-holder-1.jpg,"Magnetic, vent or dashboard mount."
-Car battery 70Ah,Automotive,New,5200,4,car-battery-1.jpg,"With warranty. Fitting can be arranged."
+title,category,condition,price_egp,lead_time_days,photos,description,model,variant
+iPhone 13 Pro 256GB,Electronics,Used,32500,3,iphone-13-pro-1.jpg|iphone-13-pro-2.jpg,Battery health and exact condition confirmed with you before anything is agreed. Photos of the actual unit sent in chat.,,
+iPhone 14 Pro 256GB,Electronics,Used,41000,3,iphone-14-pro-1.jpg,"Battery health, box contents and condition confirmed in chat, with photos of the actual unit, before you commit.",,
+iPhone 15 Pro Max 256GB,Electronics,Used,52000,3,iphone-15-pro-max-1.jpg|iphone-15-pro-max-2.jpg,Sourced on request. Battery health and condition confirmed with photos of the actual unit before you commit.,,
+Samsung Galaxy S24 Ultra 256GB,Electronics,Used,44000,3,s24-ultra-1.jpg,S Pen included. Photos and condition of the actual unit sent to you before you agree.,,
+Xiaomi Redmi Note 13 Pro 256GB,Electronics,New,15500,2,redmi-note-13-pro-1.jpg,"Sealed, with local warranty.",,
+MacBook Air 13-inch M3 16GB 256GB,Electronics,New,62500,5,macbook-air-m3-1.jpg,Sealed. Serial and condition confirmed with you before you commit.,Apple|MacBook Air 13-inch M3,Midnight
+MacBook Air 13-inch M2 8GB 256GB,Electronics,Used,41000,5,macbook-air-m2-1.jpg,"Cycle count and condition confirmed, with photos of the actual machine, before anything is agreed.",,
+AirPods Pro 2 USB-C,Electronics,New,11500,2,airpods-pro-2-1.jpg,"2nd generation, USB-C case, sealed.",Apple|AirPods Pro 2,White
+Sony WH-1000XM5 headphones,Electronics,New,19500,3,sony-xm5-1.jpg,"Sealed, with warranty. Noise cancelling over-ear.",,
+Apple Watch Series 9 45mm GPS,Electronics,Used,17500,3,apple-watch-s9-1.jpg,Battery health and condition confirmed before you commit.,,
+Samsung 55-inch 4K smart TV,Electronics,New,26000,5,samsung-tv-55-1.jpg,"Sealed, with local warranty. Delivery and setup can be arranged.",,
+PlayStation 5 Slim disc edition,Toys,New,34500,4,ps5-slim-1.jpg,"Sealed, one DualSense controller. Ask about bundles with a second pad or a game.",Sony|PlayStation 5 Slim,Disc edition
+PlayStation 5 Slim digital edition,Toys,New,27500,4,ps5-digital-1.jpg,"Sealed, one DualSense controller. No disc drive, games are download only.",Sony|PlayStation 5 Slim,Digital edition
+Xbox Series S 512GB,Toys,New,17500,4,xbox-series-s-1.jpg,"Sealed, one controller. Digital only.",Microsoft|Xbox Series S,White
+Nintendo Switch OLED,Toys,New,21000,5,switch-oled-1.jpg,"Sealed, OLED model with dock and Joy-Cons.",Nintendo|Nintendo Switch OLED,White
+DualSense controller,Toys,New,3900,2,dualsense-1.jpg,"Sealed, for PS5. Colour options available, ask in chat.",,
+Air fryer 5.5L,Home,New,4200,3,air-fryer-1.jpg,"Sealed, with warranty. Ask about capacity options.",,
+Front-load washing machine 8kg,Home,New,24500,5,washing-machine-1.jpg,"Sealed, with warranty. Delivery and installation can be arranged.",,
+Refrigerator 16 cu ft no-frost,Home,New,38000,6,fridge-1.jpg,"Sealed, with warranty. Delivery arranged after we agree.",,
+Microwave oven 25L,Home,New,5800,3,microwave-1.jpg,"Sealed, with warranty.",,
+Robot vacuum cleaner,Home,New,12500,4,robot-vacuum-1.jpg,"Sealed, with warranty and app control.",,
+Espresso machine,Home,New,9500,4,espresso-machine-1.jpg,"Sealed, with warranty. Ask which model is in stock this week.",,
+Nike Air Force 1 sneakers,Fashion,New,4200,4,air-force-1-1.jpg,"Genuine, sizes 40-45. Tell me your size in chat and I confirm availability before you commit.",,
+Adidas Ultraboost running shoes,Fashion,New,5600,4,ultraboost-1.jpg,"Genuine, sizes 40-45. Confirm your size in chat first.",,
+Men's leather jacket,Fashion,New,3200,4,leather-jacket-1.jpg,"Real leather. Sizes M to XXL, confirm in chat.",,
+Women's handbag,Fashion,New,2400,4,handbag-1.jpg,Ask in chat for the colours available this week.,,
+Hair dryer with diffuser,Beauty,New,3100,3,hair-dryer-1.jpg,"Sealed, with warranty.",,
+Hair straightener ceramic,Beauty,New,2300,3,hair-straightener-1.jpg,"Sealed, with warranty.",,
+Skincare set cleanser toner moisturiser,Beauty,New,1450,3,skincare-set-1.jpg,Sealed. Ask in chat which brands are available.,,
+Electric shaver,Beauty,New,3800,3,shaver-1.jpg,"Sealed, with warranty. Rechargeable, washable head.",,
+Adjustable dumbbell set 24kg,Sports,New,6800,5,dumbbells-1.jpg,Adjustable pair. Delivery arranged after we agree.,,
+Treadmill foldable,Sports,New,27000,7,treadmill-1.jpg,"Foldable, with warranty. Delivery and setup arranged.",,
+Mountain bike 29-inch,Sports,New,12500,6,mountain-bike-1.jpg,"21-speed, aluminium frame. Assembled before delivery.",,
+Yoga mat and resistance band set,Sports,New,900,3,yoga-set-1.jpg,Non-slip mat with a set of bands.,,
+Dashcam 1080p,Automotive,New,2900,3,dashcam-1.jpg,"Front-facing, loop recording, night vision.",,
+Car vacuum cleaner,Automotive,New,1400,3,car-vacuum-1.jpg,"12V, with attachments.",,
+Car phone holder magnetic,Automotive,New,450,2,phone-holder-1.jpg,"Magnetic, vent or dashboard mount.",,
+Car battery 70Ah,Automotive,New,5200,4,car-battery-1.jpg,With warranty. Fitting can be arranged.,,

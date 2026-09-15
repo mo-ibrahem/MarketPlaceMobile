@@ -82,6 +82,11 @@ function readCatalogue() {
       lead_time_days: lead,
       description: o.description,
       photos: o.photos.split('|').map(x => x.trim()).filter(Boolean),
+      // "Brand|Model Name" -- the listing then shows the catalogue photo
+      // of that model instead of needing its own. Only legal for a New
+      // item; the database refuses it for a used one.
+      model: (o.model || '').trim(),
+      variant: (o.variant || '').trim(),
     };
   });
 }
@@ -91,9 +96,28 @@ const catalogue = readCatalogue();
 const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.heic': 'image/heic' };
 
 (async () => {
-  // Every listing must have all of its photos on disk before anything posts.
+  // Resolve any model references up front so a typo fails before posting.
+  const models = new Map();
+  const wantsModel = catalogue.filter(l => l.model);
+  if (wantsModel.length) {
+    const sb = createClient(URL, ANON, { auth: { persistSession: false } });
+    const { data } = await sb.from('product_models').select('id, brand, name, variants');
+    for (const m of data ?? []) models.set(`${m.brand}|${m.name}`, m);
+  }
+
+  // A listing needs its own photos on disk, unless it is a New item
+  // pointing at a catalogue model.
   const problems = [];
   for (const l of catalogue) {
+    if (l.model) {
+      const m = models.get(l.model);
+      if (!m) { problems.push(`${l.title}: no catalogue model "${l.model}" -- run curate-models.cjs`); continue; }
+      if (l.condition !== 'New') { problems.push(`${l.title}: only a New listing may use a catalogue model`); continue; }
+      if (l.variant && !(m.variants ?? []).includes(l.variant)) {
+        problems.push(`${l.title}: "${l.variant}" is not a variant of ${l.model} (${(m.variants ?? []).join(', ')})`);
+      }
+      continue;   // catalogue photos stand in; no local files required
+    }
     for (const photo of l.photos) {
       const p = path.join(PHOTO_DIR, photo);
       if (!fs.existsSync(p)) problems.push(`${l.title}: missing ${photo}`);
@@ -101,7 +125,7 @@ const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
     }
   }
   if (problems.length) {
-    console.log(`\n${problems.length} listing photo(s) not ready in ${PHOTO_DIR}:\n`);
+    console.log(`\n${problems.length} listing(s) not ready:\n`);
     for (const p of problems) console.log('  ' + p);
     console.log('\nDrop your own photos there with those filenames, then re-run. Nothing was posted.');
     console.log('(Filenames are the "photos" column in scripts/seed/catalogue.csv.)\n');
@@ -109,10 +133,11 @@ const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
     return;
   }
 
-  console.log(`${catalogue.length} listings ready, photos present.`);
+  console.log(`${catalogue.length} listings ready.`);
   if (DRY) {
     for (const l of catalogue) {
-      console.log(`  ${l.title.padEnd(42)} EGP ${String(l.price).padStart(7)}  ${l.condition.padEnd(4)} ${l.category.padEnd(12)} sourced/${l.lead_time_days}d  ${l.photos.length} photo(s)`);
+      const src = l.model ? `catalogue: ${l.model}${l.variant ? ' / ' + l.variant : ''}` : `${l.photos.length} own photo(s)`;
+      console.log(`  ${l.title.padEnd(42)} EGP ${String(l.price).padStart(7)}  ${l.condition.padEnd(4)} ${l.category.padEnd(12)} sourced/${l.lead_time_days}d  ${src}`);
     }
     console.log('\nDry run: nothing posted.');
     return;
@@ -128,7 +153,7 @@ const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
   for (const l of catalogue) {
     try {
       const urls = [];
-      for (const photo of l.photos) {
+      for (const photo of (l.model ? [] : l.photos)) {
         const bytes = fs.readFileSync(path.join(PHOTO_DIR, photo));
         const ext = path.extname(photo).toLowerCase();
         const key = `${userId}/${Date.now()}-${photo.replace(/[^a-zA-Z0-9.-]/g, '-')}`;
@@ -151,6 +176,8 @@ const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
         stock: 1,
         fulfilment: 'sourced_to_order',
         lead_time_days: l.lead_time_days,
+        model_id: l.model ? models.get(l.model).id : null,
+        variant: l.variant || null,
       });
       if (error) throw Error(error.message);
 

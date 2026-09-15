@@ -287,7 +287,16 @@ export default function ProductDetailScreen() {
   }
 
   const isOwner = user?.id === product.seller_id;
-  const images  = product.images?.length ? product.images : ['https://placehold.co/600x600/F1F5F9/64748B?text=Item'];
+  // The seller's own photographs always win. The catalogue is the
+  // fallback, only ever populated for New listings, and it is labelled
+  // and credited wherever it appears -- a buyer must never think a
+  // reference photo is a photograph of the unit they are getting.
+  const usingCatalogue = !product.images?.length && !!product.catalogue_photos?.length;
+  const images = product.images?.length
+    ? product.images
+    : (product.catalogue_photos?.length
+        ? product.catalogue_photos
+        : ['https://placehold.co/600x600/F1F5F9/64748B?text=Item']);
   const sellerName    = displayName(product.seller?.full_name, 'Seller');
   const sellerInitial = sellerName.charAt(0).toUpperCase();
   // The sell form appends "\n\n📍 {location}\n📦 Stock: N" to the description
@@ -345,6 +354,14 @@ export default function ProductDetailScreen() {
               </Animated.View>
             )}
           </View>
+
+          {usingCatalogue && (
+            <View style={styles.cataloguePill}>
+              <Text style={styles.cataloguePillText}>
+                {isRTL ? 'صورة توضيحية للموديل' : 'CATALOGUE PHOTO OF THIS MODEL'}
+              </Text>
+            </View>
+          )}
 
           {images.length > 1 && (
             <View style={styles.heroThumbs}>
@@ -545,6 +562,21 @@ export default function ProductDetailScreen() {
                   ? `${comparable.count} إعلان مشابه في ${product.category} يتراوح سعرها بين ${formatEGP(comparable.min)} و${formatEGP(comparable.max)} حالياً.`
                   : `${comparable.count} similar ${product.category} listings are currently priced between ${formatEGP(comparable.min)} and ${formatEGP(comparable.max)}.`}
               </Text>
+            </View>
+          )}
+
+          {/* The licence on a catalogue photograph requires the credit to
+              travel with it, so it is rendered under the specs. */}
+          {usingCatalogue && (
+            <View style={styles.catalogueNote}>
+              <Text style={styles.catalogueNoteText}>
+                {isRTL
+                  ? 'الصور أعلاه توضّح الموديل وليست صوراً للوحدة نفسها. المنتج جديد ومغلق.'
+                  : 'The photos above show the model, not this exact unit. The item is new and sealed.'}
+              </Text>
+              {!!product.catalogue_credit && (
+                <Text style={styles.catalogueCredit}>{product.catalogue_credit}</Text>
+              )}
             </View>
           )}
 
@@ -852,6 +884,18 @@ const styles = StyleSheet.create({
   heroThumbOn: { opacity: 1, borderWidth: 2, borderColor: '#FFFFFF' },
   heroThumbMore: { backgroundColor: 'rgba(15,23,42,0.72)', alignItems: 'center', justifyContent: 'center', opacity: 1 },
   heroThumbMoreText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
+
+  cataloguePill: {
+    position: 'absolute', left: 16, bottom: 12,
+    backgroundColor: 'rgba(15,23,42,0.82)', borderRadius: 7, paddingHorizontal: 9, paddingVertical: 5,
+  },
+  cataloguePillText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.8, color: '#FFFFFF' },
+  catalogueNote: {
+    marginHorizontal: 20, marginTop: 14, padding: 12,
+    backgroundColor: '#F1F5F9', borderRadius: 12,
+  },
+  catalogueNoteText: { fontSize: 12.5, color: '#475569', fontWeight: '600', lineHeight: 18 },
+  catalogueCredit: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginTop: 6 },
 
   headBlock: { paddingHorizontal: 20, paddingTop: 20 },
   kicker: { fontSize: 11, fontWeight: '800', letterSpacing: 1.8, color: '#94A3B8' },

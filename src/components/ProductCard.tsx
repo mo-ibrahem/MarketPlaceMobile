@@ -62,7 +62,7 @@ export function ProductCard({
     >
       <View style={s.imgWrap}>
         <Image
-          source={{ uri: item.images?.[0] || 'https://placehold.co/400x300/F1F5F9/64748B?text=Item' }}
+          source={{ uri: item.images?.[0] || item.catalogue_photos?.[0] || 'https://placehold.co/400x300/F1F5F9/64748B?text=Item' }}
           style={[s.img, !!imageHeight && { height: imageHeight }]}
         />
         {/* A sourced-to-order listing always says so, on the photo, so it
