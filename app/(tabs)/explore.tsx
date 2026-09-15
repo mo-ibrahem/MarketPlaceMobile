@@ -7,12 +7,8 @@ import {
   Eye,
   FileEdit,
   Heart,
-  Lock,
-  LogOut,
   Package,
-  Save,
   ShieldCheck,
-  Trash2,
   User,
   Wallet,
 } from 'lucide-react-native';
@@ -387,170 +383,198 @@ export default function ProfileScreen() {
     );
   };
 
+  /**
+   * Settings tab -- approved build 9a.
+   *
+   * Sections are mono kickers on the page, fields are underlines, and the
+   * routes that used to hide behind decorated cards (wallet, payouts,
+   * verification, notifications, legal) are now plain rows that state what
+   * they hold. The design annotates each row with its path; those are notes
+   * for me, not copy for the user, so they are wired as navigation rather
+   * than printed on screen.
+   */
+  const settingsRow = (
+    label: string,
+    value: string,
+    onPress: () => void,
+    key: string,
+  ) => (
+    <TouchableOpacity key={key} style={styles.setRow} onPress={onPress} activeOpacity={0.8}>
+      <Text style={styles.setRowLabel}>{label}</Text>
+      <View style={styles.setRowRight}>
+        <Text style={styles.setRowValue} numberOfLines={1}>{value}</Text>
+        <ChevronRight size={16} color="#CBD5E1" />
+      </View>
+    </TouchableOpacity>
+  );
+
   const renderSettings = () => (
-    <View style={{ gap: 16 }}>
-      {/* Profile section */}
-      <View style={styles.settingsCard}>
-        <Text style={styles.settingsCardTitle}>Edit profile</Text>
+    <View>
+      {/* ── Edit profile ── */}
+      <Text style={styles.setKicker}>{isRTL ? 'تعديل الملف' : 'EDIT PROFILE'}</Text>
 
-        {/* Avatar */}
-        <TouchableOpacity style={styles.avatarRow} onPress={handleAvatarUpload} activeOpacity={0.8}>
-          {profile?.avatar_url ? (
-            <Image source={{ uri: profile.avatar_url }} style={styles.settingsAvatar} />
-          ) : (
-            <View style={styles.settingsAvatarFallback}>
-              <Text style={styles.settingsAvatarInitials}>{initials}</Text>
-            </View>
-          )}
-          <View style={styles.avatarRowText}>
-            <Text style={styles.avatarRowLabel}>Profile Photo</Text>
-            <Text style={styles.avatarRowSub}>Tap to change</Text>
+      <TouchableOpacity style={styles.setAvatarRow} onPress={handleAvatarUpload} activeOpacity={0.8}>
+        {profile?.avatar_url ? (
+          <Image source={{ uri: profile.avatar_url }} style={styles.setAvatar} />
+        ) : (
+          <View style={[styles.setAvatar, styles.setAvatarFallback]}>
+            <Text style={styles.setAvatarInitials}>{initials}</Text>
           </View>
-          <View style={styles.avatarCameraIcon}>
-            <Camera size={16} color="#6366F1" />
-          </View>
-        </TouchableOpacity>
+        )}
+        <Text style={styles.setAvatarHint}>{isRTL ? 'غيّر صورتك' : 'Change your photo'}</Text>
+      </TouchableOpacity>
 
-        <View style={styles.settingsDivider} />
-
-        {/* Name */}
-        <Text style={styles.fieldLabel}>Full Name</Text>
+      <View style={styles.setField}>
+        <Text style={styles.setFieldLabel}>{isRTL ? 'الاسم' : 'FULL NAME'}</Text>
         <TextInput
-          style={styles.settingsInput}
-          placeholder="Your full name"
+          style={[styles.setInput, !!editProfileData.full_name && styles.setInputFilled]}
+          placeholder={isRTL ? 'اسمك' : 'Your full name'}
           placeholderTextColor="#94A3B8"
           value={editProfileData.full_name}
           onChangeText={text => setEditProfileData(d => ({ ...d, full_name: text }))}
           returnKeyType="next"
         />
+      </View>
 
-        {/* Phone */}
-        <Text style={styles.fieldLabel}>Phone Number</Text>
+      <View style={styles.setField}>
+        <Text style={styles.setFieldLabel}>{isRTL ? 'رقم الهاتف' : 'PHONE NUMBER'}</Text>
         <TextInput
-          style={styles.settingsInput}
-          placeholder="Your phone number"
+          style={[styles.setInput, !!editProfileData.phone && styles.setInputFilled]}
+          placeholder={isRTL ? 'رقم هاتفك' : 'Your phone number'}
           placeholderTextColor="#94A3B8"
           value={editProfileData.phone}
           onChangeText={text => setEditProfileData(d => ({ ...d, phone: text }))}
           keyboardType="phone-pad"
           returnKeyType="done"
         />
-
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSaveChanges} disabled={isLoading}>
-          <Save size={17} color="white" />
-          <Text style={styles.saveBtnText}>Save Changes</Text>
-        </TouchableOpacity>
       </View>
 
-      {/* Password section */}
-      <View style={styles.settingsCard}>
-        <Text style={styles.settingsCardTitle}>Change password</Text>
+      <TouchableOpacity style={styles.setPrimaryBtn} onPress={handleSaveChanges} disabled={isLoading}>
+        <Text style={styles.setPrimaryBtnText}>{isRTL ? 'حفظ التغييرات' : 'Save changes'}</Text>
+      </TouchableOpacity>
 
-        <Text style={styles.fieldLabel}>New Password</Text>
-        <View style={styles.passwordRow}>
+      {/* ── Change password ── */}
+      <Text style={[styles.setKicker, { marginTop: 30 }]}>{isRTL ? 'تغيير كلمة المرور' : 'CHANGE PASSWORD'}</Text>
+
+      <View style={styles.setField}>
+        <Text style={styles.setFieldLabel}>{isRTL ? 'كلمة مرور جديدة' : 'NEW PASSWORD'}</Text>
+        <View style={styles.setPasswordRow}>
           <TextInput
-            style={[styles.settingsInput, { flex: 1, marginBottom: 0 }]}
-            placeholder="New password"
+            style={[styles.setInput, { flex: 1 }, !!passwordData.newPassword && styles.setInputFilled]}
+            placeholder={isRTL ? 'كلمة مرور جديدة' : 'New password'}
             placeholderTextColor="#94A3B8"
             secureTextEntry={!showPassword}
             value={passwordData.newPassword}
             onChangeText={text => setPasswordData(d => ({ ...d, newPassword: text }))}
           />
-          <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(v => !v)}>
-            <Eye size={18} color={showPassword ? '#6366F1' : '#94A3B8'} />
+          <TouchableOpacity onPress={() => setShowPassword(v => !v)} hitSlop={10} style={styles.setEyeBtn}>
+            <Eye size={18} color={showPassword ? '#0F172A' : '#94A3B8'} />
           </TouchableOpacity>
         </View>
+      </View>
 
-        <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Confirm Password</Text>
+      <View style={styles.setField}>
+        <Text style={styles.setFieldLabel}>{isRTL ? 'تأكيد كلمة المرور' : 'CONFIRM PASSWORD'}</Text>
         <TextInput
-          style={styles.settingsInput}
-          placeholder="Confirm new password"
+          style={[styles.setInput, !!passwordData.confirmPassword && styles.setInputFilled]}
+          placeholder={isRTL ? 'أعد كتابة كلمة المرور' : 'Confirm new password'}
           placeholderTextColor="#94A3B8"
           secureTextEntry={!showPassword}
           value={passwordData.confirmPassword}
           onChangeText={text => setPasswordData(d => ({ ...d, confirmPassword: text }))}
         />
-
-        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: '#4F46E5' }]} onPress={handleChangePassword}>
-          <Lock size={17} color="white" />
-          <Text style={styles.saveBtnText}>Update Password</Text>
-        </TouchableOpacity>
       </View>
 
-      {/* Language */}
-      <View style={styles.settingsCard}>
-        <Text style={styles.settingsCardTitle}>{t('language.title')}</Text>
-        <View style={styles.langRow}>
-          <TouchableOpacity
-            style={[styles.langPill, language === 'en' && styles.langPillActive]}
-            onPress={() => changeLanguage('en')}
-          >
-            <Text style={styles.langEmoji}>🇬🇧</Text>
-            <Text style={[styles.langLabel, language === 'en' && styles.langLabelActive]}>{t('language.english')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.langPill, language === 'ar' && styles.langPillActive]}
-            onPress={() => changeLanguage('ar')}
-          >
-            <Text style={styles.langEmoji}>🇸🇦</Text>
-            <Text style={[styles.langLabel, language === 'ar' && styles.langLabelActive]}>{t('language.arabic')}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <TouchableOpacity style={styles.setGhostBtn} onPress={handleChangePassword}>
+        <Text style={styles.setGhostBtnText}>{isRTL ? 'تحديث كلمة المرور' : 'Update password'}</Text>
+      </TouchableOpacity>
+      <Text style={styles.setNote}>
+        {isRTL ? 'نسيتها؟ ' : 'Forgot it instead? '}
+        <Text style={styles.setLink} onPress={() => router.push('/forgot-password' as any)}>
+          {isRTL ? 'أعد التعيين بالبريد' : 'Reset by email'}
+        </Text>
+      </Text>
 
-      {/* Legal & Compliance (Apple Mandated) */}
-      <View style={styles.settingsCard}>
-        <Text style={styles.settingsCardTitle}>Legal &amp; policies · الشروط والسياسات</Text>
-        
+      {/* ── Language ── */}
+      <Text style={[styles.setKicker, { marginTop: 30, marginBottom: 12 }]}>{isRTL ? 'اللغة' : 'LANGUAGE'}</Text>
+      <View style={styles.langRow}>
         <TouchableOpacity
-          style={styles.legalRow}
-          onPress={() => router.push('/terms' as any)}
-          activeOpacity={0.8}
+          style={[styles.langPill, language === 'en' && styles.langPillActive]}
+          onPress={() => changeLanguage('en')}
         >
-          <Text style={styles.legalText}>Terms of Service · الشروط والأحكام</Text>
-          <ChevronRight size={16} color="#94A3B8" />
+          <Text style={[styles.langLabel, language === 'en' && styles.langLabelActive]}>{t('language.english')}</Text>
         </TouchableOpacity>
-
-        <View style={styles.legalDivider} />
-
         <TouchableOpacity
-          style={styles.legalRow}
-          onPress={() => router.push('/privacy' as any)}
-          activeOpacity={0.8}
+          style={[styles.langPill, language === 'ar' && styles.langPillActive]}
+          onPress={() => changeLanguage('ar')}
         >
-          <Text style={styles.legalText}>Privacy Policy · سياسة الخصوصية</Text>
-          <ChevronRight size={16} color="#94A3B8" />
-        </TouchableOpacity>
-
-        <View style={styles.legalDivider} />
-
-        <TouchableOpacity
-          style={styles.legalRow}
-          onPress={() => router.push('/safety' as any)}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.legalText}>Safety tips · نصائح الأمان</Text>
-          <ChevronRight size={16} color="#94A3B8" />
+          <Text style={[styles.langLabel, language === 'ar' && styles.langLabelActive]}>{t('language.arabic')}</Text>
         </TouchableOpacity>
       </View>
+      <Text style={styles.setNote}>
+        {isRTL ? 'التبديل إلى English يحوّل التطبيق إلى اتجاه LTR.' : 'Switching to العربية flips the whole app to RTL.'}
+      </Text>
 
-      {/* Account Actions */}
-      <View style={{ gap: 10 }}>
-        {/* Sign out */}
-        <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
-          <LogOut color="#64748B" size={18} />
-          <Text style={styles.signOutText}>Sign Out • تسجيل الخروج</Text>
+      {/* ── Selling ──
+          Wallet, payouts and verification only exist with payments on
+          (PLAN-CLASSIFIEDS-MODE.md); notifications always do. */}
+      <Text style={[styles.setKicker, { marginTop: 30, marginBottom: 4 }]}>{isRTL ? 'البيع' : 'SELLING'}</Text>
+      {PAYMENTS_ENABLED && settingsRow(
+        isRTL ? 'توثيق البائع' : 'SELLER VERIFICATION',
+        isVerifiedSeller ? (isRTL ? 'موثّق' : 'Verified') : (isRTL ? 'غير موثّق' : 'Not verified'),
+        () => router.push('/seller-verification' as any),
+        'verification',
+      )}
+      {PAYMENTS_ENABLED && settingsRow(
+        isRTL ? 'المحفظة' : 'WALLET',
+        `EGP ${Number(wallet?.available_balance ?? 0).toLocaleString('en-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        () => router.push('/wallet' as any),
+        'wallet',
+      )}
+      {PAYMENTS_ENABLED && settingsRow(
+        isRTL ? 'بيانات التحويل' : 'PAYOUT DETAILS',
+        isRTL ? 'غير محددة' : 'Not set',
+        () => router.push('/payout-settings' as any),
+        'payouts',
+      )}
+      {settingsRow(
+        isRTL ? 'الإشعارات' : 'NOTIFICATIONS',
+        isRTL ? 'مفعّلة' : 'On',
+        () => router.push('/notifications' as any),
+        'notifications',
+      )}
+
+      {/* ── Legal & safety ── */}
+      <Text style={[styles.setKicker, { marginTop: 30, marginBottom: 4 }]}>{isRTL ? 'القانون والأمان' : 'LEGAL & SAFETY'}</Text>
+      {settingsRow(
+        isRTL ? 'نصائح الأمان' : 'SAFETY TIPS',
+        isRTL ? 'البيع والشراء بأمان' : 'Buying & selling safely',
+        () => router.push('/safety' as any),
+        'safety',
+      )}
+      {settingsRow(
+        isRTL ? 'سياسة الخصوصية' : 'PRIVACY POLICY',
+        isRTL ? 'اقرأ' : 'Read',
+        () => router.push('/privacy' as any),
+        'privacy',
+      )}
+      {settingsRow(
+        isRTL ? 'الشروط' : 'TERMS OF USE',
+        isRTL ? 'اقرأ' : 'Read',
+        () => router.push('/terms' as any),
+        'terms',
+      )}
+
+      {/* ── Account ── */}
+      <View style={styles.setAccountRow}>
+        <TouchableOpacity onPress={handleSignOut} activeOpacity={0.7}>
+          <Text style={styles.setSignOut}>{isRTL ? 'تسجيل الخروج' : 'Sign out'}</Text>
         </TouchableOpacity>
-
-        {/* Apple Required Account Deletion */}
-        <TouchableOpacity
-          style={styles.deleteAccountBtn}
-          onPress={handleDeleteAccount}
-        >
-          <Trash2 color="#EF4444" size={18} />
-          <Text style={styles.deleteAccountText}>Delete Account • حذف الحساب نهائياً</Text>
+        <TouchableOpacity onPress={handleDeleteAccount} activeOpacity={0.7}>
+          <Text style={styles.setDelete}>{isRTL ? 'حذف الحساب' : 'Delete account'}</Text>
         </TouchableOpacity>
       </View>
+      <View style={{ height: 22 }} />
     </View>
   );
 
@@ -688,6 +712,50 @@ export default function ProfileScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  // ── Settings tab (approved build 9a) ─────────────────────────────────
+  setKicker: { fontSize: 11, fontWeight: '800', letterSpacing: 1.8, color: '#64748B', marginTop: 20 },
+
+  setAvatarRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 16 },
+  setAvatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#F1F5F9' },
+  setAvatarFallback: { alignItems: 'center', justifyContent: 'center' },
+  setAvatarInitials: { fontSize: 20, fontWeight: '800', letterSpacing: -0.5, color: '#0F172A' },
+  setAvatarHint: { fontSize: 14, fontWeight: '700', color: '#2563EB' },
+
+  setField: { marginTop: 16 },
+  setFieldLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.4, color: '#64748B' },
+  setInput: {
+    fontSize: 16, fontWeight: '500', color: '#0F172A',
+    paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+  },
+  setInputFilled: { fontWeight: '600', borderBottomWidth: 2, borderBottomColor: '#0F172A' },
+  setPasswordRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  setEyeBtn: { paddingVertical: 11 },
+
+  setPrimaryBtn: {
+    height: 48, borderRadius: 999, backgroundColor: '#0F172A',
+    alignItems: 'center', justifyContent: 'center', marginTop: 18,
+  },
+  setPrimaryBtnText: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
+  setGhostBtn: {
+    height: 48, borderRadius: 999, borderWidth: 1, borderColor: '#CBD5E1',
+    alignItems: 'center', justifyContent: 'center', marginTop: 18,
+  },
+  setGhostBtnText: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+  setNote: { fontSize: 12.5, color: '#64748B', fontWeight: '600', lineHeight: 18, marginTop: 10 },
+  setLink: { color: '#2563EB', fontWeight: '700' },
+
+  setRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+    paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+  },
+  setRowLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.4, color: '#64748B', flexShrink: 1 },
+  setRowRight: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
+  setRowValue: { fontSize: 14.5, fontWeight: '700', color: '#0F172A', flexShrink: 1 },
+
+  setAccountRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 22, paddingBottom: 10 },
+  setSignOut: { fontSize: 14.5, fontWeight: '800', color: '#0F172A' },
+  setDelete: { fontSize: 14.5, fontWeight: '800', color: '#EF4444' },
+
   // ── Approved build (3d) ──────────────────────────────────────────────
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
 
@@ -764,8 +832,6 @@ const styles = StyleSheet.create({
   // Hero
 
   // Stat strip
-  statCard: { flex: 1, alignItems: 'center', gap: 6 },
-  statIconBg: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
 
   // Wallet Widget
 
@@ -782,79 +848,12 @@ const styles = StyleSheet.create({
   // Chat
 
   // Settings cards
-  settingsCard: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  settingsCardTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 20 },
-  settingsDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
 
   // Avatar row in settings
-  avatarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 14,
-    padding: 12,
-  },
-  settingsAvatar: { width: 52, height: 52, borderRadius: 26 },
-  settingsAvatarFallback: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center',
-  },
-  settingsAvatarInitials: { fontSize: 18, fontWeight: '800', color: '#6366F1' },
-  avatarRowText: { flex: 1 },
-  avatarRowLabel: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
-  avatarRowSub: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
-  avatarCameraIcon: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#EEF2FF',
-    justifyContent: 'center', alignItems: 'center',
-  },
 
   // Field / input
-  fieldLabel: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 8, marginTop: 4 },
-  settingsInput: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    fontSize: 15,
-    color: '#1E293B',
-    marginBottom: 14,
-  },
-  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  eyeBtn: {
-    width: 46, height: 46,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
 
   // Save button
-  saveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#10B981',
-    borderRadius: 14,
-    paddingVertical: 14,
-    marginTop: 6,
-  },
-  saveBtnText: { color: 'white', fontSize: 15, fontWeight: '800' },
 
   // Language
   langRow: { flexDirection: 'row', gap: 12 },
@@ -871,44 +870,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   langPillActive: { borderColor: '#6366F1', backgroundColor: '#EEF2FF' },
-  langEmoji: { fontSize: 18 },
   langLabel: { fontSize: 14, fontWeight: '700', color: '#64748B' },
   langLabelActive: { color: '#6366F1' },
 
   // Sign out
-  signOutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 16,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  signOutText: { color: '#475569', fontSize: 14, fontWeight: '700' },
 
   // Legal & Delete Account
-  legalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-  },
-  legalText: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
-  legalDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 4 },
 
-  deleteAccountBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: '#FEF2F2',
-    borderRadius: 16,
-    paddingVertical: 14,
-    borderWidth: 1.5,
-    borderColor: '#FECACA',
-  },
-  deleteAccountText: { color: '#EF4444', fontSize: 13, fontWeight: '800' },
 });

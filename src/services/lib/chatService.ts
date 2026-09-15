@@ -28,6 +28,17 @@ export interface ChatRoomInfo {
   product_price?: number;
   last_message?: string;
   last_message_time?: string;
+  /** Inbox grouping (9b): a thread is "waiting on you" when the newest
+   *  message is theirs. There is no read_at column on messages, so this is
+   *  the honest equivalent of unread. */
+  last_message_is_mine?: boolean;
+  /** The newest message was a structured offer, and for how much. Drives
+   *  the amber OFFER chip and the "YOUR OFFER 29,000" context line. */
+  last_message_is_offer?: boolean;
+  last_offer_amount?: number | null;
+  /** True when the listing this thread is about is the viewer's own --
+   *  i.e. they are the seller here, not the buyer. */
+  i_am_seller?: boolean;
 }
 
 export type ChatRoomDetails = ChatRoomInfo;
@@ -84,21 +95,24 @@ export const getChatRooms = async (): Promise<ChatRoomInfo[]> => {
       ? supabase.from('public_profiles').select('id, full_name, avatar_url').in('id', otherUserIds)
       : Promise.resolve({ data: [] as any[] }),
     productIds.length
-      ? supabase.from('products').select('id, title, images').in('id', productIds)
+      ? supabase.from('products').select('id, title, images, seller_id').in('id', productIds)
       : Promise.resolve({ data: [] as any[] }),
   ]);
 
-  const lastMessageMap: Record<string, { content: string; created_at: string }> = {};
+  const lastMessageMap: Record<string, {
+    content: string; created_at: string; sender_id: string;
+    msg_type: string; offer_amount_egp: number | null;
+  }> = {};
   await Promise.all(
     rooms.map(async (room) => {
       try {
         const { data: msgs } = await supabase
           .from('messages')
-          .select('content, created_at')
+          .select('content, created_at, sender_id, msg_type, offer_amount_egp')
           .eq('room_id', room.id)
           .order('created_at', { ascending: false })
           .limit(1);
-        if (msgs && msgs.length > 0) lastMessageMap[room.id] = msgs[0];
+        if (msgs && msgs.length > 0) lastMessageMap[room.id] = msgs[0] as any;
       } catch {
         // A missing preview must not drop the conversation from the inbox.
       }
@@ -121,6 +135,10 @@ export const getChatRooms = async (): Promise<ChatRoomInfo[]> => {
       product_image: product?.images?.[0],
       last_message: lastMsg?.content,
       last_message_time: lastMsg?.created_at,
+      last_message_is_mine: lastMsg ? lastMsg.sender_id === user.id : undefined,
+      last_message_is_offer: lastMsg?.msg_type === 'offer',
+      last_offer_amount: lastMsg?.offer_amount_egp ?? null,
+      i_am_seller: product ? (product as any).seller_id === user.id : undefined,
     };
   });
 };
