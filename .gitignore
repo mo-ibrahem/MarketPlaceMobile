@@ -48,3 +48,12 @@ app-example
 
 # Local submission verification bundles
 dist-release/
+
+# Seed listing photos: yours, or fetched under a CC0/public-domain licence.
+# Kept out of git -- they are large binaries and their provenance lives in
+# scripts/seed/photos/LICENSES.json, which IS tracked.
+scripts/seed/photos/*.jpg
+scripts/seed/photos/*.jpeg
+scripts/seed/photos/*.png
+scripts/seed/photos/*.webp
+scripts/seed/photos/*.heic

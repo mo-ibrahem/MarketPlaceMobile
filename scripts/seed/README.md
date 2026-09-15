@@ -23,7 +23,26 @@ copy, and photos come from you.
    a name buyers will see). Do not hand the password to anyone; the script
    takes it as an argument and never stores it.
 
-2. **Put your own photos in `photos/`.** `catalogue.json` lists the exact
+2. **Photos.** Run `node scripts/seed/fetch-generic-photos.cjs` first: it
+   pulls CC0 / public-domain photographs for the *generic* items — the
+   washing machine, the dumbbells, the car battery — where a
+   representative photo is honest because any unit looks like any other.
+   Each file's source, licence and creator is recorded in
+   `photos/LICENSES.json`, which is tracked in git even though the images
+   are not.
+
+   It covers nothing branded, on purpose. Someone buying an iPhone 15 Pro
+   Max or a PS5 is buying that exact model, and a stand-in photo of a
+   different phone is a misleading listing however the badge is worded.
+   There is also nothing to fetch: CC0 coverage of current flagships is
+   zero (iPhone 15 Pro: 0 results, Xbox Series S: 0, Switch OLED: 2).
+
+   **Those need real photographs** — yours, or your supplier's with their
+   permission. If you are sourcing from Cairo suppliers, asking them for
+   photos is usually a single message, and it is the cleanest answer:
+   their photos, their permission, the actual units you will deliver.
+
+   **Put them in `photos/`.** `catalogue.json` lists the exact
    filenames each listing expects. The script refuses to post a listing
    whose photos are missing, and it never downloads an image.
 
