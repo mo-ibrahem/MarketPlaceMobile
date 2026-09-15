@@ -1,4 +1,3 @@
-import { Picker } from "@react-native-picker/picker";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
@@ -14,11 +13,10 @@ import {
   Plus as PlusIcon,
   Share2,
   ShieldCheck,
-  Sparkles,
   Tag,
   X,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -44,6 +42,7 @@ import { SELLER_TIERS, getSellerTier, type SellerTierConfig } from "../../src/se
 import { PAYMENTS_ENABLED } from "../../src/services/lib/platformCommerce";
 import { supabase } from "../../src/services/lib/supabase";
 import { imageUploadType } from '../../src/services/lib/imageUpload';
+import { categoryHues } from "../../src/design/tokens";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -93,7 +92,8 @@ export default function SellScreen() {
     getSellerTier(user.id).then(setSellerTier).catch(() => {});
   }, [user]);
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === "ar";
 
   // Wizard step (1–3)
   const [step, setStep] = useState(1);
@@ -348,20 +348,34 @@ export default function SellScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={{ flex: 1, width: '100%', maxWidth: 680, alignSelf: 'center' }}>
-        {/* ── Header ── */}
+        {/* ── Header (approved build 8a-8d) ──
+            Cancel / STEP N OF 4 / Next, over a 2px rule that fills as you
+            go. It used to be a screen title, a rounded progress bar and a
+            row of icon-circle step pills. */}
         <View style={styles.header}>
           {step > 1 ? (
-            <TouchableOpacity onPress={goBack} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <ArrowLeft size={22} color="#1E293B" />
+            <TouchableOpacity onPress={goBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <ArrowLeft size={22} color="#0F172A" />
             </TouchableOpacity>
           ) : (
-            <View style={{ width: 32 }} />
+            <TouchableOpacity onPress={() => router.push('/(tabs)' as any)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.headerCancel}>{t("common.cancel")}</Text>
+            </TouchableOpacity>
           )}
-          <Text style={styles.headerTitle}>{t("sell.screenTitle")}</Text>
-          <Text style={styles.stepLabel}>{step} / 4</Text>
+          <Text style={styles.stepLabel}>
+            {isRTL ? `الخطوة ${step} من 4` : `STEP ${step} OF 4`}
+          </Text>
+          <TouchableOpacity
+            onPress={goNext}
+            disabled={!canAdvance() || step === 4}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={[styles.headerNext, (!canAdvance() || step === 4) && styles.headerNextOff]}>
+              {isRTL ? 'التالي' : 'Next'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* ── Progress bar ── */}
         <View style={styles.progressTrack}>
           <Animated.View
             style={[
@@ -369,46 +383,27 @@ export default function SellScreen() {
               {
                 width: progressAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ["2%", "100%"],
+                  outputRange: ["25%", "100%"],
                 }),
               },
             ]}
           />
         </View>
 
-      {/* ── Step pills ── */}
-      <View style={styles.stepsRow}>
-        {STEPS.map(s => {
-          const Icon = s.icon;
-          const active = step === s.id;
-          const done = step > s.id;
-          return (
-            <View key={s.id} style={styles.stepPill}>
-              <View style={[styles.stepCircle, (active || done) && styles.stepCircleActive]}>
-                {done
-                  ? <CheckCircle size={14} color="white" />
-                  : <Icon size={14} color={active ? "white" : "#94A3B8"} />}
-              </View>
-              <Text style={[styles.stepText, active && styles.stepTextActive]}>{s.label}</Text>
-            </View>
-          );
-        })}
-      </View>
-
-      {/* ── Seller Tier Status Ribbon ──
-          Hidden while PAYMENTS_ENABLED is false: there is no tier, fee or
-          payout system right now (see PLAN-CLASSIFIEDS-MODE.md). */}
+      {/* Seller tier ribbon -- payments-gated, kept as a hairline row.
+          There is no tier, fee or payout system while PAYMENTS_ENABLED is
+          false (see PLAN-CLASSIFIEDS-MODE.md). */}
       {PAYMENTS_ENABLED && (
         <TouchableOpacity
           style={styles.sellerTierRibbon}
           onPress={() => router.push('/seller-verification' as any)}
           activeOpacity={0.85}
         >
-          <ShieldCheck size={16} color="#2563EB" />
+          <ShieldCheck size={16} color="#0F172A" />
           <Text style={styles.sellerTierRibbonText}>
-            {sellerTier.name}: <Text style={{ fontWeight: '800', color: '#1E40AF' }}>{sellerTier.listingLimitCount >= 999999 ? "Unlimited" : sellerTier.listingLimitCount} listings · {(sellerTier.commissionFeePercent * 100).toFixed(1)}% fee</Text>
+            {sellerTier.name} · {sellerTier.listingLimitCount >= 999999 ? "Unlimited" : sellerTier.listingLimitCount} listings · {(sellerTier.commissionFeePercent * 100).toFixed(1)}% fee
           </Text>
-          <Text style={styles.sellerTierRibbonCta}>Payout setup →</Text>
+          <Text style={styles.sellerTierRibbonCta}>→</Text>
         </TouchableOpacity>
       )}
 
@@ -499,26 +494,29 @@ export default function SellScreen() {
               <Text style={styles.charCount}>{desc.length}/500</Text>
             </FormField>
 
-            {/* Category */}
-            <Text style={styles.fieldLabel}>
-              <Text style={styles.fieldLabelIcon}>🗂️ </Text>
-              {t("sell.productCategory")}
-            </Text>
-            <View style={styles.categoryGrid}>
-              {CATEGORIES.map(cat => (
-                <TouchableOpacity
-                  key={cat.value}
-                  style={[styles.catChip, category === cat.value && styles.catChipActive]}
-                  onPress={() => setCategory(cat.value)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.catEmoji}>{cat.emoji}</Text>
-                  <Text style={[styles.catLabel, category === cat.value && styles.catLabelActive]}>
-                    {t(cat.labelKey)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {/* Category -- the same four-wordmark-colour tiles the home feed
+                uses, cycled in the same fixed order so a category keeps its
+                colour everywhere (see categoryHues in src/design/tokens.ts). */}
+            <Text style={styles.fieldLabel}>{t("sell.productCategory")}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryGrid}>
+              {CATEGORIES.map((cat, i) => {
+                const hue = categoryHues[i % categoryHues.length];
+                const on = category === cat.value;
+                return (
+                  <TouchableOpacity
+                    key={cat.value}
+                    style={[styles.catChip, { backgroundColor: hue.bg }, on && styles.catChipActive]}
+                    onPress={() => setCategory(cat.value)}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.catEmoji, { color: hue.ink }]}>{cat.emoji}</Text>
+                    <Text style={[styles.catLabel, { color: hue.ink }]} numberOfLines={1}>
+                      {t(cat.labelKey)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
 
             {/* Location / Governorate */}
             <FormField icon={<MapPin color="#6366F1" size={18} />} label={t("sell.productLocation")}>
@@ -810,43 +808,26 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "800", color: "#1E293B" },
   stepLabel: { fontSize: 14, fontWeight: "600", color: "#94A3B8" },
 
   // Progress
+  headerCancel: { fontSize: 15, fontWeight: "700", color: "#94A3B8" },
+  headerNext: { fontSize: 15, fontWeight: "700", color: "#0F172A" },
+  headerNextOff: { color: "#CBD5E1" },
+  // A 2px rule, not a rounded indigo bar.
   progressTrack: {
-    height: 5,
+    height: 2,
     backgroundColor: "#E2E8F0",
     marginHorizontal: 20,
-    borderRadius: 4,
-    overflow: "hidden",
+    marginTop: 14,
+    flexDirection: "row",
   },
   progressFill: {
     height: "100%",
-    backgroundColor: "#6366F1",
-    borderRadius: 4,
+    backgroundColor: "#0F172A",
   },
 
   // Step pills
-  stepsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 28,
-    paddingVertical: 16,
-  },
-  stepPill: { alignItems: "center", gap: 5 },
-  stepCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#E2E8F0",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  stepCircleActive: { backgroundColor: "#6366F1" },
-  stepText: { fontSize: 11, fontWeight: "600", color: "#94A3B8" },
-  stepTextActive: { color: "#6366F1" },
 
   // Scroll content
   scrollContent: { paddingHorizontal: 20, paddingTop: 8 },
@@ -856,21 +837,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#EFF6FF",
-    marginHorizontal: 16,
-    marginBottom: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#BFDBFE",
+    marginHorizontal: 20,
+    marginTop: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
   },
-  sellerTierRibbonText: { flex: 1, fontSize: 11, color: "#2563EB", fontWeight: "600" },
-  sellerTierRibbonCta: { fontSize: 11, fontWeight: "800", color: "#2563EB" },
+  sellerTierRibbonText: { flex: 1, fontSize: 11, color: "#64748B", fontWeight: "600" },
+  sellerTierRibbonCta: { fontSize: 13, fontWeight: "800", color: "#0F172A" },
 
   // Step headings
-  stepHeading: { fontSize: 24, fontWeight: "800", color: "#0F172A", marginBottom: 6 },
-  stepSub: { fontSize: 14, color: "#64748B", marginBottom: 24, lineHeight: 20 },
+  stepHeading: { fontSize: 28, fontWeight: "800", letterSpacing: -1.2, color: "#0F172A", lineHeight: 34 },
+  stepSub: { fontSize: 15, color: "#64748B", marginTop: 8, marginBottom: 22, lineHeight: 21 },
 
   // Photo grid
   photoGrid: {
@@ -928,83 +906,62 @@ const styles = StyleSheet.create({
   // Form fields
   formField: { marginBottom: 20 },
   fieldLabelRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
-  fieldLabelText: { fontSize: 15, fontWeight: "700", color: "#1E293B" },
-  fieldLabel: { fontSize: 15, fontWeight: "700", color: "#1E293B", marginBottom: 12 },
+  fieldLabelText: { fontSize: 11, fontWeight: "800", letterSpacing: 1.8, color: "#94A3B8", textTransform: "uppercase" },
+  fieldLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1.8, color: "#94A3B8", marginBottom: 10, textTransform: "uppercase" },
   fieldLabelIcon: { fontSize: 16 },
+  // Underlines, not boxed cards: the design writes straight onto the page.
   input: {
-    backgroundColor: "white",
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: "#1E293B",
+    paddingVertical: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: "#0F172A",
+    fontSize: 19,
+    fontWeight: "600",
+    lineHeight: 26,
+    color: "#0F172A",
   },
-  textArea: { height: 110, textAlignVertical: "top" },
+  textArea: {
+    height: 96,
+    textAlignVertical: "top",
+    fontSize: 15,
+    fontWeight: "400",
+    lineHeight: 22,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
   charCount: { fontSize: 11, color: "#94A3B8", textAlign: "right", marginTop: 4 },
 
   // Category grid
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    // Same breathing room below the grid as every FormField has, so the
-    // Location heading does not sit on the last row of category cards.
-    marginBottom: 20,
-  },
+  categoryGrid: { flexDirection: "row", gap: 8, paddingBottom: 20 },
   catChip: {
-    width: (SCREEN_WIDTH - 48 - 10) / 2,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "white",
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    width: 86,
+    height: 70,
+    borderRadius: 16,
+    padding: 10,
+    justifyContent: "space-between",
   },
-  catChipActive: { borderColor: "#6366F1", backgroundColor: "#EEF2FF" },
-  catEmoji: { fontSize: 20 },
-  catLabel: { fontSize: 14, fontWeight: "600", color: "#475569" },
-  catLabelActive: { color: "#6366F1" },
+  catChipActive: { borderWidth: 2, borderColor: "#0F172A" },
+  catEmoji: { fontSize: 15 },
+  catLabel: { fontSize: 13, fontWeight: "800", letterSpacing: -0.3, lineHeight: 15 },
 
   // Pricing
   priceInputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: "#BFDBFE",
-    overflow: "hidden",
-    shadowColor: "#2563EB",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    flexDirection: "row-reverse",
+    alignItems: "baseline",
+    gap: 10,
+    paddingTop: 22,
+    paddingBottom: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: "#0F172A",
   },
-  priceIconBox: {
-    padding: 18,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: 70,
-  },
-  priceIconText: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#2563EB',
-    letterSpacing: 0.5,
-  },
+  priceIconBox: { justifyContent: "flex-end" },
+  priceIconText: { fontSize: 13, fontWeight: "700", color: "#94A3B8" },
   priceInput: {
     flex: 1,
-    fontSize: 36,
+    fontSize: 48,
     fontWeight: "800",
-    color: "#1E293B",
-    paddingRight: 20,
-    letterSpacing: -0.5,
+    color: "#0F172A",
+    letterSpacing: -2.4,
+    padding: 0,
   },
   livePriceTag: {
     flexDirection: 'row',
@@ -1054,77 +1011,6 @@ const styles = StyleSheet.create({
   },
 
   // Sell Faster Promoted Listings
-  sellFasterCard: {
-    marginTop: 24,
-    backgroundColor: '#EFF6FF',
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#BFDBFE',
-    padding: 16,
-  },
-  sellFasterTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  sellFasterIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sellFasterTitle: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
-  sellFasterSub: { fontSize: 11, color: '#2563EB', fontWeight: '600', marginTop: 1 },
-  togglePill: {
-    width: 46,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#CBD5E1',
-    padding: 3,
-    justifyContent: 'center',
-  },
-  togglePillActive: { backgroundColor: '#0F172A' },
-  toggleCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'white',
-  },
-  toggleCircleActive: { alignSelf: 'flex-end' },
-  adRateSelectorWrap: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#DBEAFE' },
-  adRatePrompt: { fontSize: 12, fontWeight: '700', color: '#1E293B', marginBottom: 10 },
-  adRatePillsRow: { flexDirection: 'row', gap: 8 },
-  adRateChip: {
-    flex: 1,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderWidth: 1.5,
-    borderColor: '#DBEAFE',
-    alignItems: 'center',
-  },
-  adRateChipActive: { borderColor: '#2563EB', backgroundColor: '#DBEAFE' },
-  adRateChipLabel: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
-  adRateChipLabelActive: { color: '#1D4ED8' },
-  adRateChipDesc: { fontSize: 11, color: '#64748B', marginTop: 2, textAlign: 'center' },
-  adRateChipDescActive: { color: '#1E40AF', fontWeight: '600' },
-  adRateCalcBox: {
-    marginTop: 10,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  adRateCalcText: { fontSize: 11, color: '#475569', lineHeight: 16 },
 
   // Summary card
   summaryCard: {
