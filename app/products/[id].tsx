@@ -1,26 +1,17 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
-  ChevronLeft,
   ChevronRight,
   Edit3,
   Heart,
-  Info,
-  MapPin,
   MessageCircle,
-  Package,
-  Percent,
   Share2,
   ShieldAlert,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
-  Star,
   Tag,
-  Truck,
   X,
-  Zap,
   Flag,
 } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
@@ -42,7 +33,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Reanimated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import { getProductBoostInfo } from '../../src/services/lib/boostService';
@@ -121,6 +111,7 @@ export default function ProductDetailScreen() {
 
   // Heart scale animation
   const [heartScale] = useState(() => new Animated.Value(1));
+  const heroRef = useRef<FlatList>(null);
 
   const loadProduct = async () => {
     if (!id) return;
@@ -314,9 +305,13 @@ export default function ProductDetailScreen() {
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <View style={[styles.pageWrapper, { maxWidth: contentWidth }]}>
 
-        {/* ── Image carousel (responsive width/height) ── */}
-        <View style={[styles.carousel, { width: contentWidth, height: carouselHeight }]}>
+        {/* ── Photo ──
+            Approved build 3a: the photo carries only three floating white
+            circles and a strip of thumbnails; no dark scrim, no counter pill,
+            no dots. The thumbnails are the page indicator. */}
+        <View style={[styles.hero, { width: contentWidth, height: carouselHeight }]}>
           <FlatList
+            ref={heroRef}
             data={images}
             horizontal
             pagingEnabled
@@ -326,191 +321,149 @@ export default function ProductDetailScreen() {
               setActiveIndex(Math.round(e.nativeEvent.contentOffset.x / contentWidth));
             }}
             renderItem={({ item }) => (
-              <Image source={{ uri: item }} style={[styles.carouselImage, { width: contentWidth, height: carouselHeight }]} />
+              <Image source={{ uri: item }} style={[styles.heroImage, { width: contentWidth, height: carouselHeight }]} />
             )}
           />
 
-          {/* Gradient top overlay for back/share/heart visibility */}
-          <LinearGradient
-            colors={['rgba(0,0,0,0.48)', 'transparent']}
-            style={styles.carouselTopGradient}
-          />
-
-          {/* Back button */}
-          <TouchableOpacity style={styles.backBtn} hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }} onPress={() => router.back()}>
-            <ArrowLeft color="white" size={22} />
+          <TouchableOpacity style={[styles.circleBtn, styles.heroBack]} hitSlop={6} onPress={() => router.back()}>
+            <ArrowLeft color="#0F172A" size={20} />
           </TouchableOpacity>
 
-        {/* Share + Wishlist (top right) */}
-        <View style={styles.topRight}>
-          <TouchableOpacity style={styles.overlayBtn} hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }} onPress={handleShare}>
-            <Share2 color="white" size={18} />
-          </TouchableOpacity>
-          {!isOwner && (
-            <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-              <TouchableOpacity style={styles.overlayBtn} hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }} onPress={handleWishlist}>
-                <Heart
-                  size={18}
-                  color={isWishlisted ? '#F87171' : 'white'}
-                  fill={isWishlisted ? '#F87171' : 'none'}
-                />
-              </TouchableOpacity>
-            </Animated.View>
+          <View style={styles.heroTopRight}>
+            <TouchableOpacity style={styles.circleBtn} hitSlop={6} onPress={handleShare}>
+              <Share2 color="#0F172A" size={18} />
+            </TouchableOpacity>
+            {!isOwner && (
+              <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                <TouchableOpacity style={styles.circleBtn} hitSlop={6} onPress={handleWishlist}>
+                  <Heart
+                    size={18}
+                    color={isWishlisted ? '#EF4444' : '#0F172A'}
+                    fill={isWishlisted ? '#EF4444' : 'none'}
+                  />
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+          </View>
+
+          {images.length > 1 && (
+            <View style={styles.heroThumbs}>
+              {images.slice(0, 4).map((img, i) => (
+                <TouchableOpacity
+                  key={i}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    setActiveIndex(i);
+                    heroRef.current?.scrollToOffset({ offset: i * contentWidth, animated: true });
+                  }}
+                >
+                  <Image
+                    source={{ uri: img }}
+                    style={[styles.heroThumb, i === activeIndex && styles.heroThumbOn]}
+                  />
+                </TouchableOpacity>
+              ))}
+              {images.length > 4 && (
+                <View style={[styles.heroThumb, styles.heroThumbMore]}>
+                  <Text style={styles.heroThumbMoreText}>+{images.length - 4}</Text>
+                </View>
+              )}
+            </View>
           )}
         </View>
 
-        {/* Image counter pill */}
-        {images.length > 1 && (
-          <View style={styles.counterPill}>
-            <Text style={styles.counterText}>{activeIndex + 1} / {images.length}</Text>
+        {/* ── Scrollable content ── */}
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+
+          {/* Metadata, then the price as the largest thing on the page, then
+              the title -- the approved build's hierarchy rule. It used to be
+              coloured condition badges, an emoji date, title, then price. */}
+          <View style={styles.headBlock}>
+            <Text style={styles.kicker}>
+              {`${product.condition || 'Used'}${(product as any).created_at ? ` · ${isRTL ? 'نُشر' : 'LISTED'} ${timeAgo((product as any).created_at)}` : ''}`.toUpperCase()}
+            </Text>
+            <View style={styles.priceRow}>
+              <Text style={styles.price}>{Math.round(Number(product.price)).toLocaleString('en-EG')}</Text>
+              <Text style={styles.priceCurrency}>EGP</Text>
+            </View>
+            <Text style={styles.title}>{product.title}</Text>
+
+            {(() => {
+              const boost = getProductBoostInfo(product);
+              if (!boost.isPromoted || !boost.pkg) return null;
+              return (
+                <View style={styles.promotedPill}>
+                  <Text style={styles.promotedPillText}>{boost.pkg.badgeText.toUpperCase()}</Text>
+                </View>
+              );
+            })()}
           </View>
-        )}
 
-        {/* Dot indicators */}
-        {images.length > 1 && (
-          <View style={styles.dots}>
-            {images.map((_, i) => (
-              <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
-            ))}
-          </View>
-        )}
-      </View>
-
-      {/* ── Scrollable content ── */}
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-
-        <View style={styles.content}>
-          {/* Promoted Badge if active */}
-          {(() => {
-            const boost = getProductBoostInfo(product);
-            if (!boost.isPromoted || !boost.pkg) return null;
-            return (
-              <View style={[styles.promotedPill, { backgroundColor: boost.pkg.id === 'urgent' ? '#FEF3C7' : '#EFF6FF', borderColor: boost.pkg.id === 'urgent' ? '#F59E0B' : '#3B82F6' }]}>
-                <Text style={{ fontSize: 13 }}>{boost.pkg.badgeEmoji}</Text>
-                <Text style={[styles.promotedPillText, { color: boost.pkg.id === 'urgent' ? '#B45309' : '#1D4ED8' }]}>
-                  {boost.pkg.badgeText}
-                </Text>
-              </View>
-            );
-          })()}
-
-          {/* Owner Boost CTA Card.
-              Hidden entirely while PAYMENTS_ENABLED is false -- boosts are a
-              paid digital feature with no purchase path at all right now
-              (see PLAN-CLASSIFIEDS-MODE.md). Hidden on iOS even once payments
-              are back: 3.1.3(g) requires in-app purchase for it, and until
-              boosts go through StoreKit, iOS must not offer -- or point at --
-              buying one. */}
-          {PAYMENTS_ENABLED && DIGITAL_PURCHASES_ENABLED && user?.id === product.seller_id && (
+          {/* Owner boost CTA -- kept (payments + non-iOS only, 3.1.3(g)), but
+              restyled from a navy gradient card into a plain hairline row. */}
+          {PAYMENTS_ENABLED && DIGITAL_PURCHASES_ENABLED && isOwner && (
             <TouchableOpacity
-              style={styles.ownerBoostBanner}
+              style={styles.linkRow}
               onPress={() => router.push(`/boost/${product.id}` as any)}
-              activeOpacity={0.9}
+              activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={['#1E293B', '#0F172A']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.ownerBoostGradient}
-              >
-                <View style={styles.ownerBoostLeft}>
-                  <Sparkles size={20} color="#F59E0B" />
-                  <View>
-                    <Text style={styles.ownerBoostTitle}>Promote This Listing ⚡</Text>
-                    <Text style={styles.ownerBoostSub}>Get up to 10x more buyers across Egypt</Text>
-                  </View>
-                </View>
-                <View style={styles.ownerBoostBtn}>
-                  <Text style={styles.ownerBoostBtnText}>Boost →</Text>
-                </View>
-              </LinearGradient>
+              <View style={styles.linkRowLeft}>
+                <Sparkles size={18} color="#0F172A" />
+                <Text style={styles.linkRowText}>{isRTL ? 'روّج هذا الإعلان' : 'Promote this listing'}</Text>
+              </View>
+              <ChevronRight size={16} color="#CBD5E1" />
             </TouchableOpacity>
           )}
 
-          {/* Title row + badges */}
-          <Reanimated.View entering={FadeInDown.duration(350).delay(50)}>
-            <View style={styles.badgeRow}>
-              <View style={[styles.badge, product.condition === 'New' ? styles.badgeNew : styles.badgeUsed]}>
-                <Text style={[styles.badgeText, product.condition === 'New' ? styles.badgeTextNew : styles.badgeTextUsed]}>
-                  {product.condition ?? 'Used'}
-                </Text>
+          {/* ── Seller ── */}
+          <TouchableOpacity
+            style={styles.sellerRow}
+            activeOpacity={0.8}
+            onPress={() => product.seller_id && router.push(`/seller/${product.seller_id}` as any)}
+          >
+            {product.seller?.avatar_url ? (
+              <Image source={{ uri: product.seller.avatar_url }} style={styles.sellerAvatar} />
+            ) : (
+              <View style={[styles.sellerAvatar, styles.sellerAvatarFallback]}>
+                <Text style={styles.sellerInitial}>{sellerInitial}</Text>
               </View>
-              {(product as any).created_at && (
-                <Text style={styles.listedDate}>🕐 Listed {timeAgo((product as any).created_at)}</Text>
-              )}
-            </View>
-
-            <Text style={styles.title}>{product.title}</Text>
-
-            {/* Price */}
-            <Text style={styles.price}>{formatEGP(product.price)}</Text>
-          </Reanimated.View>
-
-          {/* ── Seller card ── */}
-          <Reanimated.View entering={FadeInDown.duration(350).delay(100)}>
-            <View style={styles.sellerCard}>
-              <View style={styles.sellerAvatarWrap}>
-                {product.seller?.avatar_url ? (
-                  <Image source={{ uri: product.seller.avatar_url }} style={styles.sellerAvatar} />
-                ) : (
-                  <View style={styles.sellerAvatarFallback}>
-                    <Text style={styles.sellerInitial}>{sellerInitial}</Text>
-                  </View>
-                )}
+            )}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <View style={styles.sellerNameRow}>
+                <Text style={styles.sellerName} numberOfLines={1}>{sellerName}</Text>
+                {product.seller?.is_verified_seller && <ShieldCheck size={13} color="#059669" />}
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.sellerName}>{sellerName}</Text>
-                <View style={styles.sellerMeta}>
-                  {product.seller?.is_verified_seller && (
-                    <>
-                      <ShieldCheck size={12} color="#10B981" />
-                      <Text style={styles.sellerMetaText}>Verified Seller</Text>
-                      <Text style={styles.sellerDot}>·</Text>
-                    </>
-                  )}
-                  <ShoppingBag size={12} color="#94A3B8" />
-                  <Text style={styles.sellerMetaText}>Egypt</Text>
-                </View>
-                {/* Real rating from the reviews aggregate. The previous pills
-                    showed a hardcoded "18 items sold" for every seller and an
-                    unconditional "Verified Seller" badge -- both were invented.
-                    Classifieds mode has no orders, so no reviews can exist --
-                    a listings count stands in for the rating instead. */}
-                {PAYMENTS_ENABLED ? (
-                  <View style={styles.sellerMetricsRow}>
-                    <StarRating
-                      value={sellerRating?.rating_avg ?? null}
-                      count={sellerRating?.rating_count ?? 0}
-                      size={13}
-                      isRTL={isRTL}
-                    />
-                  </View>
-                ) : sellerListingsCount != null && (
-                  <View style={styles.sellerMetricsRow}>
-                    <Text style={styles.sellerMetaText}>
-                      {isRTL
-                        ? `${sellerListingsCount} إعلان`
-                        : `${sellerListingsCount} listing${sellerListingsCount === 1 ? '' : 's'}`}
-                    </Text>
-                  </View>
-                )}
-                {/* Real reply-speed badge (seller_reply_stats) -- never shown
-                    without at least a few real replies behind it. */}
+              <View style={styles.sellerMetaRow}>
                 {!!replyBadge && (
-                  <View style={styles.replyBadgeRow}>
-                    <View style={styles.replyBadgeDot} />
-                    <Text style={styles.replyBadgeText}>{replyBadge}</Text>
-                  </View>
+                  <>
+                    <View style={styles.greenDot} />
+                    <Text style={styles.sellerTrust}>{replyBadge}</Text>
+                    <Text style={styles.sellerDot}>·</Text>
+                  </>
+                )}
+                {PAYMENTS_ENABLED && sellerRating?.rating_count ? (
+                  <StarRating
+                    value={sellerRating?.rating_avg ?? null}
+                    count={sellerRating?.rating_count ?? 0}
+                    size={12}
+                    isRTL={isRTL}
+                  />
+                ) : (
+                  <Text style={styles.sellerMetaText}>
+                    {sellerListingsCount != null
+                      ? (isRTL ? `${sellerListingsCount} إعلان` : `${sellerListingsCount} listing${sellerListingsCount === 1 ? '' : 's'}`)
+                      : (isRTL ? 'بائع' : 'Seller')}
+                  </Text>
                 )}
               </View>
-              <ChevronRight color="#CBD5E1" size={18} />
             </View>
-          </Reanimated.View>
+            <ChevronRight color="#CBD5E1" size={18} />
+          </TouchableOpacity>
 
           {/* ── Ask in one tap ── */}
           {!isOwner && (
             <View style={styles.askSection}>
-              <Text style={styles.askLabel}>{isRTL ? 'اسأل في نقرة واحدة' : 'ASK IN ONE TAP'}</Text>
+              <Text style={styles.sectionKicker}>{isRTL ? 'اسأل في نقرة واحدة' : 'ASK IN ONE TAP'}</Text>
               <View style={styles.askRow}>
                 <TouchableOpacity
                   style={styles.askChipPrimary}
@@ -523,7 +476,9 @@ export default function ProductDetailScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.askChip} onPress={handleOpenOfferModal}>
                   <Text style={styles.askChipText}>
-                    {isRTL ? `هل تقبل ${formatEGP(Math.round(Number(product.price) * 0.9))}؟` : `Would you take ${formatEGP(Math.round(Number(product.price) * 0.9))}?`}
+                    {isRTL
+                      ? `هل تقبل ${Math.round(Number(product.price) * 0.9).toLocaleString('en-EG')}؟`
+                      : `Would you take ${Math.round(Number(product.price) * 0.9).toLocaleString('en-EG')}?`}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -537,115 +492,11 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {/* Safety tips: meet in public, inspect before paying -- worth
-              surfacing on every listing, not just while payments are paused. */}
-          <TouchableOpacity
-            style={styles.safetyLink}
-            onPress={() => router.push('/safety' as any)}
-            activeOpacity={0.7}
-          >
-            <ShieldAlert size={13} color="#94A3B8" />
-            <Text style={styles.safetyLinkText}>
-              {isRTL ? 'نصائح للبيع والشراء بأمان' : 'Safety tips for buying and selling'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Location badge */}
-          {(product as any).location && (
-            <Reanimated.View entering={FadeInDown.duration(350).delay(140)} style={styles.locationBadge}>
-              <MapPin size={14} color="#6366F1" />
-              <Text style={styles.locationText}>{(product as any).location}, Egypt</Text>
-            </Reanimated.View>
-          )}
-
-          {/* Talking to the seller and negotiating are both actions on a
-              *person*, so they sit with the seller rather than competing with
-              Buy in the sticky bar. */}
-          {!isOwner && (
-            <Reanimated.View entering={FadeInDown.duration(350).delay(150)} style={styles.sellerActions}>
-              {/* While payments are paused, the sticky bar's main action IS
-                  "Message seller" (see below), so repeating it here would be
-                  a second identical CTA. Share fills the slot instead. */}
-              {PAYMENTS_ENABLED ? (
-                <TouchableOpacity style={styles.ghostBtn} onPress={handleContact} activeOpacity={0.85}>
-                  <MessageCircle size={17} color="#0F172A" />
-                  <Text style={styles.ghostBtnText}>{isRTL ? 'راسل البائع' : 'Message seller'}</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={styles.ghostBtn} onPress={handleShare} activeOpacity={0.85}>
-                  <Share2 size={16} color="#0F172A" />
-                  <Text style={styles.ghostBtnText}>{isRTL ? 'مشاركة' : 'Share'}</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity style={styles.ghostBtn} onPress={handleOpenOfferModal} activeOpacity={0.85}>
-                <Tag size={16} color="#0F172A" />
-                <Text style={styles.ghostBtnText}>{isRTL ? 'قدّم عرضاً' : 'Make an offer'}</Text>
-              </TouchableOpacity>
-            </Reanimated.View>
-          )}
-
-          {/* ── EgyBay Escrow & Money Back Guarantee Card ──
-              Classifieds mode: there is no escrow to promise right now (see
-              PLAN-CLASSIFIEDS-MODE.md). */}
-          {PAYMENTS_ENABLED && (
-          <Reanimated.View entering={FadeInDown.duration(350).delay(180)}>
-            <TouchableOpacity
-              style={styles.guaranteeCard}
-              onPress={() => setTrustModalVisible(true)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.guaranteeIconWrap}>
-                <ShieldCheck color="#2563EB" size={24} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <Text style={styles.guaranteeTitle}>
-                    {isRTL ? 'ضمان إيجي باي لحماية أموالك 🛡️' : 'EgyBay escrow protection 🛡️'}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '800' }}>
-                    {isRTL ? 'كيف نحميك؟ ←' : 'How it works →'}
-                  </Text>
-                </View>
-                <Text style={styles.guaranteeDesc}>
-                  {isRTL
-                    ? 'أموالك في أمان تام ولا تُحوّل للبائع إلا بعد استلامك ومعاينتك للمنتج 100%.'
-                    : 'Your money is held safely and is never released to the seller until you have received and inspected the item.'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </Reanimated.View>
-          )}
-
-          {/* ── Delivery & Handover Options Strip ── */}
-          <Reanimated.View entering={FadeInDown.duration(350).delay(220)} style={styles.deliverySection}>
-            <Text style={styles.deliveryHeaderTitle}>{t('products.deliveryOptions')}</Text>
-            <View style={styles.deliveryOptionRow}>
-              <View style={styles.deliveryOptionDot}>
-                <Truck size={14} color="#059669" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.deliveryOptionName}>{t('products.expressShipping')}</Text>
-                <Text style={styles.deliveryOptionSub}>Next-day delivery available</Text>
-              </View>
-            </View>
-            <View style={[styles.deliveryOptionRow, { marginTop: 8 }]}>
-              <View style={[styles.deliveryOptionDot, { backgroundColor: '#EFF6FF' }]}>
-                <MapPin size={14} color="#2563EB" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.deliveryOptionName}>{t('products.meetupInPerson')}</Text>
-                <Text style={styles.deliveryOptionSub}>Inspect item before paying cash</Text>
-              </View>
-            </View>
-          </Reanimated.View>
-
-          {/* ── Data rows: condition / where / views ──
-              Location is a real string the seller typed on the sell form
-              (Step 2's "Cairo · District" field), parsed back out of the
-              tag it was saved with rather than duplicated as free text in
-              the description below. Distance is not shown -- see the note
-              at the top of app/(tabs)/index.tsx. */}
-          <Reanimated.View entering={FadeInDown.duration(350).delay(240)} style={styles.dataRows}>
+          {/* ── Data rows ──
+              Location is a real string the seller typed on the sell form,
+              parsed back out of the tag it was saved with. Distance is not
+              shown -- see the note at the top of app/(tabs)/index.tsx. */}
+          <View style={styles.dataRows}>
             <View style={styles.dataRow}>
               <Text style={styles.dataRowLabel}>{isRTL ? 'الحالة' : 'CONDITION'}</Text>
               <Text style={styles.dataRowValue}>{product.condition || 'Used'}</Text>
@@ -656,20 +507,23 @@ export default function ProductDetailScreen() {
                 <Text style={styles.dataRowValue}>{locationTag}</Text>
               </View>
             )}
+            <View style={styles.dataRow}>
+              <Text style={styles.dataRowLabel}>{isRTL ? 'التسليم' : 'HANDOVER'}</Text>
+              <Text style={styles.dataRowValue}>{isRTL ? 'مقابلة شخصية أو شحن' : 'Meet up, or shipping'}</Text>
+            </View>
             <View style={[styles.dataRow, styles.dataRowLast]}>
               <Text style={styles.dataRowLabel}>{isRTL ? 'المشاهدات' : 'VIEWS'}</Text>
               <Text style={styles.dataRowValue}>{product.view_count ?? 0}</Text>
             </View>
-          </Reanimated.View>
+          </View>
 
-          {/* "Priced to sell": the range of other active listings in the same
-              category right now. Never a range of sold prices -- see
-              getComparablePriceRange for why. */}
+          {/* Real active-listing range -- never sold-price history this app
+              does not track (see getComparablePriceRange). */}
           {!!comparable && (
             <View style={styles.comparableBox}>
-              <View style={styles.replyBadgeRow}>
-                <View style={styles.replyBadgeDot} />
-                <Text style={styles.replyBadgeText}>{isRTL ? 'ضمن نطاق السوق' : 'Priced in range'}</Text>
+              <View style={styles.trustLine}>
+                <View style={styles.greenDot} />
+                <Text style={styles.trustLineText}>{isRTL ? 'ضمن نطاق السوق' : 'Priced in range'}</Text>
               </View>
               <Text style={styles.comparableText}>
                 {isRTL
@@ -679,78 +533,67 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {/* Description */}
-          <Reanimated.View entering={FadeInDown.duration(350).delay(260)}>
-            <Text style={styles.sectionLabel}>{t('products.description')}</Text>
-            <Text style={styles.description}>
-              {cleanDescription || 'No description provided.'}
-            </Text>
-          </Reanimated.View>
-
-          {/* ── Reviews for this listing ──
-              Classifieds mode: reviews require a completed order, and no
-              orders exist right now (see PLAN-CLASSIFIEDS-MODE.md). */}
-          {PAYMENTS_ENABLED && (
-          <View style={{ marginBottom: 24 }}>
-            <View style={styles.reviewsHeader}>
-              <Text style={styles.sectionLabel}>
-                {isRTL ? 'تقييمات هذا المنتج' : 'Reviews for this item'}
-              </Text>
-              {productReviews.length > 0 && (
-                <Text style={styles.reviewsCount}>
-                  {productReviews.length}
-                </Text>
-              )}
-            </View>
-            <ReviewList
-              reviews={productReviews}
-              isRTL={isRTL}
-              emptyText={
-                isRTL
-                  ? 'لا توجد تقييمات على هذا المنتج بعد.'
-                  : 'No reviews on this item yet.'
-              }
-            />
+          {/* ── Description ── */}
+          <View style={styles.descBlock}>
+            <Text style={styles.description}>{cleanDescription || (isRTL ? 'لا يوجد وصف.' : 'No description provided.')}</Text>
           </View>
+
+          {/* Reviews require a completed order, which cannot happen while
+              payments are paused (see PLAN-CLASSIFIEDS-MODE.md). */}
+          {PAYMENTS_ENABLED && (
+            <View style={styles.reviewsBlock}>
+              <View style={styles.sectionHeadRow}>
+                <Text style={styles.sectionTitle}>{isRTL ? 'التقييمات' : 'Reviews'}</Text>
+                {productReviews.length > 0 && <Text style={styles.sectionCount}>{productReviews.length}</Text>}
+              </View>
+              <ReviewList
+                reviews={productReviews}
+                isRTL={isRTL}
+                emptyText={isRTL ? 'لا توجد تقييمات على هذا المنتج بعد.' : 'No reviews on this item yet.'}
+              />
+            </View>
           )}
 
-          {/* ── Similar Products Carousel (eBay style) ── */}
+          {/* ── Others like this ── */}
           {similarProducts.length > 0 && (
             <View style={styles.similarSection}>
-              <View style={styles.similarHeader}>
-                <Sparkles size={18} color="#6366F1" />
-                <Text style={styles.similarTitle}>{t('products.similarItems')}</Text>
+              <View style={styles.sectionHeadRow}>
+                <Text style={styles.sectionTitle}>{isRTL ? 'إعلانات مشابهة' : 'Others like this'}</Text>
+                <TouchableOpacity onPress={() => router.push(`/products?category=${encodeURIComponent(product.category)}` as any)}>
+                  <Text style={styles.seeAll}>{isRTL ? 'عرض الكل' : 'See all'}</Text>
+                </TouchableOpacity>
               </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.similarRow}
-              >
-                {similarProducts.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.similarCard}
-                    onPress={() => router.push(`/products/${item.id}` as any)}
-                    activeOpacity={0.88}
-                  >
-                    <Image
-                      source={{ uri: item.images?.[0] || 'https://placehold.co/300x300/F1F5F9/64748B?text=Item' }}
-                      style={styles.similarImg}
-                    />
-                    <View style={styles.similarBody}>
-                      <Text style={styles.similarItemTitle} numberOfLines={1}>{item.title}</Text>
-                      <Text style={styles.similarItemPrice}>{formatEGP(item.price)}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              {similarProducts.slice(0, 4).map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.similarRow}
+                  onPress={() => router.push(`/products/${item.id}` as any)}
+                  activeOpacity={0.85}
+                >
+                  <Image
+                    source={{ uri: item.images?.[0] || 'https://placehold.co/300x300/F1F5F9/64748B?text=Item' }}
+                    style={styles.similarThumb}
+                  />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.similarTitle} numberOfLines={1}>{item.title}</Text>
+                    <Text style={styles.similarMeta} numberOfLines={1}>{item.category}</Text>
+                  </View>
+                  <Text style={styles.similarPrice}>{Math.round(item.price).toLocaleString('en-EG')}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           )}
+
+          {/* Safety + report, the two quiet links the design ends on. */}
+          <TouchableOpacity style={styles.quietLink} onPress={() => router.push('/safety' as any)} activeOpacity={0.7}>
+            <ShieldAlert size={14} color="#94A3B8" />
+            <Text style={styles.quietLinkText}>{isRTL ? 'نصائح للبيع والشراء بأمان' : 'Safety tips for buying and selling'}</Text>
+          </TouchableOpacity>
 
           {/* Guideline 1.2: writes a content_reports row; no "submitted" toast
               unless the RPC actually resolved. */}
           <TouchableOpacity
-            style={styles.reportListingBtn}
+            style={styles.quietLink}
             onPress={() => {
               const send = async (reason: string) => {
                 try {
@@ -772,86 +615,74 @@ export default function ProductDetailScreen() {
               };
               Alert.alert(
                 isRTL ? 'الإبلاغ عن الإعلان' : 'Report this listing',
-                isRTL ? 'ما سبب البلاغ؟' : 'Why are you reporting it?',
+                isRTL ? 'ما سبب الإبلاغ؟' : 'Why are you reporting it?',
                 [
                   { text: isRTL ? 'إلغاء' : 'Cancel', style: 'cancel' },
-                  { text: 'Prohibited or counterfeit item', onPress: () => send('Prohibited or counterfeit item') },
-                  { text: 'Scam or misleading', onPress: () => send('Scam or misleading') },
-                  { text: 'Inappropriate content', onPress: () => send('Inappropriate content') },
-                ]
+                  ...['Prohibited item', 'Scam or fraud', 'Misleading listing', 'Offensive content'].map(reason => ({
+                    text: reason,
+                    onPress: () => send(reason),
+                  })),
+                ],
               );
             }}
             activeOpacity={0.7}
           >
             <Flag size={14} color="#94A3B8" />
-            <Text style={styles.reportListingText}>
-              {isRTL ? 'الإبلاغ عن مخالفة' : 'Report this listing'}
-            </Text>
+            <Text style={styles.quietLinkText}>{isRTL ? 'الإبلاغ عن مخالفة' : 'Report this listing'}</Text>
           </TouchableOpacity>
 
-          {/* Bottom spacer for sticky bar */}
-          <View style={{ height: 100 }} />
-        </View>
-      </ScrollView>
+          <View style={{ height: 40 }} />
+        </ScrollView>
 
-      {/* ── Sticky bar: the price and the one action that matters ──
-          Previously three CTAs of near-equal weight sat here -- Chat in
-          indigo, Make an Offer in violet, Buy Now in green -- so nothing
-          dominated and the screen asked the shopper to choose between three
-          things instead of one. The price was not in the bar at all, even
-          though it is the number a buyer checks immediately before committing.
-
-          Chat and Make an Offer are not gone; they moved up beside the seller,
-          which is where they belong contextually -- you message a *person* and
-          you negotiate with a *person*. */}
-      <Reanimated.View entering={FadeInUp.duration(350)} style={styles.bottomBar}>
-        {isOwner ? (
-          <TouchableOpacity
-            style={[styles.ctaBtn, styles.ctaEdit]}
-            onPress={() => router.push(`/products/edit/${product.id}` as any)}
-          >
-            <Edit3 size={18} color="white" />
-            <Text style={styles.ctaBtnText}>Edit Listing</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.barRow}>
-            <View style={styles.barPriceWrap}>
-              <Text style={styles.barPriceLabel}>{isRTL ? 'السعر' : 'Price'}</Text>
-              <Text style={styles.barPrice} numberOfLines={1}>{formatEGP(product.price)}</Text>
-            </View>
-
-            {/* Classifieds mode: there is no checkout right now, so the main
-                action is starting the conversation, not buying (see
-                PLAN-CLASSIFIEDS-MODE.md). */}
-            {PAYMENTS_ENABLED ? (
+        {/* ── Bottom bar: one ink action, one outlined circle ──
+            The price is no longer repeated here: it is the largest thing at
+            the top of the page, per the approved build's hierarchy rule. */}
+        <View style={styles.bottomBar}>
+          {isOwner ? (
+            <TouchableOpacity
+              style={styles.primaryPill}
+              onPress={() => router.push(`/products/edit/${product.id}` as any)}
+              activeOpacity={0.9}
+            >
+              <Edit3 size={18} color="white" />
+              <Text style={styles.primaryPillText}>{isRTL ? 'تعديل الإعلان' : 'Edit listing'}</Text>
+            </TouchableOpacity>
+          ) : (
+            <>
               <TouchableOpacity
-                style={styles.buyBtn}
-                onPress={handleBuyNow}
+                style={styles.primaryPill}
+                onPress={PAYMENTS_ENABLED ? handleBuyNow : handleContact}
                 disabled={isBuying}
                 activeOpacity={0.9}
               >
                 {isBuying ? (
                   <ActivityIndicator color="white" size="small" />
-                ) : (
+                ) : PAYMENTS_ENABLED ? (
                   <>
                     <ShoppingBag size={18} color="white" />
-                    <Text style={styles.buyBtnText}>{isRTL ? 'اشترِ الآن' : 'Buy now'}</Text>
+                    <Text style={styles.primaryPillText}>{isRTL ? 'اشترِ الآن' : 'Buy now'}</Text>
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle size={18} color="white" />
+                    <Text style={styles.primaryPillText}>
+                      {isRTL ? `راسل ${sellerName.split(' ')[0]}` : `Message ${sellerName.split(' ')[0]}`}
+                    </Text>
                   </>
                 )}
               </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.buyBtn}
-                onPress={handleContact}
-                activeOpacity={0.9}
-              >
-                <MessageCircle size={18} color="white" />
-                <Text style={styles.buyBtnText}>{isRTL ? 'راسل البائع' : 'Message seller'}</Text>
+              {PAYMENTS_ENABLED && (
+                <TouchableOpacity style={styles.circleOutline} onPress={handleContact} activeOpacity={0.85}>
+                  <MessageCircle size={20} color="#0F172A" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.circleOutline} onPress={handleOpenOfferModal} activeOpacity={0.85}>
+                <Tag size={20} color="#0F172A" />
               </TouchableOpacity>
-            )}
-          </View>
-        )}
-      </Reanimated.View>
+            </>
+          )}
+        </View>
+
 
       {/* ════════════════ MAKE AN OFFER MODAL ════════════════ */}
       <Modal
@@ -988,406 +819,152 @@ export default function ProductDetailScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
+  // ── Approved build (3a) ──────────────────────────────────────────────
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  pageWrapper: { flex: 1, width: '100%', alignSelf: 'center' },
 
-  pageWrapper: {
-    flex: 1,
-    width: '100%',
-    alignSelf: 'center',
+  hero: { position: 'relative', backgroundColor: '#E2E8F0' },
+  heroImage: { resizeMode: 'cover' },
+  circleBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center', justifyContent: 'center',
   },
+  heroBack: { position: 'absolute', top: 56, left: 16 },
+  heroTopRight: { position: 'absolute', top: 56, right: 16, flexDirection: 'row', gap: 8 },
+  heroThumbs: { position: 'absolute', left: 16, bottom: 12, flexDirection: 'row', gap: 8 },
+  heroThumb: { width: 52, height: 52, borderRadius: 10, opacity: 0.85, backgroundColor: '#CBD5E1' },
+  heroThumbOn: { opacity: 1, borderWidth: 2, borderColor: '#FFFFFF' },
+  heroThumbMore: { backgroundColor: 'rgba(15,23,42,0.72)', alignItems: 'center', justifyContent: 'center', opacity: 1 },
+  heroThumbMoreText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
 
-  // Carousel
-  carousel: { backgroundColor: '#1E293B', position: 'relative' },
-  carouselImage: { resizeMode: 'cover' },
-  carouselTopGradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 120 },
+  headBlock: { paddingHorizontal: 20, paddingTop: 20 },
+  kicker: { fontSize: 11, fontWeight: '800', letterSpacing: 1.8, color: '#94A3B8' },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginTop: 10 },
+  price: { fontSize: 40, fontWeight: '800', letterSpacing: -2, color: '#0F172A', lineHeight: 42 },
+  priceCurrency: { fontSize: 13, fontWeight: '700', color: '#94A3B8' },
+  title: { fontSize: 19, fontWeight: '600', color: '#0F172A', lineHeight: 26, marginTop: 10 },
+  promotedPill: { alignSelf: 'flex-start', marginTop: 12, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: '#F1F5F9' },
+  promotedPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 1.4, color: '#0F172A' },
 
-  backBtn: {
-    position: 'absolute',
-    top: 48,
-    left: 16,
-    backgroundColor: 'rgba(0,0,0,0.42)',
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+  linkRow: {
+    marginHorizontal: 20, marginTop: 18, paddingVertical: 14,
+    borderTopWidth: 1, borderTopColor: '#E2E8F0', borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
-  topRight: {
-    position: 'absolute',
-    top: 48,
-    right: 16,
-    gap: 10,
-    flexDirection: 'row',
-  },
-  overlayBtn: {
-    backgroundColor: 'rgba(0,0,0,0.42)',
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  counterPill: {
-    position: 'absolute',
-    top: 48,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.48)',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  counterText: { color: 'white', fontSize: 12, fontWeight: '700' },
-  dots: {
-    position: 'absolute',
-    bottom: 14,
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.45)' },
-  dotActive: { width: 18, backgroundColor: 'white' },
+  linkRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  linkRowText: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
 
-  // Content
-  content: { padding: 20 },
+  sellerRow: {
+    marginHorizontal: 20, marginTop: 20, paddingVertical: 14,
+    borderTopWidth: 1, borderTopColor: '#E2E8F0', borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  sellerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E2E8F0' },
+  sellerAvatarFallback: { alignItems: 'center', justifyContent: 'center' },
+  sellerInitial: { fontSize: 17, fontWeight: '800', color: '#64748B' },
+  sellerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sellerName: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+  sellerMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
+  sellerTrust: { fontSize: 12, fontWeight: '700', color: '#059669' },
+  sellerDot: { color: '#CBD5E1' },
+  sellerMetaText: { fontSize: 12, fontWeight: '600', color: '#94A3B8' },
+  greenDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
 
-  // Boost & Promoted styles
-  promotedPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    marginBottom: 10,
-  },
-  promotedPillText: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
-
-  ownerBoostBanner: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 14,
-  },
-  ownerBoostGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
-  },
-  ownerBoostLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  ownerBoostTitle: { color: 'white', fontSize: 13, fontWeight: '800' },
-  ownerBoostSub: { color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, marginTop: 1 },
-  ownerBoostBtn: {
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  ownerBoostBtnText: { color: '#0F172A', fontSize: 12, fontWeight: '800' },
-
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  badge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeNew: { backgroundColor: '#D1FAE5' },
-  badgeUsed: { backgroundColor: '#FEF3C7' },
-  badgeText: { fontSize: 11, fontWeight: '800' },
-  badgeTextNew: { color: '#065F46' },
-  badgeTextUsed: { color: '#92400E' },
-  listedDate: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
-
-  title: { fontSize: 22, fontWeight: '800', color: '#0F172A', lineHeight: 30, marginBottom: 8 },
-  price: { fontSize: 32, fontWeight: '800', color: '#0F172A', marginBottom: 20, letterSpacing: -0.9 },
-
-  // Seller card
-  sellerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 18,
-    padding: 14,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    elevation: 3,
-    marginBottom: 16,
-  },
-  sellerAvatarWrap: { position: 'relative' },
-  sellerAvatar: { width: 52, height: 52, borderRadius: 26 },
-  sellerAvatarFallback: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center',
-  },
-  sellerInitial: { fontSize: 20, fontWeight: '800', color: '#6366F1' },
-  sellerOnlineDot: {
-    position: 'absolute', bottom: 2, right: 2,
-    width: 12, height: 12, borderRadius: 6,
-    backgroundColor: '#10B981', borderWidth: 2, borderColor: 'white',
-  },
-  sellerName: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
-  sellerMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
-  sellerMetaText: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
-  sellerDot: { color: '#CBD5E1', fontSize: 12 },
-  sellerMetricsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  replyBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
-  replyBadgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
-  replyBadgeText: { fontSize: 12, fontWeight: '700', color: '#059669' },
-
-  askSection: { marginTop: 20 },
-  askLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, color: '#94A3B8', marginBottom: 10, textTransform: 'uppercase' },
+  askSection: { paddingHorizontal: 20, paddingTop: 16 },
+  sectionKicker: { fontSize: 11, fontWeight: '800', letterSpacing: 1.8, color: '#94A3B8', marginBottom: 10 },
   askRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   askChipPrimary: { height: 36, paddingHorizontal: 14, borderRadius: 999, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center' },
   askChipPrimaryText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
   askChip: { height: 36, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center' },
   askChipText: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
 
-  dataRows: { marginTop: 20 },
+  dataRows: { marginHorizontal: 20, marginTop: 20 },
   dataRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
   dataRowLast: { borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-  dataRowLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.4, color: '#94A3B8', textTransform: 'uppercase' },
+  dataRowLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.4, color: '#94A3B8' },
   dataRowValue: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
 
-  comparableBox: { marginTop: 14, padding: 14, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14 },
+  comparableBox: { marginHorizontal: 20, marginTop: 14, padding: 14, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14 },
+  trustLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  trustLineText: { fontSize: 13, fontWeight: '800', color: '#059669' },
   comparableText: { fontSize: 13, color: '#475569', lineHeight: 19, marginTop: 6 },
-  sellerMetricPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+
+  descBlock: { padding: 20 },
+  description: { fontSize: 15, color: '#475569', lineHeight: 24 },
+
+  reviewsBlock: { paddingHorizontal: 20, paddingBottom: 8 },
+  sectionHeadRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', letterSpacing: -0.4 },
+  sectionCount: { fontSize: 13, fontWeight: '700', color: '#94A3B8' },
+  seeAll: { fontSize: 13, fontWeight: '700', color: '#2563EB' },
+
+  similarSection: { paddingHorizontal: 20, paddingBottom: 8 },
+  similarRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+  similarThumb: { width: 56, height: 56, borderRadius: 10, backgroundColor: '#E2E8F0' },
+  similarTitle: { fontSize: 14, fontWeight: '600', color: '#0F172A' },
+  similarMeta: { fontSize: 12, color: '#94A3B8', fontWeight: '600', marginTop: 2 },
+  similarPrice: { fontSize: 17, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+
+  quietLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 },
+  quietLinkText: { fontSize: 12, fontWeight: '600', color: '#94A3B8' },
+
+  bottomBar: {
+    borderTopWidth: 1, borderTopColor: '#E2E8F0', backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
   },
-  sellerMetricText: { fontSize: 11, fontWeight: '700', color: '#475569' },
+  primaryPill: {
+    flex: 1, height: 52, borderRadius: 999, backgroundColor: '#0F172A',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
+  },
+  primaryPillText: { fontSize: 16, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.2 },
+  circleOutline: {
+    width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: '#CBD5E1',
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  // ── Retained: modals and loading ─────────────────────────────────────
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
+
+
+  // Carousel
+
+
+  // Content
+
+  // Boost & Promoted styles
+
+
+
+
+  // Seller card
+
+
+
 
   // Guarantee Card
-  guaranteeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    borderRadius: 16,
-    padding: 14,
-    gap: 12,
-    borderWidth: 1.5,
-    borderColor: '#BFDBFE',
-    marginBottom: 16,
-  },
-  guaranteeIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#DBEAFE',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  guaranteeTitle: { fontSize: 13, fontWeight: '800', color: '#1E40AF', marginBottom: 2 },
-  guaranteeDesc: { fontSize: 11, color: '#3B82F6', lineHeight: 16, fontWeight: '500' },
 
   // Delivery Section
-  deliverySection: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  deliveryHeaderTitle: { fontSize: 13, fontWeight: '800', color: '#1E293B', marginBottom: 10 },
-  deliveryOptionRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  deliveryOptionDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#ECFDF5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  deliveryOptionName: { fontSize: 12, fontWeight: '700', color: '#1E293B' },
-  deliveryOptionSub: { fontSize: 11, color: '#64748B', fontWeight: '500' },
-  starRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2 },
-  starHalf: { fontSize: 11, color: '#F59E0B', fontWeight: '900', marginLeft: -2 },
 
   // Location badge
-  locationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#EEF2FF',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 16,
-    alignSelf: 'flex-start',
-  },
-  locationText: { fontSize: 13, fontWeight: '600', color: '#6366F1' },
 
   // Trust badges
-  trustRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-  },
-  trustBadge: {
-    flex: 1,
-    backgroundColor: 'white',
-    borderRadius: 14,
-    padding: 12,
-    alignItems: 'center',
-    gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  trustLabel: { fontSize: 11, fontWeight: '700', color: '#64748B', textAlign: 'center' },
 
   // Safety Card
-  safetyCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#F0F9FF',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-    marginBottom: 24,
-  },
-  safetyCardIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#E0F2FE',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  safetyCardTitle: { fontSize: 13, fontWeight: '800', color: '#0369A1', marginBottom: 2 },
-  safetyCardSub: { fontSize: 11, color: '#0284C7' },
 
-  reviewsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  reviewsCount: {
-    fontSize: 11, fontWeight: '800', color: '#64748B',
-    backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2,
-  },
 
-  barRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  barPriceWrap: { minWidth: 96 },
-  barPriceLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8' },
-  barPrice: { fontSize: 22, fontWeight: '800', color: '#0F172A', letterSpacing: -0.6, marginTop: 1 },
-  buyBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, height: 54, borderRadius: 999, backgroundColor: '#0F172A',
-  },
-  buyBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
 
-  sellerActions: { flexDirection: 'row', gap: 10, marginBottom: 18 },
-  ghostBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 7, height: 46, borderRadius: 999,
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0',
-  },
-  ghostBtnText: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
 
   // Description
-  sectionLabel: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 10 },
-  description: { fontSize: 15, color: '#475569', lineHeight: 24, marginBottom: 24 },
 
   // Similar Products
-  similarSection: { marginTop: 10, marginBottom: 20 },
-  similarHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 },
-  similarTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
-  similarRow: { gap: 12, paddingRight: 20 },
-  similarCard: {
-    width: 140,
-    backgroundColor: 'white',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  similarImg: { width: 140, height: 110, resizeMode: 'cover' },
-  similarBody: { padding: 8 },
-  similarItemTitle: { fontSize: 12, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
-  similarItemPrice: { fontSize: 13, fontWeight: '800', color: '#2563EB' },
 
   // Report Listing (Apple UGC)
-  reportListingBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    marginTop: 10,
-  },
-  reportListingText: { fontSize: 12, color: '#94A3B8', fontWeight: '600' },
 
   // Safety tips link (below seller card)
-  safetyLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  safetyLinkText: { fontSize: 12, color: '#94A3B8', fontWeight: '600' },
 
   // Bottom sticky bar
-  bottomBar: {
-    backgroundColor: 'white',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  ctaRow: { flexDirection: 'row', gap: 8 },
-  ctaBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    flex: 1,
-  },
-  ctaBtnText: { color: 'white', fontSize: 14, fontWeight: '800' },
-  ctaContact: { backgroundColor: '#EEF2FF' },
-  ctaOffer: {
-    backgroundColor: '#F5F3FF',
-    borderWidth: 1.5,
-    borderColor: '#DDD6FE',
-  },
-  ctaBuy: {
-    backgroundColor: '#16A34A',
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  ctaEdit: {
-    backgroundColor: '#6366F1',
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
-  },
 
   // Modal Common
   modalOverlay: {
