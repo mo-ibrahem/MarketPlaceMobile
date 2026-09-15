@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, MessageCircle, MoreVertical, Package, Send, ShieldCheck, Tag } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, MoreVertical, Package, Send, ShieldCheck, Tag } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,6 +9,7 @@ import {
   Image,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -25,7 +26,9 @@ import { PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 import {
   getChatRoomDetails,
   getMessages,
+  respondToOffer,
   sendMessage,
+  sendOffer,
   subscribeToMessages,
   type ChatMessage,
   type ChatRoomDetails,
@@ -58,6 +61,10 @@ export default function ChatRoomScreen() {
   const [roomInfo, setRoomInfo] = useState<ChatRoomDetails | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [respondingTo, setRespondingTo] = useState<string | null>(null);
+  const [offerModalOpen, setOfferModalOpen] = useState(false);
+  const [offerAmount, setOfferAmount] = useState('');
+  const [sendingOffer, setSendingOffer] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   const quickReplies = [
@@ -117,6 +124,43 @@ export default function ChatRoomScreen() {
     } catch (err: any) {
       console.error('[Chat] Send error:', err);
       Toast.show({ type: 'error', text1: 'Failed to send message.' });
+    }
+  };
+
+  const handleSendOffer = async () => {
+    if (!roomId || !offerAmount || isNaN(Number(offerAmount)) || Number(offerAmount) <= 0) {
+      Toast.show({ type: 'error', text1: 'Enter a valid amount' });
+      return;
+    }
+    setSendingOffer(true);
+    try {
+      await sendOffer(roomId, Number(offerAmount));
+      setOfferModalOpen(false);
+      setOfferAmount('');
+    } catch (err: any) {
+      Toast.show({ type: 'error', text1: 'Could not send offer', text2: err.message });
+    } finally {
+      setSendingOffer(false);
+    }
+  };
+
+  /**
+   * Accept/decline a real structured offer. The database is the source of
+   * truth (validate_offer_response enforces recipient-only, pending-only,
+   * status-only) -- this just reflects it locally so the button doesn't
+   * wait for the realtime round-trip, and un-reflects it if the server
+   * refused.
+   */
+  const handleRespondToOffer = async (messageId: string, response: 'accepted' | 'declined') => {
+    setRespondingTo(messageId);
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, offer_status: response } : m));
+    try {
+      await respondToOffer(messageId, response);
+    } catch (err: any) {
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, offer_status: 'pending' } : m));
+      Toast.show({ type: 'error', text1: 'Could not respond', text2: err.message });
+    } finally {
+      setRespondingTo(null);
     }
   };
 
@@ -308,51 +352,68 @@ export default function ChatRoomScreen() {
             onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
             renderItem={({ item }) => {
               const isMe = item.sender_id === user?.id;
-              const isOffer = item.content.includes('[OFFER') || item.content.includes('عرض شراء');
-              const isAccepted = item.content.includes('OFFER ACCEPTED') || item.content.includes('تم قبول العرض');
-              const isDeclined = item.content.includes('OFFER DECLINED') || item.content.includes('تم رفض العرض');
+
+              // Real structured offer (msg_type='offer', validated server-side
+              // -- see chatService.sendOffer/respondToOffer). This used to be a
+              // plain-text "[OFFER ACCEPTED]" pattern-match: either side could
+              // type that string themselves and the UI would show it accepted.
+              if (item.msg_type === 'offer') {
+                return (
+                  <View style={[styles.messageRow, isMe ? styles.myRow : styles.theirRow]}>
+                    <View style={[styles.offerCard, isMe ? styles.myOfferCard : styles.theirOfferCard]}>
+                      <View style={[styles.offerCardHead, isMe && styles.offerCardHeadDark]}>
+                        <Text style={[styles.offerBadgeText, isMe && { color: 'rgba(255,255,255,0.6)' }]}>
+                          {isMe ? (isRTL ? 'عرضك' : 'YOUR OFFER') : (isRTL ? 'عرض' : 'OFFER')}
+                        </Text>
+                        <View style={styles.offerAmountRow}>
+                          <Text style={[styles.offerAmount, isMe && { color: 'white' }]}>
+                            {Number(item.offer_amount_egp).toLocaleString('en-EG')}
+                          </Text>
+                          <Text style={[styles.offerCurrency, isMe && { color: 'rgba(255,255,255,0.55)' }]}>EGP</Text>
+                        </View>
+                      </View>
+                      <View style={styles.offerCardFoot}>
+                        {item.offer_status === 'pending' ? (
+                          isMe ? (
+                            <Text style={styles.offerWaiting}>{isRTL ? 'بانتظار الرد' : 'Waiting for reply'}</Text>
+                          ) : (
+                            <View style={styles.offerActionRow}>
+                              <TouchableOpacity
+                                style={styles.acceptOfferBtn}
+                                disabled={respondingTo === item.id}
+                                onPress={() => handleRespondToOffer(item.id, 'accepted')}
+                              >
+                                <Text style={styles.acceptOfferText}>{t('chat.acceptOffer')}</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.declineOfferBtn}
+                                disabled={respondingTo === item.id}
+                                onPress={() => handleRespondToOffer(item.id, 'declined')}
+                              >
+                                <Text style={styles.declineOfferText}>{t('chat.declineOffer')}</Text>
+                              </TouchableOpacity>
+                            </View>
+                          )
+                        ) : (
+                          <Text style={[styles.offerWaiting, item.offer_status === 'accepted' && styles.offerAccepted]}>
+                            {item.offer_status === 'accepted'
+                              ? (isRTL ? '✓ تم القبول' : '✓ Accepted')
+                              : (isRTL ? 'تم الرفض' : 'Declined')}
+                          </Text>
+                        )}
+                        <Text style={styles.offerTime}>{formatMessageTime(item.created_at)}</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              }
 
               return (
                 <View style={[styles.messageRow, isMe ? styles.myRow : styles.theirRow]}>
-                  <View
-                    style={[
-                      styles.messageBubble,
-                      isMe ? styles.myMessage : styles.theirMessage,
-                      isOffer && (isMe ? styles.myOfferBubble : styles.theirOfferBubble),
-                      isAccepted && styles.acceptedBubble,
-                      isDeclined && styles.declinedBubble,
-                    ]}
-                  >
-                    {isOffer && (
-                      <View style={styles.offerBadgeHeader}>
-                        <Tag size={13} color={isMe ? 'white' : '#7C3AED'} />
-                        <Text style={[styles.offerBadgeText, { color: isMe ? 'white' : '#7C3AED' }]}>
-                          PRICE OFFER / عرض شراء
-                        </Text>
-                      </View>
-                    )}
+                  <View style={[styles.messageBubble, isMe ? styles.myMessage : styles.theirMessage]}>
                     <Text style={[styles.messageText, isMe ? styles.myMessageText : styles.theirMessageText]}>
                       {item.content}
                     </Text>
-
-                    {/* Interactive Offer Action Buttons (for recipient) */}
-                    {isOffer && !isMe && !isAccepted && !isDeclined && (
-                      <View style={styles.offerActionRow}>
-                        <TouchableOpacity
-                          style={styles.acceptOfferBtn}
-                          onPress={() => handleSend('✅ [OFFER ACCEPTED / تم قبول العرض] I accept your offer! Let’s agree where to meet and how you’ll pay.')}
-                        >
-                          <Text style={styles.acceptOfferText}>{t('chat.acceptOffer')}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.declineOfferBtn}
-                          onPress={() => handleSend('❌ [OFFER DECLINED / تم رفض العرض] Thank you for your offer, but I cannot accept this price.')}
-                        >
-                          <Text style={styles.declineOfferText}>{t('chat.declineOffer')}</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-
                     <Text style={[styles.timeText, isMe ? styles.myTimeText : styles.theirTimeText]}>
                       {formatMessageTime(item.created_at)}
                     </Text>
@@ -369,6 +430,16 @@ export default function ChatRoomScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.quickRepliesRow}
             >
+              {!!roomInfo?.product_price && (
+                <TouchableOpacity
+                  style={styles.quickReplyChip}
+                  onPress={() => { setOfferAmount(String(Math.round(Number(roomInfo.product_price) * 0.9))); setOfferModalOpen(true); }}
+                  activeOpacity={0.75}
+                >
+                  <Tag size={12} color="#0F172A" />
+                  <Text style={styles.quickReplyText}>{isRTL ? 'تقديم عرض' : 'Make an offer'}</Text>
+                </TouchableOpacity>
+              )}
               {quickReplies.map((qr, i) => (
                 <TouchableOpacity
                   key={i}
@@ -403,6 +474,36 @@ export default function ChatRoomScreen() {
         </View>
       </View>
       </KeyboardAvoidingView>
+
+      <Modal visible={offerModalOpen} transparent animationType="fade" onRequestClose={() => setOfferModalOpen(false)}>
+        <View style={styles.offerModalOverlay}>
+          <View style={styles.offerModalCard}>
+            <Text style={styles.offerModalTitle}>{isRTL ? 'كم تريد أن تعرض؟' : 'What would you like to offer?'}</Text>
+            <View style={styles.offerModalInputRow}>
+              <TextInput
+                style={styles.offerModalInput}
+                value={offerAmount}
+                onChangeText={t => setOfferAmount(t.replace(/[^0-9]/g, ''))}
+                keyboardType="number-pad"
+                placeholder="0"
+                placeholderTextColor="#CBD5E1"
+                autoFocus
+              />
+              <Text style={styles.offerModalCurrency}>EGP</Text>
+            </View>
+            <View style={styles.offerModalRow}>
+              <TouchableOpacity style={styles.offerModalCancel} onPress={() => setOfferModalOpen(false)}>
+                <Text style={styles.offerModalCancelText}>{isRTL ? 'إلغاء' : 'Cancel'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.offerModalSend} onPress={handleSendOffer} disabled={sendingOffer}>
+                {sendingOffer ? <ActivityIndicator color="white" size="small" /> : (
+                  <Text style={styles.offerModalSendText}>{isRTL ? 'إرسال العرض' : 'Send offer'}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -518,36 +619,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  myOfferBubble: {
-    backgroundColor: '#7C3AED',
-    borderWidth: 1.5,
-    borderColor: '#6D28D9',
-  },
-  theirOfferBubble: {
-    backgroundColor: '#F5F3FF',
-    borderWidth: 1.5,
-    borderColor: '#DDD6FE',
-  },
-  acceptedBubble: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1.5,
-    borderColor: '#A7F3D0',
-  },
-  declinedBubble: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1.5,
-    borderColor: '#FECACA',
-  },
-  offerBadgeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 6,
-    paddingBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.2)',
-  },
-  offerBadgeText: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
   messageText: { fontSize: 14, lineHeight: 20 },
   myMessageText: { color: 'white' },
   theirMessageText: { color: '#1E293B' },
@@ -555,33 +626,41 @@ const styles = StyleSheet.create({
   myTimeText: { color: 'rgba(255,255,255,0.75)' },
   theirTimeText: { color: '#94A3B8' },
 
+  // Real structured offer card (approved build) -- ink, not the retired
+  // purple. A sent offer is ink-headed; a received one is outlined.
+  offerCard: { width: '80%', maxWidth: 300, borderRadius: 18, overflow: 'hidden' },
+  myOfferCard: { alignSelf: 'flex-end', borderWidth: 1, borderColor: '#0F172A' },
+  theirOfferCard: { alignSelf: 'flex-start', borderWidth: 1, borderColor: '#CBD5E1' },
+  offerCardHead: { padding: 13, backgroundColor: '#FFFFFF' },
+  offerCardHeadDark: { backgroundColor: '#0F172A' },
+  offerBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 1.4, color: '#94A3B8', textTransform: 'uppercase' },
+  offerAmountRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 6 },
+  offerAmount: { fontSize: 28, fontWeight: '800', letterSpacing: -1.2, color: '#0F172A' },
+  offerCurrency: { fontSize: 11, fontWeight: '700', color: '#94A3B8' },
+  offerCardFoot: { paddingHorizontal: 13, paddingVertical: 9, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#F1F5F9', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  offerWaiting: { fontSize: 12, fontWeight: '700', color: '#94A3B8' },
+  offerAccepted: { color: '#059669' },
+  offerTime: { fontSize: 10, fontWeight: '700', color: '#94A3B8' },
+
   // Offer Action Buttons
-  offerActionRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 10,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-  },
-  acceptOfferBtn: {
-    flex: 1,
-    backgroundColor: '#10B981',
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
+  offerActionRow: { flexDirection: 'row', gap: 8, flex: 1 },
+  acceptOfferBtn: { flex: 1, backgroundColor: '#0F172A', paddingVertical: 8, borderRadius: 999, alignItems: 'center' },
   acceptOfferText: { color: 'white', fontWeight: '800', fontSize: 12 },
-  declineOfferBtn: {
-    flex: 1,
-    backgroundColor: '#F1F5F9',
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-  },
-  declineOfferText: { color: '#64748B', fontWeight: '700', fontSize: 12 },
+  declineOfferBtn: { flex: 1, paddingVertical: 8, borderRadius: 999, alignItems: 'center', borderWidth: 1, borderColor: '#CBD5E1' },
+  declineOfferText: { color: '#0F172A', fontWeight: '700', fontSize: 12 },
+
+  // Offer amount modal
+  offerModalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'center', padding: 24 },
+  offerModalCard: { backgroundColor: 'white', borderRadius: 22, padding: 22 },
+  offerModalTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A', letterSpacing: -0.4 },
+  offerModalInputRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 18, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: '#0F172A' },
+  offerModalInput: { flex: 1, fontSize: 34, fontWeight: '800', color: '#0F172A', letterSpacing: -1.5, padding: 0 },
+  offerModalCurrency: { fontSize: 13, fontWeight: '700', color: '#94A3B8' },
+  offerModalRow: { flexDirection: 'row', gap: 10, marginTop: 22 },
+  offerModalCancel: { flex: 1, height: 48, borderRadius: 999, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#CBD5E1' },
+  offerModalCancelText: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  offerModalSend: { flex: 1, height: 48, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0F172A' },
+  offerModalSendText: { fontSize: 15, fontWeight: '800', color: 'white' },
 
   // Quick replies
   quickRepliesSection: {
@@ -592,6 +671,9 @@ const styles = StyleSheet.create({
   },
   quickRepliesRow: { paddingHorizontal: 16, gap: 8 },
   quickReplyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     backgroundColor: 'white',
     borderRadius: 16,
     paddingHorizontal: 12,
