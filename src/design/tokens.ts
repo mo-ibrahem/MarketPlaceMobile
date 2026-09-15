@@ -14,6 +14,14 @@
  *   - 8pt grid with 4pt subdivisions
  *   - minimum 44x44pt tap target (also WCAG 2.1 AAA)
  *   - type scale 34/28/22/20/17/16/15/13/12/11, nothing below 11
+ *
+ * 2026-09-15: extended for the "approved build" (Claude Design project
+ * "Mobile app design brief", Egbay Approved Build.dc.html) -- the same
+ * ink-not-brand-colour system this file already described, taken further:
+ * a fixed four-colour cycle for category tiles (categoryHues) and a mono
+ * metadata style (meta) for the 11px uppercase data that appears on every
+ * row (distance, condition, view counts). Nothing below was renamed, so
+ * every existing screen keeps working unchanged.
  */
 
 /** 4pt grid. 43% of the app's spacing values were off-grid (10, 6, 14, 2, 3, 5). */
@@ -139,6 +147,34 @@ export const color = {
   accent: '#2563EB',
   accentAlt: '#1D4ED8',
 } as const;
+
+/**
+ * The four wordmark colours (e-g-b-a-y cycles blue/red/amber/emerald), in a
+ * fixed order so a given category keeps the same tile colour everywhere it
+ * appears -- approved build, category tile component. Ink labels on the
+ * light hues; white only on the blue tile, which is the one dark enough to
+ * need it.
+ */
+export const categoryHues: ReadonlyArray<{ bg: string; ink: string }> = [
+  { bg: color.primary, ink: color.textInverse },
+  { bg: color.danger, ink: color.text },
+  { bg: color.warning, ink: color.text },
+  { bg: color.success, ink: color.text },
+];
+
+/**
+ * 11px mono uppercase metadata -- distance, condition, view counts. Approved
+ * build rule: this is the only style below 13px, reserved for data that
+ * should read as data and never compete with the title or price.
+ */
+export const meta = {
+  fontSize: MIN_FONT_SIZE,
+  fontWeight: weight.bold,
+  letterSpacing: 1.4,
+  textTransform: 'uppercase' as const,
+  fontFamily: 'ui-monospace, Menlo, monospace',
+  color: color.textFaint,
+};
 
 /**
  * Apple HIG minimum tap target, also WCAG 2.1 AAA. Android/Material asks 48dp.

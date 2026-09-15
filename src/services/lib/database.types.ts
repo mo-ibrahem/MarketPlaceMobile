@@ -98,9 +98,12 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          moderation_action: string | null
           reason: string
           reporter_id: string
           reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_notes: string | null
           status: string
           target_id: string
           target_type: string
@@ -108,9 +111,12 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          moderation_action?: string | null
           reason: string
           reporter_id: string
           reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
           status?: string
           target_id: string
           target_type: string
@@ -118,9 +124,12 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          moderation_action?: string | null
           reason?: string
           reporter_id?: string
           reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
           status?: string
           target_id?: string
           target_type?: string
@@ -290,6 +299,9 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          msg_type: string
+          offer_amount_egp: number | null
+          offer_status: string | null
           room_id: string
           sender_id: string
         }
@@ -297,6 +309,9 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          msg_type?: string
+          offer_amount_egp?: number | null
+          offer_status?: string | null
           room_id: string
           sender_id: string
         }
@@ -304,6 +319,9 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          msg_type?: string
+          offer_amount_egp?: number | null
+          offer_status?: string | null
           room_id?: string
           sender_id?: string
         }
@@ -1162,6 +1180,15 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_review_content_report: {
+        Args: {
+          p_action: string
+          p_admin_id: string
+          p_notes?: string
+          p_report_id: string
+        }
+        Returns: undefined
+      }
       admin_review_seller_verification: {
         Args: {
           p_admin_id: string
@@ -1211,12 +1238,6 @@ export type Database = {
           status: string
           user_id: string
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "account_deletion_jobs"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       claim_product_image_cleanups: {
         Args: never
@@ -1227,14 +1248,12 @@ export type Database = {
           lease_until: string | null
           old_record: Json
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "product_image_cleanup_jobs"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       cleanup_old_notifications: { Args: never; Returns: undefined }
+      content_is_allowed: {
+        Args: { p_id: string; p_type: string }
+        Returns: boolean
+      }
       create_marketplace_order: {
         Args: {
           p_buyer_id: string
@@ -1293,6 +1312,10 @@ export type Database = {
         }
         Returns: Json
       }
+      product_ask_counts: {
+        Args: { p_product_ids: string[] }
+        Returns: { product_id: string; ask_count: number }[]
+      }
       product_image_cleanup_paths: {
         Args: { p_paths: string[]; p_seller_id: string }
         Returns: string[]
@@ -1322,6 +1345,10 @@ export type Database = {
       respond_to_review: {
         Args: { p_response: string; p_review_id: string }
         Returns: undefined
+      }
+      seller_reply_stats: {
+        Args: { p_seller_id: string }
+        Returns: { sample_size: number; avg_reply_seconds: number | null }[]
       }
       submit_review: {
         Args: { p_comment?: string; p_order_id: string; p_rating: number }
