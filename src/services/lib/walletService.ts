@@ -143,7 +143,11 @@ export const SELLER_TIERS: Record<1 | 2 | 3, SellerTierConfig> = {
     listingLimitAmount: 150000,
     fundReleaseTrigger: 'Instant QR / PIN scan or Courier delivery + 6 hrs',
     kycRequirement: 'National ID (بطاقة الرقم القومي) Front & Back',
-    payoutSpeed: 'Fast (Instant to InstaPay & Mobile Wallets)',
+    // Payout requests are reviewed manually regardless of tier -- see
+    // requestPayout below. This used to say "Instant", which nothing in
+    // this system does; request_wallet_payout only ever files a pending
+    // request.
+    payoutSpeed: 'Manual review (InstaPay & Mobile Wallets)',
   },
   3: {
     tier: 3,
@@ -154,7 +158,7 @@ export const SELLER_TIERS: Record<1 | 2 | 3, SellerTierConfig> = {
     listingLimitAmount: 99999999,
     fundReleaseTrigger: 'Instant release upon courier pickup scan',
     kycRequirement: 'Commercial Registry (سجل تجاري) & Tax Card',
-    payoutSpeed: 'Automated Daily Bank Settlement',
+    payoutSpeed: 'Manual review (bank settlement)',
   },
 };
 

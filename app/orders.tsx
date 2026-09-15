@@ -268,19 +268,19 @@ export default function OrdersScreen() {
       {/* List */}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#3665F3" />
+          <ActivityIndicator size="large" color="#0F172A" />
         </View>
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={item => item.id}
           contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 100 }]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3665F3" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F172A" />}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
               <View style={styles.emptyCard}>
                 <View style={styles.emptyIcon}>
-                  <Package color="#3665F3" size={36} strokeWidth={2} />
+                  <Package color="#0F172A" size={36} strokeWidth={2} />
                 </View>
                 <Text style={styles.emptyTitle}>
                   {activeTab === 'purchases'
@@ -322,9 +322,13 @@ export default function OrdersScreen() {
                   <Text style={styles.trustDesc}>{isRTL ? 'توصيل سريع لكل محافظات مصر' : 'Fast delivery to every governorate in Egypt'}</Text>
                 </View>
                 <View style={styles.trustItem}>
-                  <Lock color="#7C3AED" size={24} strokeWidth={2} />
+                  <Lock color="#0F172A" size={24} strokeWidth={2} />
                   <Text style={styles.trustTitle}>{isRTL ? 'دفع وتسويات موثقة' : 'Trusted payouts'}</Text>
-                  <Text style={styles.trustDesc}>{isRTL ? 'تسويات فورية عبر شبكة إنستاباي' : 'Instant settlement over InstaPay'}</Text>
+                  {/* Payout requests are reviewed manually, never automatic --
+                      this used to say "Instant settlement", which the payout
+                      backend does not do (requestPayout only ever files a
+                      pending request for review). */}
+                  <Text style={styles.trustDesc}>{isRTL ? 'مراجعة يدوية عبر إنستاباي والمحافظ' : 'Reviewed payouts via InstaPay & wallets'}</Text>
                 </View>
               </View>
             ) : null
@@ -370,7 +374,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#3665F3',
+    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -427,7 +431,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   tabLabel: { fontSize: 13, fontWeight: '700', color: '#64748B' },
-  tabLabelActive: { color: '#3665F3', fontWeight: '900' },
+  tabLabelActive: { color: '#0F172A', fontWeight: '900' },
 
   list: { padding: 16, gap: 12 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -472,7 +476,7 @@ const styles = StyleSheet.create({
   roleText: { fontSize: 11, fontWeight: '800' },
   dateText: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
   awbRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  awbText: { fontSize: 11, color: '#7C3AED', fontWeight: '700' },
+  awbText: { fontSize: 11, color: '#0F172A', fontWeight: '700' },
   cardRight: { alignItems: 'flex-end', gap: 10, flexShrink: 0 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1 },
   statusText: { fontSize: 11, fontWeight: '800' },
@@ -496,13 +500,13 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginBottom: 8, textAlign: 'center' },
   emptyDesc: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 24, paddingHorizontal: 10 },
   emptyBtn: {
-    backgroundColor: '#3665F3',
+    backgroundColor: '#0F172A',
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 16,
     width: '100%',
     alignItems: 'center',
-    shadowColor: '#3665F3',
+    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
