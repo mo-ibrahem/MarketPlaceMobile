@@ -8,6 +8,11 @@ export interface ChatMessage {
   sender_id: string;
   content: string;
   created_at: string;
+  /** 'offer' carries a proposed price; every message before this feature
+   *  shipped, and every plain message since, is 'text'. */
+  msg_type: 'text' | 'offer';
+  offer_amount_egp: number | null;
+  offer_status: 'pending' | 'accepted' | 'declined' | null;
 }
 
 export interface ChatRoomInfo {
@@ -215,6 +220,45 @@ export const sendMessage = async (roomId: string, content: string) => {
 
     if (error) throw error;
     return data;
+};
+
+/**
+ * Sends a structured price offer -- the approved build's negotiation
+ * feature. This is a handshake for an in-person/cash handover, exactly like
+ * the plain-text negotiation it replaces: no payment or escrow is created or
+ * implied, and PAYMENTS_ENABLED stays irrelevant to it.
+ */
+export const sendOffer = async (roomId: string, amountEgp: number): Promise<ChatMessage> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+  if (!Number.isFinite(amountEgp) || amountEgp <= 0) throw new Error('Enter an amount');
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({
+      room_id: roomId,
+      sender_id: user.id,
+      content: `Offer: EGP ${Math.round(amountEgp).toLocaleString()}`,
+      msg_type: 'offer',
+      offer_amount_egp: Math.round(amountEgp),
+      offer_status: 'pending',
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as ChatMessage;
+};
+
+/**
+ * Accept or decline an offer sent by the other participant. The database
+ * enforces the real rules (only the recipient, only while pending, only
+ * this column moves) via validate_offer_response -- this just surfaces a
+ * readable error when that trigger refuses.
+ */
+export const respondToOffer = async (messageId: string, response: 'accepted' | 'declined'): Promise<void> => {
+  const { error } = await supabase.from('messages').update({ offer_status: response }).eq('id', messageId);
+  if (error) throw new Error(error.message.includes('no longer open') || error.message.includes('own offer')
+    ? error.message
+    : 'Could not respond to this offer');
 };
 
 // Function to fetch all messages for a room

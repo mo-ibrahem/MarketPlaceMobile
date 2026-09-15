@@ -1,7 +1,7 @@
 import { Heart, ShieldCheck } from 'lucide-react-native';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { color, font, radius, shadow, space, tapSlop, weight } from '../design/tokens';
+import { color, font, radius, space, tapSlop, weight } from '../design/tokens';
 import type { Product } from '../services/lib/products';
 
 export function formatEGP(price: number | string): string {
@@ -30,6 +30,7 @@ export function ProductCard({
   width,
   imageHeight,
   showEscrow = false,
+  trustLine,
 }: {
   item: Product;
   isWishlisted?: boolean;
@@ -41,6 +42,10 @@ export function ProductCard({
   imageHeight?: number;
   /** Escrow lives on the product, not in a strip above the feed. */
   showEscrow?: boolean;
+  /** Approved build: a real, computed signal under the title -- "3 asking",
+   *  "Replies fast" -- never shown unless there is enough real data behind
+   *  it (see reputationStats.ts). Omitted entirely, not left blank. */
+  trustLine?: string;
 }) {
   return (
     <TouchableOpacity
@@ -70,6 +75,12 @@ export function ProductCard({
 
       <View style={s.body}>
         <Text style={s.title} numberOfLines={2}>{item.title}</Text>
+        {!!trustLine && (
+          <View style={s.trustRow}>
+            <View style={s.trustDot} />
+            <Text style={s.trustText} numberOfLines={1}>{trustLine}</Text>
+          </View>
+        )}
         <View style={s.footer}>
           <Text style={s.price}>{formatEGP(item.price)}</Text>
           {/* Condition and escrow moved off the photograph into a quiet
@@ -118,6 +129,9 @@ const s = StyleSheet.create({
   },
 
   body: { paddingHorizontal: 8, paddingTop: 10, paddingBottom: 8, gap: 4 },
+  trustRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  trustDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: color.success },
+  trustText: { fontSize: font.caption2, fontWeight: weight.bold, color: color.successDark },
   title: {
     fontSize: font.subhead - 1,
     fontWeight: weight.semibold,

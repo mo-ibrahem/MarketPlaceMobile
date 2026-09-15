@@ -1,7 +1,6 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ArrowUpRight, Bell, Package, Plus, Search, ShieldCheck, Truck, Video, X } from 'lucide-react-native';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Bell, MessageCircle, Plus, Search, X } from 'lucide-react-native';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Image,
   Modal,
@@ -16,30 +15,33 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProductCard, formatEGP } from '../../src/components/ProductCard';
-import { color, font, radius, space, weight } from '../../src/design/tokens';
+import { categoryHues, color, font, radius, space, weight } from '../../src/design/tokens';
 import { useLanguage } from '../../src/i18n/LanguageContext';
-import { displayName } from '../../src/services/lib/displayName';
 import { getUnreadNotificationCount } from '../../src/services/lib/notificationService';
 import { productService, type Product } from '../../src/services/lib/products';
-import { getUserOrders, type MarketplaceOrder } from '../../src/services/lib/orderService';
 import { getActiveLiveSessions, isGenuinelyLive, type LiveSession } from '../../src/services/lib/liveService';
+import { getRecentReplies, type RecentReply } from '../../src/services/lib/homeActivity';
+import { getAskCounts } from '../../src/services/lib/reputationStats';
 import { useAuth } from '../../hooks/useAuth';
-import { LIVE_ENABLED, PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
+import { LIVE_ENABLED } from '../../src/services/lib/platformCommerce';
 
 /**
- * Home, rebuilt around the product instead of around the marketplace.
+ * Home -- approved build (Claude Design project "Mobile app design brief",
+ * Egbay Approved Build.dc.html, screens 7a/7b).
  *
- * The previous screen stacked five bands of chrome before the first listing:
- * logo bar, search bar, category chips, a Live row, a trust strip, and a promo
- * carousel with a fake countdown. All of it was *about* Egbay; none of it was
- * *from* Egbay. A first-time visitor scrolled through a pitch to reach the
- * inventory.
+ * The header is one of two real states, not a mood: if someone replied to
+ * you recently it leads with that (up to two real messages, not staged
+ * copy); otherwise it's the quiet state -- what's on the app right now and
+ * an invitation to ask. Selling moved out of the tab bar into this header's
+ * pill and a card folded into the feed; the tab bar is four flat tabs.
  *
- * Now the best listing is the page. The escrow promise is written on the
- * hero, where it is attached to a thing you might buy, rather than in a strip
- * above everything. Categories are photo tiles you browse by looking.
- * Search collapses to an icon until asked for. The feed is a two-lane
- * masonry with the "sell" invitation folded in as a card among the listings.
+ * One adaptation from the mockup, deliberately: the mockup shows exact
+ * distances ("2.1 KM") and a district name in the header. This app has no
+ * location data at all -- no GPS permission, no lat/lng on a listing, no
+ * governorate on most profiles -- and inventing a plausible-looking number
+ * would be exactly the kind of fabricated activity this project's rules
+ * forbid. Distance is dropped; the district chip only renders when the
+ * viewer's own profile actually has one.
  */
 
 const CATEGORY_LABEL_AR: Record<string, string> = {
@@ -47,12 +49,22 @@ const CATEGORY_LABEL_AR: Record<string, string> = {
   Sports: 'رياضة', Books: 'كتب', Automotive: 'سيارات', Beauty: 'تجميل', General: 'عام',
 };
 
+function timeAgo(iso: string, isArabic: boolean): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.max(1, Math.round(ms / 60000));
+  if (min < 60) return isArabic ? `منذ ${min} د` : `${min}M`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return isArabic ? `منذ ${hr} س` : `${hr}H`;
+  return isArabic ? `منذ ${Math.round(hr / 24)} ي` : `${Math.round(hr / 24)}D`;
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const { language } = useLanguage();
   const isArabic = language === 'ar';
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const { user } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,11 +74,10 @@ export default function HomeScreen() {
   const [category, setCategory] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
   const [liveNow, setLiveNow] = useState<LiveSession | null>(null);
-  const [heroIndex, setHeroIndex] = useState(0);
-  const heroRef = useRef<ScrollView>(null);
-  const { user } = useAuth();
+  const [replies, setReplies] = useState<RecentReply[]>([]);
+  const [askCounts, setAskCounts] = useState<Record<string, number>>({});
+  const [sortByAsked, setSortByAsked] = useState(false);
 
   // ── Data ──────────────────────────────────────────────────────────────────
 
@@ -76,6 +87,7 @@ export default function HomeScreen() {
       const list = data || [];
       setProducts(list);
       setWishlistIds(new Set(list.filter(p => p.isWishlisted).map(p => p.id)));
+      getAskCounts(list.slice(0, 40).map(p => p.id)).then(setAskCounts).catch(() => {});
     } catch (e) {
       console.error('[Home] failed to load products', e);
     } finally {
@@ -83,35 +95,30 @@ export default function HomeScreen() {
     }
   }, []);
 
+  const loadContext = useCallback(async () => {
+    try {
+      const [l, r] = await Promise.all([
+        LIVE_ENABLED ? getActiveLiveSessions().catch(() => [] as LiveSession[]) : Promise.resolve([] as LiveSession[]),
+        user ? getRecentReplies(2).catch(() => [] as RecentReply[]) : Promise.resolve([] as RecentReply[]),
+      ]);
+      setLiveNow(l.find(isGenuinelyLive) ?? null);
+      setReplies(r);
+    } catch {
+      setLiveNow(null); setReplies([]);
+    }
+  }, [user]);
+
   const loadUnread = useCallback(async () => {
     try { setUnreadCount(await getUnreadNotificationCount()); } catch { setUnreadCount(0); }
   }, []);
 
-  // What the hero shows depends on the viewer's state, so the home loads the
-  // two things that can change it: their orders, and whether anyone is live.
-  const loadContext = useCallback(async () => {
-    // Each hero input has its own switch: orders exist only with payments,
-    // live sessions only with live. Neither is fetched when its feature is
-    // off in this build.
-    try {
-      const [o, l] = await Promise.all([
-        PAYMENTS_ENABLED && user ? getUserOrders(user.id) : Promise.resolve([] as MarketplaceOrder[]),
-        LIVE_ENABLED ? getActiveLiveSessions().catch(() => [] as LiveSession[]) : Promise.resolve([] as LiveSession[]),
-      ]);
-      setOrders(o);
-      setLiveNow(l.find(isGenuinelyLive) ?? null);
-    } catch {
-      setOrders([]); setLiveNow(null);
-    }
-  }, [user]);
-
-  useFocusEffect(useCallback(() => { loadProducts(); loadUnread(); loadContext(); }, [loadProducts, loadUnread, loadContext]));
+  useFocusEffect(useCallback(() => { loadProducts(); loadContext(); loadUnread(); }, [loadProducts, loadContext, loadUnread]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadProducts();
+    await Promise.all([loadProducts(), loadContext()]);
     setRefreshing(false);
-  }, [loadProducts]);
+  }, [loadProducts, loadContext]);
 
   const toggleWishlist = async (product: Product) => {
     const was = wishlistIds.has(product.id);
@@ -125,85 +132,25 @@ export default function HomeScreen() {
 
   // ── Derived ───────────────────────────────────────────────────────────────
 
-  /**
-   * The hero shows the most important thing for this viewer right now, in
-   * priority order -- not simply whatever was uploaded last:
-   *   1. a stream that is genuinely live
-   *   2. an order of theirs on its way (buyer side)
-   *   3. a sale of theirs waiting to be shipped (seller side)
-   *   4. otherwise, a small swipeable set of listings with photographs
-   * That is what the top of a marketplace is for: Uber shows your ride,
-   * Amazon shows your delivery. Nothing matters more to a buyer than where
-   * their money went, and nothing matters more to supply than a seller
-   * learning they are holding someone up.
-   */
-  const incoming = useMemo(() =>
-    user ? orders.find(o => o.buyer_id === user.id && (o.status === 'shipped' || o.status === 'out_for_delivery')) : undefined,
-  [orders, user]);
-  const toShip = useMemo(() =>
-    user ? orders.find(o => o.seller_id === user.id && o.status === 'escrow_secured') : undefined,
-  [orders, user]);
-
-  /**
-   * Case 4's pool used to be "whatever was posted most recently" -- literally
-   * .slice(0, 3) off a created_at-desc query. That means the single largest,
-   * most prominent thing on the app was decided entirely by who happened to
-   * tap "Post" last, with no signal that the item is any good, priced right,
-   * or something anyone wants to look at.
-   *
-   * Every marketplace/feed app that actually does this ranks freshness by
-   * engagement rather than by clock time alone: Facebook Marketplace gives a
-   * new listing a short "honeymoon" visibility window, then ranking shifts to
-   * real signals (saves, messages, views) once they exist. Egbay already
-   * tracks view_count per listing (real numbers, incremented on the product
-   * page -- see products/[id].tsx), so the same idea is applied at Egbay's
-   * scale: pick from listings posted in the last two weeks, ranked by views,
-   * falling back to plain recency as the tiebreak (and as the whole ranking
-   * for a brand-new listing with zero views yet, so it still gets a shot at
-   * the hero instead of being buried by an old item's view count forever).
-   * If the fresh pool is too small (a slow week), widen to everything with a
-   * photo rather than leave the hero looking empty.
-   */
-  const HERO_FRESH_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
-  const [heroReferenceTime] = useState(() => Date.now());
-  const heroListings = useMemo(() => {
-    const withPhotos = products.filter(p => p.images?.[0]);
-    const now = heroReferenceTime;
-    const fresh = withPhotos.filter(p => now - new Date(p.created_at).getTime() < HERO_FRESH_WINDOW_MS);
-    const pool = fresh.length >= 3 ? fresh : withPhotos;
-    return [...pool]
-      .sort((a, b) => {
-        const byViews = (b.view_count ?? 0) - (a.view_count ?? 0);
-        return byViews !== 0 ? byViews : new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      })
-      .slice(0, 3);
-  }, [products, heroReferenceTime]);
-  const hero = heroListings[0];
-  const heroW = Math.min(width, 520);
-
-  // Categories come from live stock: a tile per category, using that
-  // category's newest photo as its cover, with a real count. Empties never
-  // appear because there is nothing to make a tile from.
+  // Categories come from live stock: a tile per category with a real count.
+  // Empties never appear because there is nothing to make a tile from.
   const categories = useMemo(() => {
-    const m = new Map<string, { cover?: string; n: number }>();
+    const m = new Map<string, number>();
     for (const p of products) {
       const c = (p as any).category as string | undefined;
-      if (!c) continue;
-      const cur = m.get(c) ?? { n: 0 };
-      cur.n += 1;
-      if (!cur.cover && p.images?.[0]) cur.cover = p.images[0];
-      m.set(c, cur);
+      if (c) m.set(c, (m.get(c) ?? 0) + 1);
     }
-    return [...m.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.n - a.n);
+    return [...m.entries()].map(([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n);
   }, [products]);
 
   const feed = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return products
-      .filter(p => p.id !== hero?.id)
+    const list = products
       .filter(p => !category || (p as any).category === category)
       .filter(p => !q || p.title.toLowerCase().includes(q));
-  }, [products, hero, category, query]);
+    if (!sortByAsked) return list;
+    return [...list].sort((a, b) => (askCounts[b.id] ?? 0) - (askCounts[a.id] ?? 0));
+  }, [products, category, query, sortByAsked, askCounts]);
 
   // Two masonry lanes balanced by estimated height; every third card is tall.
   const lanes = useMemo(() => {
@@ -220,6 +167,29 @@ export default function HomeScreen() {
 
   const laneWidth = (Math.min(width, 520) - space.lg * 2 - 14) / 2;
   const tileLabel = (name: string) => (isArabic ? CATEGORY_LABEL_AR[name] ?? name : name);
+  const askBadge = (id: string) => {
+    const n = askCounts[id];
+    if (!n || n < 2) return undefined;
+    return isArabic ? `${n} يسألون عنه` : `${n} asking about it`;
+  };
+
+  const T = isArabic
+    ? {
+        sell: 'بيع', quietHeadline: (n: number) => `${n} شيء معروض على إيجي باي`,
+        quietSub: 'اسأل البائع في نقرة واحدة. الردود تظهر هنا.',
+        replyHeadline: (n: number) => n === 1 ? 'شخص واحد رد بينما كنت غائباً' : `${n} ردوا بينما كنت غائباً`,
+        mostAsked: 'الأكثر سؤالاً', newest: 'الأحدث', allListings: 'كل الإعلانات',
+        sellCardTitle: 'بيع على إيجي باي؟', sellCardSub: 'اعرض منتجك وتحدث مع المشترين مباشرة.',
+        empty: 'لا يوجد إعلانات', emptySub: 'كن أول من يبيع هنا.',
+      }
+    : {
+        sell: 'Sell', quietHeadline: (n: number) => `${n} things for sale on Egbay`,
+        quietSub: 'Ask a seller anything in one tap. Replies land here.',
+        replyHeadline: (n: number) => n === 1 ? '1 person replied while you were away' : `${n} replied while you were away`,
+        mostAsked: 'Most asked about', newest: 'Newest', allListings: 'All listings',
+        sellCardTitle: 'Sell on Egbay?', sellCardSub: 'Show your item and talk to buyers directly.',
+        empty: 'No listings yet', emptySub: 'Be the first to sell here.',
+      };
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -227,220 +197,147 @@ export default function HomeScreen() {
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.text} />}
       >
-        {/* ── Top bar, floating over the hero ── */}
-        <View style={[s.topBar, { top: insets.top + 8 }]} pointerEvents="box-none">
-          <View style={s.wordmark}>
-            <Text style={[s.wm, { color: '#2563EB' }]}>e</Text><Text style={[s.wm, { color: '#EF4444' }]}>g</Text>
-            <Text style={[s.wm, { color: '#F59E0B' }]}>b</Text><Text style={[s.wm, { color: '#10B981' }]}>a</Text><Text style={[s.wm, { color: '#2563EB' }]}>y</Text>
+        {/* ── Header: ink panel, activity digest or quiet state ── */}
+        <View style={[s.header, { paddingTop: insets.top + 12 }]}>
+          <View style={s.headerTop}>
+            <View style={s.wordmarkRow}>
+              <View style={s.wordmark}>
+                <Text style={[s.wm, { color: '#60A5FA' }]}>e</Text><Text style={[s.wm, { color: '#F87171' }]}>g</Text>
+                <Text style={[s.wm, { color: '#FBBF24' }]}>b</Text><Text style={[s.wm, { color: '#34D399' }]}>a</Text>
+                <Text style={[s.wm, { color: '#60A5FA' }]}>y</Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity style={s.sellPill} onPress={() => router.push('/(tabs)/sell' as any)}>
+                <Plus size={16} color={color.text} strokeWidth={2.6} />
+                <Text style={s.sellPillText}>{T.sell}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.iconBtnDark} onPress={() => setSearchOpen(true)} accessibilityLabel="Search" hitSlop={4}>
+                <Search size={18} color={color.textInverse} />
+              </TouchableOpacity>
+              <TouchableOpacity style={s.iconBtnDark} onPress={() => router.push('/notifications' as any)} accessibilityLabel="Notifications" hitSlop={4}>
+                <Bell size={18} color={color.textInverse} />
+                {unreadCount > 0 && (
+                  <View style={s.badge}><Text style={s.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity style={s.iconBtn} onPress={() => setSearchOpen(true)} accessibilityLabel="Search" hitSlop={4}>
-              <Search size={20} color={color.text} />
-            </TouchableOpacity>
-            <TouchableOpacity style={s.iconBtn} onPress={() => router.push('/notifications' as any)} accessibilityLabel="Notifications" hitSlop={4}>
-              <Bell size={20} color={color.text} />
-              {unreadCount > 0 && (
-                <View style={s.badge}><Text style={s.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* ── Hero: the most important thing right now ── */}
-        {liveNow ? (
-          <TouchableOpacity activeOpacity={0.95} onPress={() => router.push(`/live/${liveNow.agora_channel}` as any)} style={[s.hero, s.heroDark, { height: heroW * 1.05 }]}>
-            {!!liveNow.thumbnail_url && <Image source={{ uri: liveNow.thumbnail_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />}
-            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.9)']} locations={[0.3, 0.6, 1]} style={StyleSheet.absoluteFill} />
-            <View style={s.heroBody}>
-              <View style={s.livePill}><View style={s.liveDot} /><Text style={s.livePillText}>{isArabic ? 'مباشر الآن' : 'LIVE NOW'}</Text></View>
-              <Text style={s.heroTitle} numberOfLines={2}>{isArabic ? liveNow.title_ar || liveNow.title : liveNow.title}</Text>
-              <View style={s.heroRow}>
-                <Text style={[s.heroMeta, { flex: 1 }]} numberOfLines={1}>
-                  {displayName(liveNow.seller?.full_name, 'Seller')} · {liveNow.current_viewers} {isArabic ? 'يشاهدون' : 'watching'}
-                </Text>
-                <View style={s.heroArrow}><Video size={22} color={color.text} /></View>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ) : incoming ? (
-          <TouchableOpacity activeOpacity={0.95} onPress={() => router.push(`/order/${incoming.id}` as any)} style={[s.hero, s.heroDark, { height: heroW * 0.9 }]}>
-            {!!(incoming.product?.images?.[0]) && <Image source={{ uri: incoming.product!.images[0] }} style={StyleSheet.absoluteFill} resizeMode="cover" />}
-            <LinearGradient colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
-            <View style={s.heroBody}>
-              <View style={s.statusPill}><Truck size={13} color={color.text} /><Text style={s.statusPillText}>{isArabic ? 'في الطريق إليك' : 'ON ITS WAY'}</Text></View>
-              <Text style={s.heroTitle} numberOfLines={2}>{incoming.product?.title || (isArabic ? 'طلبك' : 'Your order')}</Text>
-              <View style={s.rail}>
-                {[1, 2, 3, 4].map(i => <View key={i} style={[s.seg, (incoming.status === 'out_for_delivery' ? 3 : 2) >= i && s.segDone]} />)}
-              </View>
-              <View style={s.heroRow}>
-                <Text style={[s.heroMeta, { flex: 1 }]} numberOfLines={1}>
-                  {incoming.status === 'out_for_delivery'
-                    ? (isArabic ? 'خرج للتوصيل اليوم — أموالك في الضمان حتى تفحصه' : 'Out for delivery today — your money stays in escrow until you inspect')
-                    : (isArabic ? 'تم الشحن — سنخبرك عند الوصول' : 'Shipped — we will tell you when it arrives')}
-                </Text>
-                <View style={s.heroArrow}><ArrowUpRight size={22} color={color.text} /></View>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ) : toShip ? (
-          <TouchableOpacity activeOpacity={0.95} onPress={() => router.push(`/order/${toShip.id}` as any)} style={[s.hero, { height: heroW * 0.72, backgroundColor: color.ink, justifyContent: 'flex-end' }]}>
-            <View style={s.heroBody}>
-              <View style={s.statusPill}><Package size={13} color={color.text} /><Text style={s.statusPillText}>{isArabic ? 'لديك بيع' : 'YOU MADE A SALE'}</Text></View>
-              <Text style={s.heroTitle} numberOfLines={2}>{toShip.product?.title || (isArabic ? 'طلب جديد' : 'New order')}</Text>
-              <View style={s.heroRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.heroPrice}>{formatEGP(toShip.amount)}</Text>
-                  <Text style={s.heroMeta} numberOfLines={2}>
-                    {isArabic ? 'المبلغ محفوظ في الضمان. اشحن الآن ليصلك بعد التأكيد.' : 'Paid and held in escrow. Ship it now to get paid on confirmation.'}
-                  </Text>
-                </View>
-                <View style={s.heroArrow}><ArrowUpRight size={22} color={color.text} /></View>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ) : heroListings.length > 0 ? (
-          <View>
-            <ScrollView
-              ref={heroRef}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={e => setHeroIndex(Math.round(e.nativeEvent.contentOffset.x / heroW))}
-            >
-              {heroListings.map((item) => (
-                <TouchableOpacity key={item.id} activeOpacity={0.95} onPress={() => router.push(`/products/${item.id}` as any)} style={[s.hero, { width: heroW, height: heroW * 1.25 }]}>
-                  <Image source={{ uri: item.images![0] }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                  <LinearGradient colors={['transparent', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.8)']} locations={[0.35, 0.6, 1]} style={StyleSheet.absoluteFill} />
-                  <View style={s.heroBody}>
-                    <Text style={s.heroKicker}>
-                      {/* Honest about *why* this card is here: a real view
-                          count earns "Trending", not a made-up position-based
-                          label. Everything else is "New" -- true regardless
-                          of rank, since the pool is the last two weeks. */}
-                      {(item.view_count ?? 0) >= 2
-                        ? (isArabic ? 'رائج' : 'Trending')
-                        : (isArabic ? 'جديد' : 'New')} · {tileLabel((item as any).category ?? '')}
-                    </Text>
-                    <Text style={s.heroTitle} numberOfLines={2}>{item.title}</Text>
-                    <View style={s.heroRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.heroPrice}>{formatEGP(item.price)}</Text>
-                        <Text style={s.heroMeta} numberOfLines={1}>
-                          {displayName(item.seller?.full_name, 'Seller')}
-                          {PAYMENTS_ENABLED
-                            ? ` · ${isArabic ? 'محفوظ في الضمان حتى الفحص' : 'held in escrow until you inspect'}`
-                            : ` · ${isArabic ? 'راسل البائع للتفاصيل' : 'message the seller for details'}`}
-                        </Text>
+          {liveNow && (
+            <TouchableOpacity style={s.liveBanner} onPress={() => router.push(`/live/${liveNow.agora_channel}` as any)} activeOpacity={0.85}>
+              <View style={s.liveDot} />
+              <Text style={s.liveBannerText} numberOfLines={1}>
+                {isArabic ? liveNow.title_ar || liveNow.title : liveNow.title}
+              </Text>
+              <Text style={s.liveBannerCta}>{isArabic ? 'شاهد ←' : 'Watch →'}</Text>
+            </TouchableOpacity>
+          )}
+
+          {replies.length > 0 ? (
+            <>
+              <Text style={s.headline}>{T.replyHeadline(replies.length)}</Text>
+              <View style={{ gap: 8, marginTop: 14 }}>
+                {replies.map(r => (
+                  <TouchableOpacity key={r.room_id} style={s.replyRow} onPress={() => router.push(`/chat/${r.room_id}` as any)} activeOpacity={0.85}>
+                    <Image
+                      source={{ uri: r.other_user_avatar_url || 'https://placehold.co/100x100/1E293B/94A3B8?text=%20' }}
+                      style={s.replyAvatar}
+                    />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={s.replyTopRow}>
+                        <Text style={s.replyName}>{r.other_user_name}</Text>
+                        <Text style={s.replyTime}>{timeAgo(r.created_at, isArabic)}</Text>
                       </View>
-                      <View style={s.heroArrow}><ArrowUpRight size={22} color={color.text} /></View>
+                      <Text style={s.replyMsg} numberOfLines={1}>
+                        {r.is_offer && r.offer_amount_egp ? `${isArabic ? 'عرض' : 'Offer'}: ${formatEGP(r.offer_amount_egp)}` : `"${r.message}"`}
+                      </Text>
+                      {!!r.product_title && <Text style={s.replyMeta} numberOfLines={1}>{r.product_title.toUpperCase()}</Text>}
                     </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            {heroListings.length > 1 && (
-              <View style={s.dots}>
-                {heroListings.map((_, i) => <View key={i} style={[s.dot, heroIndex === i && s.dotOn]} />)}
-              </View>
-            )}
-          </View>
-        ) : (
-          <View style={{ height: insets.top + 64 }} />
-        )}
-
-        {/* ── Categories as photo tiles ── */}
-        {categories.length > 0 && (
-          <View style={{ paddingTop: space.xl }}>
-            <View style={s.sectionHead}>
-              <Text style={s.h2}>{isArabic ? 'تصفّح' : 'Browse'}</Text>
-              {!!category && (
-                <TouchableOpacity onPress={() => setCategory(null)} style={s.clear} hitSlop={8}>
-                  <X size={14} color={color.textMuted} />
-                  <Text style={s.clearText}>{isArabic ? 'مسح' : 'Clear'}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tileRow}>
-              {categories.map(c => {
-                const on = category === c.name;
-                return (
-                  <TouchableOpacity key={c.name} onPress={() => setCategory(on ? null : c.name)} activeOpacity={0.85} style={s.tile}>
-                    <View style={[s.tileImgWrap, on && s.tileImgWrapOn]}>
-                      {c.cover
-                        ? <Image source={{ uri: c.cover }} style={s.tileImg} resizeMode="cover" />
-                        : <View style={[s.tileImg, { backgroundColor: color.surfaceAlt }]} />}
-                    </View>
-                    <Text style={[s.tileName, on && { color: color.text }]} numberOfLines={1}>{tileLabel(c.name)}</Text>
-                    <Text style={s.tileCount}>{c.n} {isArabic ? 'عنصر' : c.n === 1 ? 'item' : 'items'}</Text>
                   </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* ── Masonry feed ── */}
-        <View style={{ paddingTop: space.xxl, paddingHorizontal: space.lg }}>
-          <View style={[s.sectionHead, { paddingHorizontal: 0 }]}>
-            <Text style={s.h2}>
-              {category ? tileLabel(category) : isArabic ? 'كل المعروض' : 'Everything'}
-              <Text style={s.h2Count}>  {feed.length}</Text>
-            </Text>
-          </View>
-
-          {loading ? (
-            <View style={s.lanes}>
-              {[0, 1].map(l => (
-                <View key={l} style={{ width: laneWidth, gap: 20 }}>
-                  {[0, 1, 2].map(i => <View key={i} style={{ height: (i + l) % 2 ? 220 : 180, borderRadius: radius.lg, backgroundColor: color.surfaceAlt }} />)}
-                </View>
-              ))}
-            </View>
-          ) : feed.length === 0 ? (
-            <View style={s.empty}>
-              <Text style={s.emptyTitle}>{isArabic ? 'لا يوجد شيء هنا بعد' : 'Nothing here yet'}</Text>
-              <Text style={s.emptySub}>{isArabic ? 'جرّب فئة أخرى.' : 'Try another category.'}</Text>
-            </View>
+                ))}
+              </View>
+            </>
           ) : (
-            <View style={s.lanes}>
-              {lanes.map((lane, li) => (
-                <View key={li} style={{ width: laneWidth, gap: 20 }}>
-                  {lane.map(({ item, tall }, idx) => (
-                    <React.Fragment key={item.id}>
-                      <ProductCard
-                        item={item}
-                        width={laneWidth}
-                        imageHeight={tall ? laneWidth * 1.33 : laneWidth}
-                        showEscrow={PAYMENTS_ENABLED}
-                        isWishlisted={wishlistIds.has(item.id)}
-                        onPress={() => router.push(`/products/${item.id}` as any)}
-                        onToggleWishlist={() => toggleWishlist(item)}
-                      />
-                      {/* "Sell" is a card in the feed, where a scrolling seller
-                          will actually see it -- not a banner above it. */}
-                      {li === 1 && idx === 0 && (
-                        <TouchableOpacity activeOpacity={0.9} onPress={() => router.push('/(tabs)/sell' as any)} style={[s.sellCard, { width: laneWidth, height: laneWidth }]}>
-                          <Plus size={28} color={color.textInverse} />
-                          <View>
-                            <Text style={s.sellTitle}>{isArabic ? 'بِع شيئاً اليوم' : 'Sell something today'}</Text>
-                            <Text style={s.sellSub}>
-                              {PAYMENTS_ENABLED
-                                ? (isArabic ? 'المشتري يدفع قبل الشحن. عمولة ٣.٥٪' : 'Buyer pays before you ship. 3.5% fee.')
-                                : (isArabic ? 'أضف صوراً وسعراً، والمشترون يراسلونك مباشرة' : 'Add photos and a price -- buyers message you directly')}
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </View>
-              ))}
-            </View>
+            <>
+              <Text style={s.headline}>{T.quietHeadline(products.length)}</Text>
+              <Text style={s.headlineSub}>{T.quietSub}</Text>
+            </>
           )}
         </View>
+
+        {/* ── Category tiles ── */}
+        {categories.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: space.lg }} contentContainerStyle={s.tileRow}>
+            <TouchableOpacity
+              style={[s.catTile, { backgroundColor: color.surfaceAlt }, !category && s.catTileOn]}
+              onPress={() => setCategory(null)}
+            >
+              <Text style={[s.catTileCount, { color: color.text }]}>{products.length}</Text>
+              <Text style={[s.catTileLabel, { color: color.text }]}>{isArabic ? 'الكل' : 'All'}</Text>
+            </TouchableOpacity>
+            {categories.map((c, i) => {
+              const hue = categoryHues[i % categoryHues.length];
+              const on = category === c.name;
+              return (
+                <TouchableOpacity
+                  key={c.name}
+                  style={[s.catTile, { backgroundColor: hue.bg }, on && s.catTileOn]}
+                  onPress={() => setCategory(on ? null : c.name)}
+                >
+                  <Text style={[s.catTileCount, { color: hue.ink }]}>{c.n}</Text>
+                  <Text style={[s.catTileLabel, { color: hue.ink }]} numberOfLines={1}>{tileLabel(c.name)}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {/* ── Feed ── */}
+        <View style={s.sectionHead}>
+          <Text style={s.h2}>{category ? tileLabel(category) : T.allListings}</Text>
+          <TouchableOpacity onPress={() => setSortByAsked(v => !v)}>
+            <Text style={s.sortLink}>{sortByAsked ? T.newest : T.mostAsked}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {!loading && feed.length === 0 ? (
+          <View style={s.empty}>
+            <Text style={s.emptyTitle}>{T.empty}</Text>
+            <Text style={s.emptySub}>{T.emptySub}</Text>
+          </View>
+        ) : (
+          <View style={[s.lanes, { paddingHorizontal: space.lg }]}>
+            {lanes.map((lane, li) => (
+              <View key={li} style={{ gap: 14, width: laneWidth }}>
+                {lane.map(({ item, tall }) => (
+                  <ProductCard
+                    key={item.id}
+                    item={item}
+                    width={laneWidth}
+                    imageHeight={tall ? laneWidth * 1.25 : laneWidth}
+                    isWishlisted={wishlistIds.has(item.id)}
+                    onPress={() => router.push(`/products/${item.id}` as any)}
+                    onToggleWishlist={() => toggleWishlist(item)}
+                    trustLine={askBadge(item.id)}
+                  />
+                ))}
+                {li === 1 && (
+                  <TouchableOpacity style={s.sellCard} onPress={() => router.push('/(tabs)/sell' as any)} activeOpacity={0.9}>
+                    <View>
+                      <Text style={s.sellCardTitle}>{T.sellCardTitle}</Text>
+                      <Text style={s.sellCardSub}>{T.sellCardSub}</Text>
+                    </View>
+                    <View style={s.sellCardIcon}><Plus size={18} color={color.textInverse} /></View>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       {/* ── Search sheet ── */}
@@ -476,11 +373,9 @@ export default function HomeScreen() {
             ))}
           </View>
           <View style={s.searchEscrow}>
-            <ShieldCheck size={16} color={color.successDark} />
+            <MessageCircle size={16} color={color.successDark} />
             <Text style={s.searchEscrowText}>
-              {PAYMENTS_ENABLED
-                ? (isArabic ? 'كل عملية شراء محفوظة في الضمان حتى تفحص المنتج.' : 'Every purchase is held in escrow until you inspect the item.')
-                : (isArabic ? 'راسل البائع، اتفقا على السعر، والتقيا بأمان.' : 'Chat with the seller, agree on a price, meet safely.')}
+              {isArabic ? 'راسل البائع، اتفقا على السعر، والتقيا بأمان.' : 'Chat with the seller, agree on a price, meet safely.'}
             </Text>
           </View>
         </SafeAreaView>
@@ -492,52 +387,49 @@ export default function HomeScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: color.surface },
 
-  topBar: { position: 'absolute', left: space.lg, right: space.lg, zIndex: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  wordmark: { height: 40, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.92)', flexDirection: 'row', alignItems: 'center' },
-  wm: { fontSize: 22, fontWeight: weight.heavy, letterSpacing: -1.3, lineHeight: 26 },
-  iconBtn: { height: 40, width: 40, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center' },
-  badge: { position: 'absolute', top: -2, right: -2, minWidth: 20, height: 20, paddingHorizontal: 4, borderRadius: radius.pill, backgroundColor: color.danger, alignItems: 'center', justifyContent: 'center' },
-  badgeText: { color: color.textInverse, fontSize: font.caption2, fontWeight: weight.heavy },
+  header: { backgroundColor: color.ink, paddingHorizontal: space.lg, paddingBottom: space.lg },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  wordmarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  wordmark: { flexDirection: 'row', alignItems: 'center' },
+  wm: { fontSize: 20, fontWeight: weight.heavy, letterSpacing: -1.2 },
 
-  hero: { width: '100%', backgroundColor: color.surfaceAlt, justifyContent: 'flex-end' },
-  heroBody: { padding: space.xl, paddingBottom: space.xxl },
-  heroKicker: { color: 'rgba(255,255,255,0.7)', fontSize: font.caption, fontWeight: weight.bold, letterSpacing: 1.2, textTransform: 'uppercase' },
-  heroTitle: { color: color.textInverse, fontSize: font.largeTitle, fontWeight: weight.heavy, letterSpacing: -1.4, lineHeight: 37, marginTop: 6 },
-  heroRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginTop: 12 },
-  heroPrice: { color: color.textInverse, fontSize: font.title1, fontWeight: weight.heavy, letterSpacing: -1.1, lineHeight: 32 },
-  heroMeta: { color: 'rgba(255,255,255,0.7)', fontSize: font.caption, marginTop: 4 },
-  heroArrow: { height: 48, width: 48, borderRadius: radius.pill, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' },
-  heroDark: { backgroundColor: color.ink },
-  livePill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, height: 28, paddingHorizontal: 11, borderRadius: radius.pill, backgroundColor: color.danger, marginBottom: 8 },
-  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: color.textInverse },
-  livePillText: { color: color.textInverse, fontSize: font.caption2, fontWeight: weight.black, letterSpacing: 1 },
-  statusPill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, height: 28, paddingHorizontal: 11, borderRadius: radius.pill, backgroundColor: color.surface, marginBottom: 8 },
-  statusPillText: { color: color.text, fontSize: font.caption2, fontWeight: weight.black, letterSpacing: 1 },
-  rail: { flexDirection: 'row', gap: 5, marginTop: 12, marginBottom: 4 },
-  seg: { flex: 1, height: 4, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.25)' },
-  segDone: { backgroundColor: color.textInverse },
-  dots: { position: 'absolute', bottom: 12, alignSelf: 'center', flexDirection: 'row', gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.45)' },
-  dotOn: { width: 20, backgroundColor: color.textInverse },
+  sellPill: { height: 36, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: color.textInverse, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sellPillText: { fontSize: font.footnote + 0.5, fontWeight: weight.heavy, color: color.text, letterSpacing: -0.2 },
+  iconBtnDark: { height: 36, width: 36, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  badge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, paddingHorizontal: 3, borderRadius: radius.pill, backgroundColor: color.danger, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: color.ink },
+  badgeText: { color: color.textInverse, fontSize: 9, fontWeight: weight.heavy },
 
-  sectionHead: { paddingHorizontal: space.lg, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: space.md },
-  h2: { fontSize: font.title3, fontWeight: weight.heavy, color: color.text, letterSpacing: -0.6 },
-  h2Count: { fontSize: font.subhead, fontWeight: weight.bold, color: color.textFaint },
-  clear: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  clearText: { fontSize: font.footnote, fontWeight: weight.bold, color: color.textMuted },
+  liveBanner: { marginTop: 14, height: 40, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.1)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: color.danger },
+  liveBannerText: { flex: 1, color: color.textInverse, fontSize: font.footnote, fontWeight: weight.bold },
+  liveBannerCta: { color: '#FCA5A5', fontSize: font.caption2, fontWeight: weight.bold },
 
-  tileRow: { paddingHorizontal: space.lg, gap: 12 },
-  tile: { width: 108 },
-  tileImgWrap: { aspectRatio: 1, borderRadius: 18, overflow: 'hidden', backgroundColor: color.surfaceAlt, borderWidth: 2, borderColor: 'transparent' },
-  tileImgWrapOn: { borderColor: color.text },
-  tileImg: { width: '100%', height: '100%' },
-  tileName: { marginTop: 8, fontSize: font.subhead - 1, fontWeight: weight.bold, color: color.textSecondary },
-  tileCount: { fontSize: font.caption, fontWeight: weight.semibold, color: color.textFaint },
+  headline: { color: color.textInverse, fontSize: 24, fontWeight: weight.heavy, letterSpacing: -1, marginTop: 16, lineHeight: 29 },
+  headlineSub: { color: 'rgba(255,255,255,0.8)', fontSize: font.subhead - 1, marginTop: 8, lineHeight: 19 },
+
+  replyRow: { flexDirection: 'row', gap: 11, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 16, padding: 11 },
+  replyAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: color.inkAlt },
+  replyTopRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
+  replyName: { fontSize: font.subhead - 1, fontWeight: weight.heavy, color: color.textInverse },
+  replyTime: { fontSize: 10, fontWeight: weight.bold, color: 'rgba(255,255,255,0.6)' },
+  replyMsg: { fontSize: font.subhead - 1, color: color.textInverse, marginTop: 3, lineHeight: 19 },
+  replyMeta: { fontSize: 10, fontWeight: weight.bold, letterSpacing: 1, color: 'rgba(255,255,255,0.6)', marginTop: 5 },
+
+  tileRow: { paddingHorizontal: space.lg, gap: 8 },
+  catTile: { width: 86, height: 70, borderRadius: 16, padding: 10, justifyContent: 'space-between' },
+  catTileOn: { outlineWidth: 2, outlineColor: color.action, outlineOffset: 2, borderWidth: 2, borderColor: color.action },
+  catTileCount: { fontSize: 9, fontWeight: weight.heavy, letterSpacing: 1 },
+  catTileLabel: { fontSize: font.subhead - 2, fontWeight: weight.heavy, letterSpacing: -0.3, lineHeight: 15 },
+
+  sectionHead: { paddingHorizontal: space.lg, paddingTop: space.xl, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: space.md },
+  h2: { fontSize: font.title1, fontWeight: weight.heavy, color: color.text, letterSpacing: -1 },
+  sortLink: { fontSize: font.footnote, fontWeight: weight.bold, color: color.primary },
 
   lanes: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
-  sellCard: { borderRadius: 22, backgroundColor: color.ink, padding: space.lg, justifyContent: 'space-between' },
-  sellTitle: { color: color.textInverse, fontSize: font.headline, fontWeight: weight.heavy, letterSpacing: -0.4, lineHeight: 21 },
-  sellSub: { color: 'rgba(255,255,255,0.65)', fontSize: font.caption, marginTop: 4, lineHeight: 16 },
+  sellCard: { borderRadius: 22, backgroundColor: color.ink, padding: space.lg, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  sellCardTitle: { color: color.textInverse, fontSize: font.headline, fontWeight: weight.heavy, letterSpacing: -0.4, lineHeight: 21 },
+  sellCardSub: { color: 'rgba(255,255,255,0.65)', fontSize: font.caption, marginTop: 4, lineHeight: 16 },
+  sellCardIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
 
   empty: { paddingVertical: 60, alignItems: 'center' },
   emptyTitle: { fontSize: font.subhead, fontWeight: weight.bold, color: color.textSecondary },

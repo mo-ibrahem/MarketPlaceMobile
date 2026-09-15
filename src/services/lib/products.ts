@@ -396,6 +396,89 @@ export const productService = {
       return []
     }
   },
+
+  /**
+   * "Priced to sell" on the sell-price step and product detail. The design
+   * brief's mockup showed a range of recent *sold* prices -- this app has
+   * no reliable sold-price history (a seller marking something sold does
+   * not capture what it actually went for), so showing that would be
+   * fabricated. This is the honest, buildable substitute: the price range
+   * of other active listings in the same category right now. Returns null
+   * rather than a range built from too few comparables to mean anything.
+   */
+  getComparablePriceRange: async (
+    category: string,
+    excludeProductId?: string
+  ): Promise<{ min: number; max: number; count: number } | null> => {
+    let query = supabase
+      .from('products')
+      .select('price')
+      .eq('status', 'active')
+      .ilike('category', category)
+      .limit(60)
+    if (excludeProductId) query = query.neq('id', excludeProductId)
+    const { data, error } = await query
+    if (error || !data || data.length < 3) return null
+    const prices = data.map(r => Number(r.price)).filter(p => p > 0)
+    if (prices.length < 3) return null
+    return { min: Math.min(...prices), max: Math.max(...prices), count: prices.length }
+  },
+
+  /**
+   * Drafts: a listing saved with status='draft' instead of posted. Reuses
+   * the products table (no new schema) -- an owner-only SELECT policy
+   * ("Seller SELECT own listings") makes their own drafts visible to them
+   * while the existing public policy keeps them invisible to everyone else.
+   */
+  saveDraft: async (draft: {
+    id?: string
+    title: string
+    description: string
+    price: number
+    category: string
+    condition: string
+    images: string[]
+  }): Promise<string> => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not signed in')
+    if (draft.id) {
+      const { error } = await supabase.from('products').update({
+        title: draft.title, description: draft.description, price: draft.price,
+        category: draft.category, condition: draft.condition, images: draft.images,
+        updated_at: new Date().toISOString(),
+      }).eq('id', draft.id).eq('seller_id', user.id)
+      if (error) throw error
+      return draft.id
+    }
+    const { data, error } = await supabase.from('products').insert({
+      title: draft.title, description: draft.description, price: draft.price,
+      category: draft.category, condition: draft.condition, images: draft.images,
+      seller_id: user.id, status: 'draft', stock: 1,
+    }).select('id').single()
+    if (error) throw error
+    return data.id
+  },
+
+  /** Publishes a draft: the only thing that changes is status. */
+  publishDraft: async (productId: string): Promise<void> => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not signed in')
+    const { error } = await supabase.from('products')
+      .update({ status: 'active', updated_at: new Date().toISOString() })
+      .eq('id', productId).eq('seller_id', user.id).eq('status', 'draft')
+    if (error) throw error
+  },
+
+  /** A seller's own drafts, most recently edited first. */
+  getMyDrafts: async (): Promise<Product[]> => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+    const { data, error } = await supabase.from('products').select('*')
+      .eq('seller_id', user.id).eq('status', 'draft')
+      .order('updated_at', { ascending: false })
+    if (error) { console.warn('getMyDrafts error:', error); return [] }
+    return (data || []) as Product[]
+  },
 }
 
 export const profileService = {
