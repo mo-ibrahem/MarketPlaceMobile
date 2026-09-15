@@ -1,25 +1,20 @@
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
-  Bell,
   Camera,
   ChevronRight,
   Edit3,
   Eye,
   FileEdit,
-  Globe,
   Heart,
   Lock,
   LogOut,
   Package,
   Save,
   ShieldCheck,
-  ShoppingBag,
   Trash2,
   User,
   Wallet,
-  ArrowUpRight,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,11 +55,6 @@ import { PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatEGP(price: number | string): string {
-  const n = Math.round(Number(price));
-  return `EGP ${n.toLocaleString('en-EG')}`;
-}
-
 // ─── Tab config ───────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -84,6 +74,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { language, changeLanguage } = useLanguage();
+  const isRTL = language === 'ar';
 
   const [profile,          setProfile]          = useState<UserProfile | null>(null);
   const [userProducts,     setUserProducts]     = useState<Product[]>([]);
@@ -322,68 +313,79 @@ export default function ProfileScreen() {
 
   const displayName = profile?.full_name || user.email?.split('@')[0] || 'User';
   const initials    = displayName.slice(0, 2).toUpperCase();
+  // "JOINED MAR 2025" -- from the profile row's own created_at, not invented.
+  const joinedLabel = profile?.created_at
+    ? `${isRTL ? 'انضم' : 'Joined'} ${new Date(profile.created_at).toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', { month: 'short', year: 'numeric' })}`
+    : '';
+  // The stat cell wants a number, not the sentence the badge renders:
+  // "Replies in about 10 min" -> "10 min". Blank when there is no real
+  // history behind it, never a placeholder figure.
+  const replyTimeValue = replyBadge ? replyBadge.replace(/^.*?about\s*/i, '') : null;
 
+  /**
+   * Listing rows (approved build 3d): thumbnail, title, real status line,
+   * price on the right, hairline between rows. This was a two-column grid
+   * of cards with a floating price pill and hovering action buttons.
+   */
   const renderProductList = (products: Product[], emptyMsg: string) => {
     return products.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>{activeTab === 'wishlist' ? '❤️' : '📦'}</Text>
-          <Text style={styles.emptyTitle}>{emptyMsg}</Text>
-          {activeTab === 'products' && (
-            <TouchableOpacity style={styles.emptyAction} onPress={() => router.push('/sell' as any)}>
-              <Text style={styles.emptyActionText}>List your first item →</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-    ) : (
-      <View style={styles.listingGrid}>
-        {products.map(product => (
-          <TouchableOpacity
-            key={product.id}
-            style={styles.listingCard}
-            onPress={() => router.push(`/products/${product.id}`)}
-            activeOpacity={0.9}
-          >
-            <Image
-              source={{ uri: product.images?.[0] || 'https://placehold.co/300x300/F1F5F9/64748B?text=Item' }}
-              style={styles.listingImg}
-            />
-            {/* EGP price pill */}
-            <View style={styles.listingPricePill}>
-              <Text style={styles.listingPriceText}>{formatEGP(product.price)}</Text>
-            </View>
-            {/* Actions (only on My Listings) */}
-            {activeTab === 'products' && (
-              <View style={styles.listingActions}>
-                <TouchableOpacity
-                  style={styles.listingActionBtn}
-                  onPress={e => { e.stopPropagation(); router.push(`/products/edit/${product.id}`); }}
-                  hitSlop={{ top: 7, bottom: 7, left: 7, right: 7 }}
-                >
-                  <Edit3 size={13} color="#6366F1" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.listingActionBtn, styles.listingDeleteBtn]}
-                  onPress={e => { e.stopPropagation(); handleDeleteProduct(product.id); }}
-                  hitSlop={{ top: 7, bottom: 7, left: 7, right: 7 }}
-                >
-                  <Trash2 size={13} color="#EF4444" />
-                </TouchableOpacity>
-              </View>
-            )}
-            <View style={styles.listingCardBody}>
-              <Text style={styles.listingTitle} numberOfLines={1}>{product.title}</Text>
-              <View style={[styles.conditionPill, product.condition === 'New' ? styles.conditionNew : styles.conditionUsed]}>
-                <Text style={[styles.conditionText, product.condition === 'New' ? styles.conditionTextNew : styles.conditionTextUsed]}>
-                  {product.condition}
-                </Text>
-              </View>
-            </View>
+      <View style={styles.emptyState}>
+        <Text style={styles.emptyTitle}>{emptyMsg}</Text>
+        {activeTab === 'products' && (
+          <TouchableOpacity style={styles.emptyAction} onPress={() => router.push('/(tabs)/sell' as any)}>
+            <Text style={styles.emptyActionText}>{isRTL ? 'أضف أول إعلان ←' : 'List your first item →'}</Text>
           </TouchableOpacity>
-        ))}
+        )}
+      </View>
+    ) : (
+      <View>
+        {products.map(product => {
+          const isSold = product.status === 'sold';
+          const isDraft = product.status === 'draft';
+          return (
+            <TouchableOpacity
+              key={product.id}
+              style={[styles.listingRow, isSold && styles.listingRowMuted]}
+              onPress={() => router.push(`/products/${product.id}`)}
+              onLongPress={activeTab === 'products' ? () => handleDeleteProduct(product.id) : undefined}
+              activeOpacity={0.85}
+            >
+              <Image
+                source={{ uri: product.images?.[0] || 'https://placehold.co/300x300/F1F5F9/64748B?text=Item' }}
+                style={styles.listingThumb}
+              />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.listingTitle} numberOfLines={1}>{product.title}</Text>
+                <View style={styles.listingMetaRow}>
+                  <Text style={[styles.listingStatus, isSold && styles.listingStatusMuted, isDraft && styles.listingStatusDraft]}>
+                    {isSold ? 'SOLD' : isDraft ? 'DRAFT' : 'LIVE'}
+                  </Text>
+                  {!isSold && !isDraft && (
+                    <>
+                      <Text style={styles.listingDot}>·</Text>
+                      <Text style={styles.listingMeta}>
+                        {isRTL ? `${product.view_count ?? 0} مشاهدة` : `${product.view_count ?? 0} views`}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              </View>
+              <Text style={styles.listingPrice}>{Math.round(product.price).toLocaleString('en-EG')}</Text>
+              {activeTab === 'products' && (
+                <TouchableOpacity
+                  onPress={e => { e.stopPropagation(); router.push(`/products/edit/${product.id}`); }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  style={styles.listingEdit}
+                >
+                  <Edit3 size={15} color="#94A3B8" />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
     );
   };
-
 
   const renderSettings = () => (
     <View style={{ gap: 16 }}>
@@ -559,157 +561,99 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center' }}>
         <View style={{ width: '100%', maxWidth: 840, alignSelf: 'center' }}>
 
-        {/* ════════ HERO BANNER ════════
-            Flat ink, not a gradient -- the design retires
-            #0F172A->#1E293B here along with every other button/panel
-            gradient in the app. */}
-        <View style={[styles.heroBanner, { backgroundColor: '#0F172A', paddingTop: insets.top + 20 }]}>
-          {/* Avatar */}
-          <TouchableOpacity onPress={handleAvatarUpload} style={styles.heroAvatarWrap} activeOpacity={0.85}>
+        {/* ════════ HEADER (approved build 3d) ════════
+            A white page: avatar, name + verified shield, a mono line of
+            real facts, and an Edit pill. This was a dark banner with the
+            email and phone printed under a centred avatar. */}
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+          <TouchableOpacity onPress={handleAvatarUpload} style={styles.avatarWrap} activeOpacity={0.85}>
             {profile?.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} style={styles.heroAvatar} />
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
             ) : (
-              <View style={styles.heroAvatarFallback}>
-                <Text style={styles.heroAvatarInitials}>{initials}</Text>
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <Text style={styles.avatarInitials}>{initials}</Text>
               </View>
             )}
-            <View style={styles.heroAvatarCamera}>
-              <Camera size={14} color="white" />
+            <View style={styles.avatarCamera}>
+              <Camera size={12} color="white" />
             </View>
           </TouchableOpacity>
 
-          <Text style={styles.heroName}>{displayName}</Text>
-          <Text style={styles.heroEmail}>{user.email}</Text>
-          {profile?.phone && <Text style={styles.heroPhone}>📞 {profile.phone}</Text>}
-        </View>
-
-        {/* ════════ STAT STRIP ════════ */}
-        <View style={styles.statStrip}>
-          <StatCard
-            value={userProducts.length}
-            label={t('profile.statListings')}
-            icon={<ShoppingBag color="#6366F1" size={20} />}
-            bg="#EEF2FF"
-            onPress={() => setActiveTab('products')}
-          />
-          <View style={styles.statDivider} />
-          {/* "Sold" requires a completed order, which cannot happen right
-              now -- see PLAN-CLASSIFIEDS-MODE.md. Showing a stat that can
-              only ever read zero is confusing rather than dishonest, but
-              there is no reason to keep it while payments are paused. */}
-          {PAYMENTS_ENABLED && (
-            <>
-              <StatCard
-                value={soldCount}
-                label={t('profile.statSold')}
-                icon={<Package color="#10B981" size={20} />}
-                bg="#D1FAE5"
-                onPress={() => setActiveTab('products')}
-              />
-              <View style={styles.statDivider} />
-            </>
-          )}
-          <StatCard
-            value={wishlistProducts.length}
-            label={t('profile.statSaved')}
-            icon={<Heart color="#EC4899" size={20} />}
-            bg="#FCE7F3"
-            onPress={() => setActiveTab('wishlist')}
-          />
-          <View style={styles.statDivider} />
-          <StatCard
-            value={userProducts.reduce((sum, p) => sum + (p.view_count ?? 0), 0)}
-            label={t('profile.statViews')}
-            icon={<Eye color="#0EA5E9" size={20} />}
-            bg="#E0F2FE"
-            onPress={() => setActiveTab('products')}
-          />
-        </View>
-        {/* Real reply-speed stat (seller_reply_stats) -- never shown without
-            enough real history to say something honest. */}
-        {!!replyBadge && (
-          <View style={styles.replyBadgeStrip}>
-            <View style={styles.replyBadgeDot} />
-            <Text style={styles.replyBadgeStripText}>{replyBadge}</Text>
-          </View>
-        )}
-
-        {/* ════════ MY WALLET & ESCROW BALANCE WIDGET ════════
-            Hidden while PAYMENTS_ENABLED is false: there is no wallet right
-            now (see PLAN-CLASSIFIEDS-MODE.md). */}
-        {PAYMENTS_ENABLED && (
-        <TouchableOpacity onPress={() => router.push('/wallet' as any)} activeOpacity={0.88} style={{ marginHorizontal: 20, marginTop: 14 }}>
-          <LinearGradient
-            colors={['#3665F3', '#5B3DDB']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.walletWidgetCard}
-          >
-            <View style={styles.walletWidgetHeader}>
-              <View style={styles.walletWidgetIconBox}>
-                <Wallet color="#3665F3" size={18} strokeWidth={2.5} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.walletWidgetTitle}>EgyBay Wallet & Escrow</Text>
-                <Text style={styles.walletWidgetSub}>
-                  Pending: <Text style={{ fontWeight: '800', color: '#FCD34D' }}>EGP {Number(wallet?.pending_balance || 0).toLocaleString()}</Text>
-                </Text>
-              </View>
-              <View style={styles.walletWidgetRight}>
-                <Text style={styles.walletWidgetAvailable}>EGP {Number(wallet?.available_balance || 0).toLocaleString()}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                  <Text style={styles.walletWidgetCta}>Withdraw</Text>
-                  <ArrowUpRight size={12} color="white" strokeWidth={3} />
-                </View>
-              </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={styles.nameRow}>
+              <Text style={styles.name} numberOfLines={1}>{displayName}</Text>
+              {isVerifiedSeller && <ShieldCheck size={15} color="#059669" />}
             </View>
-          </LinearGradient>
-        </TouchableOpacity>
-        )}
-
-        {/* ════════ SELLER TRUST TIER CARD ════════
-            Every field here used to be hardcoded: it told each user they were a
-            "Tier 2: Verified Trader" with a "VERIFIED" badge and an "Egyptian
-            National ID Verified" subtitle, no matter what the database said.
-            This account, for one, is tier 1 with is_verified_seller = false and
-            no verification request on file. It now reports the real tier and
-            only claims verification when the profile actually carries it.
-            Hidden entirely while PAYMENTS_ENABLED is false: there is no tier
-            or verification system right now (see PLAN-CLASSIFIEDS-MODE.md). */}
-        {PAYMENTS_ENABLED && (
-        <TouchableOpacity
-          style={styles.sellerTierCard}
-          onPress={() => router.push('/seller-verification' as any)}
-          activeOpacity={0.85}
-        >
-          <View style={styles.tierIconWrap}>
-            <ShieldCheck color={isVerifiedSeller ? '#10B981' : '#94A3B8'} size={20} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <View style={styles.tierRow}>
-              <Text style={styles.tierTitle}>
-                Tier {sellerTier.tier}: {sellerTier.name}
-              </Text>
-              {isVerifiedSeller && (
-                <View style={styles.tierBadge}>
-                  <Text style={styles.tierBadgeText}>VERIFIED 🛡️</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.tierSub}>
-              {isVerifiedSeller
-                ? 'Egyptian National ID Verified • 100% Escrow Protection'
-                : `Not verified yet • Requires ${sellerTier.kycRequirement}`}
+            <Text style={styles.headerMeta} numberOfLines={1}>
+              {[profile?.address, joinedLabel].filter(Boolean).join(' · ').toUpperCase()}
             </Text>
           </View>
-          <ChevronRight size={16} color="#94A3B8" />
-        </TouchableOpacity>
+
+          <TouchableOpacity style={styles.editPill} onPress={() => setActiveTab('settings')} activeOpacity={0.8}>
+            <Text style={styles.editPillText}>{isRTL ? 'تعديل' : 'Edit'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ════════ STATS ════════
+            Three real numbers separated by hairlines. "Sold" only appears
+            with payments on, because without orders it can only read zero. */}
+        <View style={styles.stats}>
+          <View style={styles.statCell}>
+            <Text style={styles.statValue}>{userProducts.length}</Text>
+            <Text style={styles.statLabel}>{t('profile.statListings')}</Text>
+          </View>
+          <View style={[styles.statCell, styles.statCellBordered]}>
+            <Text style={styles.statValue}>{replyTimeValue ?? '—'}</Text>
+            <Text style={styles.statLabel}>{isRTL ? 'وقت الرد' : 'REPLY TIME'}</Text>
+          </View>
+          <View style={[styles.statCell, styles.statCellBordered]}>
+            <Text style={styles.statValue}>
+              {userProducts.reduce((sum, p) => sum + (p.view_count ?? 0), 0)}
+            </Text>
+            <Text style={styles.statLabel}>{t('profile.statViews')}</Text>
+          </View>
+          {PAYMENTS_ENABLED && (
+            <View style={[styles.statCell, styles.statCellBordered]}>
+              <Text style={styles.statValue}>{soldCount}</Text>
+              <Text style={styles.statLabel}>{t('profile.statSold')}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Wallet and verification tier live behind PAYMENTS_ENABLED; as
+            hairline rows now rather than gradient cards. */}
+        {PAYMENTS_ENABLED && (
+          <TouchableOpacity style={styles.linkRow} onPress={() => router.push('/wallet' as any)} activeOpacity={0.8}>
+            <View style={styles.linkRowLeft}>
+              <Wallet size={18} color="#0F172A" />
+              <Text style={styles.linkRowText}>{isRTL ? 'المحفظة' : 'Wallet'}</Text>
+            </View>
+            <View style={styles.linkRowRight}>
+              <Text style={styles.linkRowValue}>
+                EGP {Number(wallet?.available_balance || 0).toLocaleString('en-EG')}
+              </Text>
+              <ChevronRight size={16} color="#CBD5E1" />
+            </View>
+          </TouchableOpacity>
+        )}
+        {PAYMENTS_ENABLED && (
+          <TouchableOpacity style={styles.linkRow} onPress={() => router.push('/seller-verification' as any)} activeOpacity={0.8}>
+            <View style={styles.linkRowLeft}>
+              <ShieldCheck size={18} color={isVerifiedSeller ? '#059669' : '#94A3B8'} />
+              <Text style={styles.linkRowText}>
+                {isVerifiedSeller
+                  ? `${sellerTier.name}`
+                  : (isRTL ? 'وثّق حسابك' : 'Verify your account')}
+              </Text>
+            </View>
+            <ChevronRight size={16} color="#CBD5E1" />
+          </TouchableOpacity>
         )}
 
-        {/* ════════ TABS ════════ */}
+        {/* ════════ TABS ════════
+            Underlined text tabs, not icon pills. */}
         <View style={styles.tabBar}>
           {TABS.map(tab => {
-            const Icon    = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <TouchableOpacity
@@ -718,7 +662,6 @@ export default function ProfileScreen() {
                 onPress={() => setActiveTab(tab.id)}
                 activeOpacity={0.8}
               >
-                <Icon size={18} color={isActive ? '#6366F1' : '#94A3B8'} />
                 <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
               </TouchableOpacity>
             );
@@ -742,249 +685,101 @@ export default function ProfileScreen() {
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
-function StatCard({
-  value, label, icon, bg, onPress,
-}: {
-  value: number; label: string; icon: React.ReactNode; bg: string; onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity style={styles.statCard} onPress={onPress} activeOpacity={0.8}>
-      <View style={[styles.statIconBg, { backgroundColor: bg }]}>{icon}</View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  // ── Approved build (3d) ──────────────────────────────────────────────
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+
+  header: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingBottom: 4 },
+  avatarWrap: { position: 'relative' },
+  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#E2E8F0' },
+  avatarFallback: { alignItems: 'center', justifyContent: 'center' },
+  avatarInitials: { fontSize: 22, fontWeight: '800', color: '#64748B' },
+  avatarCamera: {
+    position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRadius: 12,
+    backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#FFFFFF',
+  },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  name: { fontSize: 22, fontWeight: '800', letterSpacing: -0.8, color: '#0F172A' },
+  headerMeta: { fontSize: 11, fontWeight: '700', letterSpacing: 1.4, color: '#94A3B8', marginTop: 4 },
+  editPill: {
+    height: 36, paddingHorizontal: 14, borderRadius: 999,
+    borderWidth: 1, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center',
+  },
+  editPillText: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+
+  stats: {
+    flexDirection: 'row', marginHorizontal: 20, marginTop: 20,
+    borderTopWidth: 1, borderTopColor: '#E2E8F0', borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+  },
+  statCell: { flex: 1, paddingVertical: 14 },
+  statCellBordered: { borderLeftWidth: 1, borderLeftColor: '#E2E8F0', paddingLeft: 16 },
+  statValue: { fontSize: 24, fontWeight: '800', letterSpacing: -0.9, color: '#0F172A' },
+  statLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.4, color: '#94A3B8', marginTop: 2, textTransform: 'uppercase' },
+
+  linkRow: {
+    marginHorizontal: 20, paddingVertical: 15,
+    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  linkRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  linkRowRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  linkRowText: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
+  linkRowValue: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
+
+  tabBar: { flexDirection: 'row', marginHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  tabBtn: { paddingVertical: 14, marginRight: 22, marginBottom: -1, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabBtnActive: { borderBottomColor: '#0F172A' },
+  tabLabel: { fontSize: 14, fontWeight: '700', color: '#94A3B8' },
+  tabLabelActive: { color: '#0F172A', fontWeight: '800' },
+  tabContent: { paddingHorizontal: 20, paddingTop: 4 },
+
+  listingRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+  },
+  listingRowMuted: { opacity: 0.55 },
+  listingThumb: { width: 60, height: 60, borderRadius: 10, backgroundColor: '#E2E8F0' },
+  listingTitle: { fontSize: 14, fontWeight: '600', color: '#0F172A', lineHeight: 19 },
+  listingMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  listingStatus: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: '#059669' },
+  listingStatusMuted: { color: '#94A3B8' },
+  listingStatusDraft: { color: '#94A3B8' },
+  listingDot: { color: '#CBD5E1' },
+  listingMeta: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
+  listingPrice: { fontSize: 16, fontWeight: '800', color: '#0F172A', letterSpacing: -0.4 },
+  listingEdit: { paddingLeft: 8 },
+
+  emptyState: { paddingVertical: 48, alignItems: 'center', gap: 10 },
+  emptyTitle: { fontSize: 14, fontWeight: '600', color: '#94A3B8', textAlign: 'center', lineHeight: 20 },
+  emptyAction: { paddingVertical: 8 },
+  emptyActionText: { fontSize: 14, fontWeight: '700', color: '#2563EB' },
+
+  // ── Retained: settings panel, modals, loading ────────────────────────
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   loadingText: { marginTop: 12, color: '#64748B', fontSize: 15 },
 
   // Hero
-  heroBanner: {
-    paddingTop: 56,
-    paddingBottom: 40,
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  heroAvatarWrap: { position: 'relative', marginBottom: 14 },
-  heroAvatar: { width: 96, height: 96, borderRadius: 48, borderWidth: 4, borderColor: 'white' },
-  heroAvatarFallback: {
-    width: 96, height: 96, borderRadius: 48,
-    backgroundColor: '#334155',
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 4, borderColor: 'white',
-  },
-  heroAvatarInitials: { fontSize: 34, fontWeight: '800', color: 'white' },
-  heroAvatarCamera: {
-    position: 'absolute', bottom: 2, right: 2,
-    backgroundColor: '#3665F3', borderRadius: 14,
-    width: 28, height: 28, justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: 'white',
-  },
-  heroName:  { fontSize: 24, fontWeight: '900', color: 'white', marginBottom: 4, letterSpacing: -0.3 },
-  heroEmail: { fontSize: 14, color: '#94A3B8', marginBottom: 4, fontWeight: '600' },
-  heroPhone: { fontSize: 13, color: '#64748B', fontWeight: '600' },
 
   // Stat strip
-  statStrip: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    marginTop: -20,
-    borderRadius: 24,
-    padding: 16,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 8,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: '#F1F5F9'
-  },
   statCard: { flex: 1, alignItems: 'center', gap: 6 },
   statIconBg: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
-  statValue: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
-  statLabel: { fontSize: 12, color: '#64748B', fontWeight: '700' },
-  statDivider: { width: 1, backgroundColor: '#F1F5F9', marginVertical: 4 },
-  replyBadgeStrip: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', marginTop: 10 },
-  replyBadgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
-  replyBadgeStripText: { fontSize: 12, fontWeight: '700', color: '#059669' },
 
   // Wallet Widget
-  walletWidgetCard: {
-    borderRadius: 24,
-    padding: 18,
-    shadowColor: '#3665F3',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  walletWidgetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  walletWidgetIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  walletWidgetTitle: { fontSize: 15, fontWeight: '800', color: 'white', marginBottom: 2 },
-  walletWidgetSub: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
-  walletWidgetRight: { alignItems: 'flex-end' },
-  walletWidgetAvailable: { fontSize: 16, fontWeight: '900', color: 'white', marginBottom: 4 },
-  walletWidgetCta: { fontSize: 12, fontWeight: '800', color: 'white' },
 
   // Seller Tier Card
-  sellerTierCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    marginTop: 14,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#EEF2FF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  tierIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#ECFDF5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tierRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-  tierTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
-  tierBadge: { backgroundColor: '#10B981', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  tierBadgeText: { fontSize: 11, fontWeight: '900', color: 'white', letterSpacing: 0.5 },
-  tierSub: { fontSize: 11, color: '#64748B', fontWeight: '500' },
 
   // Tabs
-  tabBar: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginTop: 24,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 999,
-    padding: 4,
-  },
-  tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', gap: 4, borderRadius: 999 },
-  tabBtnActive: { backgroundColor: 'white', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 2 },
-  tabLabel: { fontSize: 12, fontWeight: '700', color: '#64748B' },
-  tabLabelActive: { color: '#3665F3', fontWeight: '900' },
 
   // Tab content
-  tabContent: { paddingHorizontal: 20, paddingTop: 20 },
 
   // Listing grid (2-column)
-  listingGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  listingCard: {
-    width: '47.5%',
-    backgroundColor: 'white',
-    borderRadius: 18,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  listingImg: { width: '100%', aspectRatio: 1 },
-  listingPricePill: {
-    position: 'absolute',
-    bottom: 56,
-    left: 8,
-    backgroundColor: '#0F172A',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  listingPriceText: { color: 'white', fontSize: 12, fontWeight: '800' },
-  listingActions: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    gap: 6,
-    flexDirection: 'column',
-  },
-  listingActionBtn: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 10,
-    width: 30,
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  listingDeleteBtn: { backgroundColor: '#FEF2F2' },
-  listingCardBody: {
-    padding: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  listingTitle: { fontSize: 12, fontWeight: '700', color: '#1E293B', flex: 1, marginRight: 6 },
-  conditionPill: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  conditionNew: { backgroundColor: '#D1FAE5' },
-  conditionUsed: { backgroundColor: '#FEF3C7' },
-  conditionText: { fontSize: 11, fontWeight: '800' },
-  conditionTextNew: { color: '#065F46' },
-  conditionTextUsed: { color: '#92400E' },
 
   // Empty state
-  emptyState: { alignItems: 'center', paddingVertical: 48 },
-  emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: '#1E293B', marginBottom: 6, textAlign: 'center' },
-  emptySubtitle: { fontSize: 14, color: '#94A3B8', textAlign: 'center' },
-  emptyAction: {
-    marginTop: 16,
-    backgroundColor: '#EEF2FF',
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  emptyActionText: { color: '#6366F1', fontWeight: '700', fontSize: 14 },
 
   // Chat
-  chatCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  chatAvatar: { width: 52, height: 52, borderRadius: 26, marginRight: 14 },
-  chatInfo: { flex: 1 },
-  chatProduct: { fontSize: 11, fontWeight: '700', color: '#2563EB', marginTop: 1 },
-  chatName: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 3 },
-  chatPreview: { fontSize: 13, color: '#94A3B8' },
-  chatTime: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginLeft: 6 },
 
   // Settings cards
   settingsCard: {
