@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, MoreVertical, Package, Send, ShieldCheck, Tag } from 'lucide-react-native';
+import { ArrowLeft, MoreVertical, Package, Plus, Send, ShieldCheck, Tag } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -33,6 +33,7 @@ import {
   type ChatMessage,
   type ChatRoomDetails,
 } from '../../src/services/lib/chatService';
+import { getSellerReplyBadge } from '../../src/services/lib/reputationStats';
 
 function formatMessageTime(isoString: string): string {
   try {
@@ -65,6 +66,7 @@ export default function ChatRoomScreen() {
   const [offerModalOpen, setOfferModalOpen] = useState(false);
   const [offerAmount, setOfferAmount] = useState('');
   const [sendingOffer, setSendingOffer] = useState(false);
+  const [replyBadge, setReplyBadge] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
   const quickReplies = [
@@ -89,6 +91,9 @@ export default function ChatRoomScreen() {
         if (isMounted) {
           setMessages(msgs);
           setRoomInfo(info);
+          if (info?.other_user_id) {
+            getSellerReplyBadge(info.other_user_id).then(b => { if (isMounted) setReplyBadge(b); }).catch(() => {});
+          }
         }
       } catch (err: any) {
         console.error('[Chat] Load error:', err);
@@ -227,20 +232,22 @@ export default function ChatRoomScreen() {
                 </View>
               )}
             </View>
-            <View>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.headerName} numberOfLines={1}>{otherName}</Text>
-              {/* Was a hardcoded "Active in Egypt" presence line, which this
-                  app has no way to know. The listing this conversation is about
-                  is shown in its own bar below instead. */}
-              <Text style={styles.headerStatus} numberOfLines={1}>🇪🇬 EgyBay</Text>
+              {/* The mockup shows "Active now" here. This app has no presence
+                  data and will not invent it; the real, computed equivalent is
+                  their reply speed, and it is omitted entirely when there is
+                  not enough history behind it. */}
+              {!!replyBadge && (
+                <View style={styles.headerTrustRow}>
+                  <View style={styles.headerTrustDot} />
+                  <Text style={styles.headerTrust} numberOfLines={1}>{replyBadge}</Text>
+                </View>
+              )}
             </View>
           </View>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <View style={styles.verifiedBadge}>
-              <ShieldCheck size={18} color="#10B981" />
-            </View>
-
             {/* Guideline 1.2: report writes a content_reports row, block writes
                 blocked_users; neither claims success until the RPC resolved. */}
             <TouchableOpacity
@@ -329,17 +336,11 @@ export default function ChatRoomScreen() {
                 </Text>
               )}
             </View>
-            <ChevronRight size={16} color="#CBD5E1" />
+            <View style={styles.productBarView}>
+              <Text style={styles.productBarViewText}>{isRTL ? 'عرض' : 'View'}</Text>
+            </View>
           </TouchableOpacity>
         )}
-
-        {/* ── Safety Notice Banner ── */}
-        <View style={styles.safetyBanner}>
-          <ShieldCheck size={14} color="#2563EB" />
-          <Text style={styles.safetyBannerText}>
-            {t(PAYMENTS_ENABLED ? 'chat.safetyReminder' : 'chat.safetyReminderClassifieds')}
-          </Text>
-        </View>
 
         {/* ── Message List ── */}
         <View style={{ flex: 1 }}>
@@ -350,6 +351,14 @@ export default function ChatRoomScreen() {
             contentContainerStyle={styles.listContainer}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
             onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            ListFooterComponent={
+              <View style={styles.safetyLine}>
+                <ShieldCheck size={13} color="#94A3B8" />
+                <Text style={styles.safetyLineText}>
+                  {t(PAYMENTS_ENABLED ? 'chat.safetyReminder' : 'chat.safetyReminderClassifieds')}
+                </Text>
+              </View>
+            }
             renderItem={({ item }) => {
               const isMe = item.sender_id === user?.id;
 
@@ -455,6 +464,17 @@ export default function ChatRoomScreen() {
 
           {/* ── Input Bar ── */}
           <View style={[styles.inputContainer, { paddingBottom: 10 + (keyboardOpen ? 0 : insets.bottom) }]}>
+            {/* "+" opens the offer composer -- the one structured thing you
+                can attach to a message in this app. */}
+            <TouchableOpacity
+              style={styles.attachBtn}
+              onPress={() => {
+                if (roomInfo?.product_price) setOfferAmount(String(Math.round(Number(roomInfo.product_price) * 0.9)));
+                setOfferModalOpen(true);
+              }}
+            >
+              <Plus size={18} color="#0F172A" />
+            </TouchableOpacity>
             <TextInput
               style={styles.input}
               value={newMessage}
@@ -557,20 +577,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarInitial: { fontSize: 15, fontWeight: '800', color: '#6366F1' },
-  onlineDot: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#10B981',
-    borderWidth: 1.5,
-    borderColor: 'white',
-  },
   headerName: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
-  headerStatus: { fontSize: 11, color: '#64748B', fontWeight: '500' },
-  verifiedBadge: { padding: 4 },
+  headerTrustRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 1 },
+  headerTrustDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#10B981' },
+  headerTrust: { fontSize: 11, fontWeight: '700', color: '#059669' },
+  productBarView: {
+    height: 32, paddingHorizontal: 12, borderRadius: 999,
+    borderWidth: 1, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center',
+  },
+  productBarViewText: { fontSize: 12, fontWeight: '700', color: '#0F172A' },
+  safetyLine: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 2 },
+  safetyLineText: { flex: 1, fontSize: 12, color: '#94A3B8', fontWeight: '600', lineHeight: 17 },
   moreOptionsBtn: {
     width: 34,
     height: 34,
@@ -581,17 +598,6 @@ const styles = StyleSheet.create({
   },
 
   // Safety Banner
-  safetyBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#DBEAFE',
-  },
-  safetyBannerText: { fontSize: 11, color: '#1E40AF', flex: 1, fontWeight: '500', lineHeight: 15 },
 
   // Message list
   listContainer: { paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
@@ -599,15 +605,10 @@ const styles = StyleSheet.create({
   myRow: { justifyContent: 'flex-end' },
   theirRow: { justifyContent: 'flex-start' },
   messageBubble: {
-    maxWidth: '82%',
+    maxWidth: '76%',
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
   myMessage: {
     backgroundColor: '#0F172A',
@@ -674,12 +675,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'white',
-    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -701,27 +700,27 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    minHeight: 42,
+    minHeight: 44,
     maxHeight: 100,
     backgroundColor: '#F1F5F9',
-    borderRadius: 20,
+    borderRadius: 999,
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    fontSize: 14,
+    paddingVertical: 10,
+    fontSize: 15,
     color: '#0F172A',
   },
+  attachBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    borderWidth: 1, borderColor: '#CBD5E1',
+    alignItems: 'center', justifyContent: 'center',
+  },
   sendButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#0F172A',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
   },
   sendButtonDisabled: {
     backgroundColor: '#CBD5E1',
