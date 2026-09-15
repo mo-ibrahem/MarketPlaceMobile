@@ -7,11 +7,11 @@ import {
   ChevronRight,
   Edit3,
   Eye,
+  FileEdit,
   Globe,
   Heart,
   Lock,
   LogOut,
-  MessageCircle,
   Package,
   Save,
   ShieldCheck,
@@ -39,8 +39,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
-import { getChatRooms, type ChatRoomInfo } from '../../src/services/lib/chatService';
-import { ChatList } from '../../src/components/ChatList';
+import { getSellerReplyBadge } from '../../src/services/lib/reputationStats';
 import {
   SELLER_TIERS,
   getSellerTier,
@@ -71,7 +70,7 @@ function formatEGP(price: number | string): string {
 const TABS = [
   { id: 'products', label: 'Listings', icon: Package  },
   { id: 'wishlist', label: 'Saved',    icon: Heart    },
-  { id: 'chats',    label: 'Chats',    icon: MessageCircle },
+  { id: 'drafts',   label: 'Drafts',   icon: FileEdit },
   { id: 'settings', label: 'Settings', icon: User     },
 ] as const;
 
@@ -89,7 +88,8 @@ export default function ProfileScreen() {
   const [profile,          setProfile]          = useState<UserProfile | null>(null);
   const [userProducts,     setUserProducts]     = useState<Product[]>([]);
   const [wishlistProducts, setWishlistProducts] = useState<Product[]>([]);
-  const [chatRooms,        setChatRooms]        = useState<ChatRoomInfo[]>([]);
+  const [draftProducts,    setDraftProducts]    = useState<Product[]>([]);
+  const [replyBadge,       setReplyBadge]       = useState<string | null>(null);
   const [soldCount,        setSoldCount]        = useState(0);
   const [isLoading,        setIsLoading]        = useState(true);
   const [activeTab,        setActiveTab]        = useState<TabId>('products');
@@ -117,11 +117,11 @@ export default function ProfileScreen() {
       setIsLoading(true);
       // Classifieds mode: there is no wallet, tier or completed-sale count
       // right now, so don't even fetch them (see PLAN-CLASSIFIEDS-MODE.md).
-      const [profileData, products, wishlist, chats, sold, userWallet, tier] = await Promise.all([
+      const [profileData, products, wishlist, drafts, sold, userWallet, tier] = await Promise.all([
         profileService.getProfile(user.id),
         productService.getProductsBySeller(user.id),
         productService.getWishlist(),
-        getChatRooms(),
+        productService.getMyDrafts(),
         PAYMENTS_ENABLED ? productService.getSoldCountBySeller(user.id) : Promise.resolve(0),
         PAYMENTS_ENABLED ? getUserWallet(user.id).catch(() => null) : Promise.resolve(null),
         PAYMENTS_ENABLED ? getSellerTier(user.id) : Promise.resolve(SELLER_TIERS[1]),
@@ -129,9 +129,10 @@ export default function ProfileScreen() {
       setProfile(profileData);
       setUserProducts(products);
       setWishlistProducts(wishlist);
-      setChatRooms(chats || []);
+      setDraftProducts(drafts);
       setSoldCount(sold);
       setWallet(userWallet);
+      getSellerReplyBadge(user.id).then(setReplyBadge).catch(() => {});
       setSellerTier(tier);
       // The badge tracks is_verified_seller, not the tier number -- the two can
       // disagree, and only the flag means a human checked an ID.
@@ -383,7 +384,6 @@ export default function ProfileScreen() {
     );
   };
 
-  const renderChatList = () => <ChatList chatRooms={chatRooms} />;
 
   const renderSettings = () => (
     <View style={{ gap: 16 }}>
@@ -559,13 +559,11 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center' }}>
         <View style={{ width: '100%', maxWidth: 840, alignSelf: 'center' }}>
 
-        {/* ════════ HERO BANNER ════════ */}
-        <LinearGradient
-          colors={['#0F172A', '#1E293B']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.heroBanner, { paddingTop: insets.top + 20 }]}
-        >
+        {/* ════════ HERO BANNER ════════
+            Flat ink, not a gradient -- the design retires
+            #0F172A->#1E293B here along with every other button/panel
+            gradient in the app. */}
+        <View style={[styles.heroBanner, { backgroundColor: '#0F172A', paddingTop: insets.top + 20 }]}>
           {/* Avatar */}
           <TouchableOpacity onPress={handleAvatarUpload} style={styles.heroAvatarWrap} activeOpacity={0.85}>
             {profile?.avatar_url ? (
@@ -583,7 +581,7 @@ export default function ProfileScreen() {
           <Text style={styles.heroName}>{displayName}</Text>
           <Text style={styles.heroEmail}>{user.email}</Text>
           {profile?.phone && <Text style={styles.heroPhone}>📞 {profile.phone}</Text>}
-        </LinearGradient>
+        </View>
 
         {/* ════════ STAT STRIP ════════ */}
         <View style={styles.statStrip}>
@@ -620,13 +618,21 @@ export default function ProfileScreen() {
           />
           <View style={styles.statDivider} />
           <StatCard
-            value={chatRooms.length}
-            label={t('profile.statChats')}
-            icon={<MessageCircle color="#0EA5E9" size={20} />}
+            value={userProducts.reduce((sum, p) => sum + (p.view_count ?? 0), 0)}
+            label={t('profile.statViews')}
+            icon={<Eye color="#0EA5E9" size={20} />}
             bg="#E0F2FE"
-            onPress={() => setActiveTab('chats')}
+            onPress={() => setActiveTab('products')}
           />
         </View>
+        {/* Real reply-speed stat (seller_reply_stats) -- never shown without
+            enough real history to say something honest. */}
+        {!!replyBadge && (
+          <View style={styles.replyBadgeStrip}>
+            <View style={styles.replyBadgeDot} />
+            <Text style={styles.replyBadgeStripText}>{replyBadge}</Text>
+          </View>
+        )}
 
         {/* ════════ MY WALLET & ESCROW BALANCE WIDGET ════════
             Hidden while PAYMENTS_ENABLED is false: there is no wallet right
@@ -723,7 +729,7 @@ export default function ProfileScreen() {
         <View style={styles.tabContent}>
           {activeTab === 'products'  && renderProductList(userProducts,     "You haven't listed anything yet.")}
           {activeTab === 'wishlist'  && renderProductList(wishlistProducts,  "Your wishlist is empty.")}
-          {activeTab === 'chats'     && renderChatList()}
+          {activeTab === 'drafts'    && renderProductList(draftProducts,    "No drafts. Save a listing partway through and it lands here.")}
           {activeTab === 'settings'  && renderSettings()}
         </View>
 
@@ -805,6 +811,9 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
   statLabel: { fontSize: 12, color: '#64748B', fontWeight: '700' },
   statDivider: { width: 1, backgroundColor: '#F1F5F9', marginVertical: 4 },
+  replyBadgeStrip: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', marginTop: 10 },
+  replyBadgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
+  replyBadgeStripText: { fontSize: 12, fontWeight: '700', color: '#059669' },
 
   // Wallet Widget
   walletWidgetCard: {
