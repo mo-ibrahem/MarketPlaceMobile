@@ -57,3 +57,6 @@ scripts/seed/photos/*.jpeg
 scripts/seed/photos/*.png
 scripts/seed/photos/*.webp
 scripts/seed/photos/*.heic
+
+# seeder seller credentials -- never commit
+scripts/seed/.seller-account.local

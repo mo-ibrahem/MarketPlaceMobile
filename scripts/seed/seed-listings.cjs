@@ -19,6 +19,7 @@
  * Usage:
  *   node scripts/seed/seed-listings.cjs --email seller@example.com --password '…'
  *   node scripts/seed/seed-listings.cjs --email … --password … --dry-run
+ *   node scripts/seed/seed-listings.cjs --email … --password … --skip-incomplete
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -33,6 +34,10 @@ const arg = (name) => {
   return i > -1 ? process.argv[i + 1] : undefined;
 };
 const DRY = process.argv.includes('--dry-run');
+// Default is all-or-nothing: a half-posted catalogue is hard to reason
+// about. --skip-incomplete posts the rows that are ready and leaves the
+// rest for when their photos exist. It never relaxes what "ready" means.
+const SKIP = process.argv.includes('--skip-incomplete');
 const email = arg('email');
 const password = arg('password');
 
@@ -108,34 +113,43 @@ const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
   // A listing needs its own photos on disk, unless it is a New item
   // pointing at a catalogue model.
   const problems = [];
+  const blocked = new Set();
+  const fault = (l, msg) => { problems.push(`${l.title}: ${msg}`); blocked.add(l); };
   for (const l of catalogue) {
     if (l.model) {
       const m = models.get(l.model);
-      if (!m) { problems.push(`${l.title}: no catalogue model "${l.model}" -- run curate-models.cjs`); continue; }
-      if (l.condition !== 'New') { problems.push(`${l.title}: only a New listing may use a catalogue model`); continue; }
+      if (!m) { fault(l, `no catalogue model "${l.model}" -- run curate-models.cjs`); continue; }
+      if (l.condition !== 'New') { fault(l, 'only a New listing may use a catalogue model'); continue; }
       if (l.variant && !(m.variants ?? []).includes(l.variant)) {
-        problems.push(`${l.title}: "${l.variant}" is not a variant of ${l.model} (${(m.variants ?? []).join(', ')})`);
+        fault(l, `"${l.variant}" is not a variant of ${l.model} (${(m.variants ?? []).join(', ')})`);
       }
       continue;   // catalogue photos stand in; no local files required
     }
     for (const photo of l.photos) {
       const p = path.join(PHOTO_DIR, photo);
-      if (!fs.existsSync(p)) problems.push(`${l.title}: missing ${photo}`);
-      else if (!MIME[path.extname(photo).toLowerCase()]) problems.push(`${l.title}: ${photo} is not a jpg/png/webp/heic`);
+      if (!fs.existsSync(p)) fault(l, `missing ${photo}`);
+      else if (!MIME[path.extname(photo).toLowerCase()]) fault(l, `${photo} is not a jpg/png/webp/heic`);
     }
   }
-  if (problems.length) {
+  if (problems.length && SKIP) {
+    console.log(`\nSkipping ${blocked.size} listing(s) that are not ready:\n`);
+    for (const p of problems) console.log('  ' + p);
+    console.log('\nThese stay unposted until their photos exist in scripts/seed/photos/.\n');
+  }
+  if (problems.length && !SKIP) {
     console.log(`\n${problems.length} listing(s) not ready:\n`);
     for (const p of problems) console.log('  ' + p);
     console.log('\nDrop your own photos there with those filenames, then re-run. Nothing was posted.');
-    console.log('(Filenames are the "photos" column in scripts/seed/catalogue.csv.)\n');
+    console.log('(Filenames are the "photos" column in scripts/seed/catalogue.csv.)');
+    console.log('Or pass --skip-incomplete to post only the ones that are ready.\n');
     process.exitCode = 1;
     return;
   }
 
-  console.log(`${catalogue.length} listings ready.`);
+  const ready = catalogue.filter(l => !blocked.has(l));
+  console.log(`${ready.length} listings ready.`);
   if (DRY) {
-    for (const l of catalogue) {
+    for (const l of ready) {
       const src = l.model ? `catalogue: ${l.model}${l.variant ? ' / ' + l.variant : ''}` : `${l.photos.length} own photo(s)`;
       console.log(`  ${l.title.padEnd(42)} EGP ${String(l.price).padStart(7)}  ${l.condition.padEnd(4)} ${l.category.padEnd(12)} sourced/${l.lead_time_days}d  ${src}`);
     }
@@ -150,7 +164,7 @@ const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
   console.log(`Posting as ${email}`);
 
   let posted = 0;
-  for (const l of catalogue) {
+  for (const l of ready) {
     try {
       const urls = [];
       for (const photo of (l.model ? [] : l.photos)) {
@@ -187,5 +201,5 @@ const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
       console.log(`  FAILED  ${l.title} -- ${e.message}`);
     }
   }
-  console.log(`\n${posted}/${catalogue.length} posted.`);
+  console.log(`\n${posted}/${ready.length} posted.`);
 })();
