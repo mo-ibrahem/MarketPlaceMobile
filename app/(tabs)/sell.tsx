@@ -39,6 +39,7 @@ import { productService } from "../../src/services/lib/products";
 import { SELLER_TIERS, getSellerTier, type SellerTierConfig } from "../../src/services/lib/walletService";
 import { PAYMENTS_ENABLED } from "../../src/services/lib/platformCommerce";
 import { supabase } from "../../src/services/lib/supabase";
+import { imageUploadType } from '../../src/services/lib/imageUpload';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -170,11 +171,11 @@ export default function SellScreen() {
   // Upload helpers
   const uploadImage = async (img: ImagePicker.ImagePickerAsset) => {
     const buf = await fetch(img.uri).then(r => r.arrayBuffer());
-    const ext = img.uri.split(".").pop()?.toLowerCase() ?? "jpeg";
-    const path = `${user!.id}/${Date.now()}.${ext}`;
+    const { contentType, extension } = imageUploadType(img);
+    const path = `${user!.id}/${Date.now()}.${extension}`;
     const { error } = await supabase.storage
       .from("product-images")
-      .upload(path, buf, { contentType: `image/${ext}` });
+      .upload(path, buf, { contentType });
     if (error) throw error;
     return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
   };
@@ -823,6 +824,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
+    // Same breathing room below the grid as every FormField has, so the
+    // Location heading does not sit on the last row of category cards.
+    marginBottom: 20,
   },
   catChip: {
     width: (SCREEN_WIDTH - 48 - 10) / 2,

@@ -55,6 +55,7 @@ import {
   type UserProfile,
 } from '../../src/services/lib/products';
 import { auth, supabase } from '../../src/services/lib/supabase';
+import { imageUploadType } from '../../src/services/lib/imageUpload';
 import { deleteMyAccount, isBackendMissing, SAFETY_EMAIL } from '../../src/services/lib/moderationService';
 import { PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 
@@ -167,9 +168,9 @@ export default function ProfileScreen() {
       setIsLoading(true);
       try {
         const buf     = await fetch(img.uri).then(r => r.arrayBuffer());
-        const ext     = img.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
-        const path    = `${user.id}/${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from('avatars').upload(path, buf, { contentType: `image/${ext}` });
+        const { contentType, extension } = imageUploadType(img);
+        const path    = `${user.id}/${Date.now()}.${extension}`;
+        const { error } = await supabase.storage.from('avatars').upload(path, buf, { contentType });
         if (error) throw error;
         const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
         await profileService.updateProfile(user.id, { avatar_url: publicUrl });

@@ -253,7 +253,10 @@ export default function StudioScreen() {
             return;
           }
           webViewRef.current?.postMessage('END');
-          router.replace('/live' as any);
+          // Not the bare "/live": app/live/index.tsx also answers to it and
+          // wins over the (tabs) group, landing the host on a copy of the
+          // live list with no tab bar, no header and nothing to go back to.
+          router.replace('/(tabs)/live');
         },
       },
     ]);
@@ -358,6 +361,16 @@ export default function StudioScreen() {
           />
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827' }}>
+            {/* Before going live there was no way to leave this screen at
+                all (book.tsx replaces itself with the studio, so there is
+                nothing to go back to). The session stays scheduled. */}
+            <TouchableOpacity
+              onPress={() => router.replace('/(tabs)/live')}
+              style={[s.ctrl, { position: 'absolute', top: 12, left: 12 }]}
+              accessibilityLabel="Leave studio"
+            >
+              <X color="white" size={20} />
+            </TouchableOpacity>
             <Video color="#374151" size={48} />
             {error ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#7F1D1D', borderRadius: 12, padding: 10, margin: 16 }}>

@@ -24,6 +24,7 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from '../../../hooks/useAuth';
 import { productService, type Product } from '../../../src/services/lib/products';
 import { supabase } from '../../../src/services/lib/supabase';
+import { imageUploadType } from '../../../src/services/lib/imageUpload';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const SLIDE_WIDTH = SCREEN_W - 40;
@@ -110,9 +111,9 @@ export default function EditProductScreen() {
   const uploadImage = async (imageAsset: ImagePicker.ImagePickerAsset) => {
     if (!imageAsset.uri) throw new Error("No image URI");
     const arraybuffer = await fetch(imageAsset.uri).then(res => res.arrayBuffer());
-    const fileExt = imageAsset.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
-    const path = `${user!.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const { error } = await supabase.storage.from('product-images').upload(path, arraybuffer, { contentType: `image/${fileExt}` });
+    const { contentType, extension } = imageUploadType(imageAsset);
+    const path = `${user!.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
+    const { error } = await supabase.storage.from('product-images').upload(path, arraybuffer, { contentType });
     if (error) throw error;
     const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path);
     return publicUrl;

@@ -144,7 +144,7 @@ export default function LiveViewerScreen() {
       try {
         const s = await getLiveSessionByChannel(channelId);
         if (!s) {
-          router.replace('/live' as any);
+          router.replace('/(tabs)/live');
           return;
         }
         setSession(s);
@@ -177,7 +177,7 @@ export default function LiveViewerScreen() {
       .channel(`viewer_session_${session.id}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'live_sessions', filter: `id=eq.${session.id}` }, payload => {
         if (payload.new.status === 'ended') {
-          router.replace('/live' as any);
+          router.replace('/(tabs)/live');
           return;
         }
         setViewerCount(payload.new.current_viewers ?? 0);
