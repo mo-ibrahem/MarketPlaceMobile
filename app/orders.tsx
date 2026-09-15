@@ -13,14 +13,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router';
 import {
   Package,
-  Tag,
   Clock,
-  ChevronRight,
   CheckCircle2,
   Truck,
   AlertCircle,
   ShieldCheck,
-  RefreshCw,
   Lock,
 } from 'lucide-react-native';
 import { useAuth } from '../hooks/useAuth';
@@ -70,104 +67,85 @@ function OrderCard({
 }) {
   const isBuyer = order.buyer_id === userId;
   const cfg = STATUS_CONFIG[order.status];
-  const StatusIcon = cfg.icon;
   const image = (order.product_snapshot as any)?.images?.[0] || order.product?.images?.[0];
   const dateStr = new Date(order.created_at).toLocaleDateString(isRTL ? 'ar-EG' : 'en-EG', { day: 'numeric', month: 'short' });
 
   const rank = RANK[order.status] ?? 0;
   const trackable = order.status !== 'pending_payment' && order.status !== 'cancelled';
-  const pct = Math.round((Math.min(rank, 4) / 4) * 100);
-  const CurIcon = trackable ? STATUS_CONFIG[STEP_ORDER[Math.min(Math.max(rank - 1, 0), 3)]].icon : StatusIcon;
 
   return (
-    <View style={styles.card}>
-      <TouchableOpacity onPress={onToggle} activeOpacity={0.85} style={styles.cardHead} accessibilityState={{ expanded }}>
-        <View style={styles.cardImageWrap}>
-          {image ? (
-            <Image source={{ uri: image }} style={styles.cardImage} />
-          ) : (
-            <View style={[styles.cardImage, { backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }]}>
-              <Package color="#94A3B8" size={24} />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.cardBody}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-            <View style={[styles.roleBadge, { backgroundColor: isBuyer ? '#EFF6FF' : '#FFF7ED' }]}>
-              <Text style={[styles.roleText, { color: isBuyer ? '#2563EB' : '#EA580C' }]}>
-                {isBuyer ? (isRTL ? 'مشتري' : 'Buying') : (isRTL ? 'بائع' : 'Selling')}
-              </Text>
-            </View>
-            <Text style={styles.dateText}>{dateStr}</Text>
+    /* Approved build 3e: one flat row per order -- status kicker, title,
+       price, a four-segment rail with real stage labels, the escrow
+       reassurance line, then the two actions. No accordion: an order you
+       have money in should never need a tap to reveal where it is. */
+    <View style={[styles.card, (order.status === 'completed' || order.status === 'cancelled') && styles.cardMuted]}>
+      <TouchableOpacity style={styles.cardHead} activeOpacity={0.85} onPress={onOpen}>
+        {image ? (
+          <Image source={{ uri: image }} style={styles.cardImage} />
+        ) : (
+          <View style={[styles.cardImage, styles.cardImageFallback]}>
+            <Package color="#94A3B8" size={22} />
           </View>
-          <Text style={styles.cardTitle} numberOfLines={1}>
+        )}
+        <View style={styles.cardBody}>
+          <Text style={[styles.statusKicker, { color: cfg.color }]} numberOfLines={1}>
+            {`${isRTL ? cfg.label_ar : cfg.label}${dateStr ? ` · ${dateStr}` : ''}`.toUpperCase()}
+          </Text>
+          <Text style={styles.cardTitle} numberOfLines={2}>
             {(order.product_snapshot as any)?.title || order.product?.title || (isRTL ? 'منتج' : 'Item')}
           </Text>
-          <Text style={styles.cardAmount}>
-            {isRTL ? `${order.amount.toLocaleString('ar-EG')} ج.م` : `EGP ${order.amount.toLocaleString('en-EG')}`}
-          </Text>
         </View>
-
-        <View style={styles.cardRight}>
-          <View style={[styles.statusBadge, { backgroundColor: cfg.color + '18' }]}>
-            <Text style={[styles.statusText, { color: cfg.color }]}>{isRTL ? cfg.label_ar : cfg.label}</Text>
-          </View>
-          <ChevronRight color="#CBD5E1" size={16} style={{ transform: [{ rotate: expanded ? '90deg' : '0deg' }] }} />
-        </View>
+        <Text style={styles.cardAmount}>{Math.round(order.amount).toLocaleString('en-EG')}</Text>
       </TouchableOpacity>
 
-      {expanded && (
-        <View style={styles.expand}>
-          {trackable ? (
-            <>
-              <View style={styles.progHead}>
-                <View style={styles.progIcon}><CurIcon color="#FFFFFF" size={18} /></View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.progLabel}>{isRTL ? 'الحالة الآن' : 'Right now'}</Text>
-                  <Text style={styles.progValue} numberOfLines={1}>{isRTL ? cfg.label_ar : cfg.label}</Text>
-                </View>
-                <Text style={styles.progPct}>{pct}%</Text>
-              </View>
-              <View style={styles.rail}>
-                {STEP_ORDER.map((k, i) => <View key={k} style={[styles.seg, rank >= i + 1 && styles.segDone]} />)}
-              </View>
-              <View style={styles.rail}>
-                {STEP_ORDER.map((k, i) => (
-                  <Text key={k} style={[styles.tick, rank >= i + 1 && styles.tickDone]} numberOfLines={1}>
-                    {isRTL ? STEP_SHORT[k].ar : STEP_SHORT[k].en}
-                  </Text>
-                ))}
-              </View>
-            </>
-          ) : order.status === 'pending_payment' ? (
-            <View style={styles.note}>
-              <Clock color="#D97706" size={18} />
-              <Text style={[styles.noteText, { color: '#92400E' }]}>
-                {isRTL
-                  ? 'لم يتم تأكيد الدفع بعد — لم يصل أي مبلغ إلى الضمان. إذا لم يصل التأكيد، يُلغى الطلب تلقائياً.'
-                  : 'Payment not confirmed yet — nothing has reached escrow. If confirmation never arrives, this order cancels itself.'}
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.note}>
-              <AlertCircle color="#94A3B8" size={18} />
-              <Text style={[styles.noteText, { color: '#64748B' }]}>
-                {isRTL ? 'تم إلغاء هذا الطلب. لا توجد أموال محتجزة.' : 'This order was cancelled. No funds are being held.'}
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.primaryBtn} onPress={onOpen} activeOpacity={0.9}>
-              <Text style={styles.primaryBtnText}>{isRTL ? 'عرض الطلب' : 'View order'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.ghostBtn} onPress={onChat} activeOpacity={0.85}>
-              <Text style={styles.ghostBtnText}>
-                {isRTL ? (isBuyer ? 'راسل البائع' : 'راسل المشتري') : `Message ${isBuyer ? 'seller' : 'buyer'}`}
-              </Text>
-            </TouchableOpacity>
+      {trackable ? (
+        <>
+          <View style={styles.rail}>
+            {STEP_ORDER.map((k, i) => <View key={k} style={[styles.seg, rank >= i + 1 && styles.segDone]} />)}
           </View>
+          <View style={styles.railLabels}>
+            {STEP_ORDER.map((k, i) => (
+              <Text key={k} style={[styles.tick, rank >= i + 1 && styles.tickDone]} numberOfLines={1}>
+                {isRTL ? STEP_SHORT[k].ar : STEP_SHORT[k].en}
+              </Text>
+            ))}
+          </View>
+
+          <View style={styles.escrowNote}>
+            <ShieldCheck size={15} color="#0F172A" />
+            <Text style={styles.escrowNoteText}>
+              {isBuyer
+                ? (isRTL
+                    ? `مبلغ ${Math.round(order.amount).toLocaleString('en-EG')} يبقى لدى إيجي باي حتى تستلم وتفحص.`
+                    : `Your ${Math.round(order.amount).toLocaleString('en-EG')} stays with Egbay until you inspect it.`)
+                : (isRTL
+                    ? 'يُحوَّل المبلغ إلى محفظتك بعد تأكيد المشتري للاستلام.'
+                    : "The money moves to your wallet once the buyer confirms delivery.")}
+            </Text>
+          </View>
+        </>
+      ) : order.status === 'pending_payment' ? (
+        <Text style={styles.cardNote}>
+          {isRTL
+            ? 'لم يتم تأكيد الدفع بعد — لم يصل أي مبلغ إلى الضمان. إذا لم يصل التأكيد، يُلغى الطلب تلقائياً.'
+            : 'Payment not confirmed yet — nothing has reached escrow. If confirmation never arrives, this order cancels itself.'}
+        </Text>
+      ) : order.status === 'cancelled' ? (
+        <Text style={styles.cardNote}>
+          {isRTL ? 'تم إلغاء هذا الطلب. لا توجد أموال محتجزة.' : 'This order was cancelled. No funds are being held.'}
+        </Text>
+      ) : null}
+
+      {order.status !== 'completed' && order.status !== 'cancelled' && (
+        <View style={styles.actions}>
+          <TouchableOpacity style={styles.primaryBtn} onPress={onOpen} activeOpacity={0.9}>
+            <Text style={styles.primaryBtnText}>
+              {trackable && rank >= 2 ? (isRTL ? 'تتبّع الشحنة' : 'Track delivery') : (isRTL ? 'عرض الطلب' : 'View order')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.ghostBtn} onPress={onChat} activeOpacity={0.85}>
+            <Text style={styles.ghostBtnText}>{isRTL ? 'محادثة' : 'Chat'}</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -222,10 +200,16 @@ export default function OrdersScreen() {
   const sales = orders.filter(o => o.seller_id === user?.id);
 
   const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: 'all', label: isRTL ? `الكل (${orders.length})` : `All (${orders.length})`, count: orders.length },
-    { key: 'purchases', label: isRTL ? 'مشتريات 🛍️' : '🛍️ Buying', count: purchases.length },
-    { key: 'sales', label: isRTL ? 'مبيعات 🏷️' : '🏷️ Selling', count: sales.length },
+    { key: 'purchases', label: isRTL ? 'مشتريات' : 'Buying', count: purchases.length },
+    { key: 'sales', label: isRTL ? 'مبيعات' : 'Selling', count: sales.length },
+    { key: 'all', label: isRTL ? 'الكل' : 'All', count: orders.length },
   ];
+
+  /** Real money in flight: orders whose funds the platform is holding right
+   *  now, on whichever side of them this user is. Never a decorative total. */
+  const escrowHeld = filtered
+    .filter(o => ['escrow_secured', 'shipped', 'out_for_delivery'].includes(o.status))
+    .reduce((acc, o) => ({ total: acc.total + Number(o.amount ?? 0), count: acc.count + 1 }), { total: 0, count: 0 });
 
   // Classifieds mode: there are no orders right now (see PLAN-CLASSIFIEDS-MODE.md).
   if (!PAYMENTS_ENABLED) {
@@ -234,35 +218,38 @@ export default function OrdersScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Premium Header */}
+      {/* Header (approved build 3e): the title, then the money actually
+          held in escrow as the largest number on the screen. The count and
+          the total are both real -- summed from the orders in flight, not
+          a decorative figure. */}
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>{isRTL ? 'الطلبات' : 'Orders'}</Text>
-          <Text style={styles.headerSub}>
-            {isRTL ? 'كل طلب محفوظ في الضمان حتى تؤكد.' : 'Every order is held in escrow until you confirm.'}
+        <Text style={styles.headerTitle}>{isRTL ? 'الطلبات' : 'Orders'}</Text>
+        <Text style={styles.headerKicker}>{isRTL ? 'محتجز في الضمان' : 'HELD IN ESCROW'}</Text>
+        <View style={styles.escrowRow}>
+          <Text style={styles.escrowAmount}>
+            {Math.round(escrowHeld.total).toLocaleString('en-EG')}
+          </Text>
+          <Text style={styles.escrowMeta}>
+            {isRTL
+              ? `جنيه · ${escrowHeld.count} طلب`
+              : `EGP · ${escrowHeld.count} ${escrowHeld.count === 1 ? 'order' : 'orders'}`}
           </Text>
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={onRefresh} disabled={loading || refreshing}>
-          <RefreshCw color="#64748B" size={16} />
-          <Text style={styles.refreshText}>{isRTL ? 'تحديث' : 'Refresh'}</Text>
-        </TouchableOpacity>
       </View>
 
-      {/* Pill Tabs */}
+      {/* Underlined text tabs, not pills. */}
       <View style={styles.tabsWrapper}>
-        <View style={styles.tabsContainer}>
-          {tabs.map(tab => (
-            <TouchableOpacity
-              key={tab.key}
-              onPress={() => setActiveTab(tab.key)}
-              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-            >
-              <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {tabs.map(tab => (
+          <TouchableOpacity
+            key={tab.key}
+            onPress={() => setActiveTab(tab.key)}
+            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+          >
+            <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* List */}
@@ -351,69 +338,47 @@ export default function OrdersScreen() {
 }
 
 const styles = StyleSheet.create({
+  // ── Approved build (3e) ──────────────────────────────────────────────
+  card: { paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  cardMuted: { opacity: 0.6 },
+  cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  cardImage: { width: 56, height: 56, borderRadius: 10, backgroundColor: '#E2E8F0' },
+  cardImageFallback: { alignItems: 'center', justifyContent: 'center' },
+  cardBody: { flex: 1, minWidth: 0 },
+  statusKicker: { fontSize: 10, fontWeight: '800', letterSpacing: 1.6 },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: '#0F172A', lineHeight: 20, marginTop: 5 },
+  cardAmount: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+  rail: { flexDirection: 'row', gap: 5, marginTop: 14 },
+  seg: { flex: 1, height: 4, borderRadius: 999, backgroundColor: '#E2E8F0' },
+  segDone: { backgroundColor: '#0F172A' },
+  railLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 7 },
+  tick: { fontSize: 9, fontWeight: '700', letterSpacing: 1, color: '#94A3B8' },
+  tickDone: { color: '#0F172A' },
+  escrowNote: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14,
+    paddingHorizontal: 12, paddingVertical: 11, backgroundColor: '#F1F5F9', borderRadius: 12,
+  },
+  escrowNoteText: { flex: 1, fontSize: 13, fontWeight: '700', color: '#0F172A', lineHeight: 18 },
+  cardNote: { fontSize: 13, color: '#64748B', lineHeight: 18, marginTop: 12 },
+  actions: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  primaryBtn: { flex: 1, height: 44, borderRadius: 999, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center' },
+  primaryBtnText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+  ghostBtn: { height: 44, paddingHorizontal: 18, borderRadius: 999, borderWidth: 1, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center' },
+  ghostBtnText: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+
   safe: { flex: 1, backgroundColor: '#F8FAFC' },
   
-  header: { 
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16, 
-    paddingTop: 16, 
-    paddingBottom: 16,
-    backgroundColor: '#F8FAFC'
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12
-  },
-  headerIconBox: {
-    width: 44,
-    height: 44,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  headerTitle: { fontSize: 30, fontWeight: '800', color: '#0F172A', letterSpacing: -1.2, lineHeight: 34 },
-  headerSub: { fontSize: 13, color: '#64748B', marginTop: 4 },
+  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: '#FFFFFF' },
+  headerTitle: { fontSize: 28, fontWeight: '800', letterSpacing: -1.1, color: '#0F172A' },
+  headerKicker: { fontSize: 11, fontWeight: '800', letterSpacing: 1.8, color: '#94A3B8', marginTop: 10 },
+  escrowRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 4 },
+  escrowAmount: { fontSize: 36, fontWeight: '800', letterSpacing: -1.8, color: '#0F172A', lineHeight: 38 },
+  escrowMeta: { fontSize: 12, fontWeight: '700', color: '#94A3B8' },
   
-  refreshBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'white',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  refreshText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#475569'
-  },
 
   tabsWrapper: {
     paddingHorizontal: 16,
     paddingBottom: 12,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
-    borderRadius: 999,
-    padding: 4,
   },
   tab: { 
     flex: 1,
@@ -436,50 +401,6 @@ const styles = StyleSheet.create({
   list: { padding: 16, gap: 12 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  expand: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-  progHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  progIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center' },
-  progLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8' },
-  progValue: { fontSize: 17, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3 },
-  progPct: { fontSize: 14, fontWeight: '800', color: '#94A3B8' },
-  rail: { flexDirection: 'row', gap: 6, marginTop: 10 },
-  seg: { flex: 1, height: 5, borderRadius: 999, backgroundColor: '#E2E8F0' },
-  segDone: { backgroundColor: '#0F172A' },
-  tick: { flex: 1, fontSize: 11, fontWeight: '600', color: '#94A3B8', marginTop: -4 },
-  tickDone: { color: '#0F172A', fontWeight: '700' },
-  note: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  noteText: { flex: 1, fontSize: 12.5, fontWeight: '600', lineHeight: 18 },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  primaryBtn: { flex: 1, height: 40, borderRadius: 999, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center' },
-  primaryBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
-  ghostBtn: { height: 40, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
-  ghostBtnText: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 22,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cardImageWrap: { width: 64, height: 64, borderRadius: 14, overflow: 'hidden', flexShrink: 0 },
-  cardImage: { width: '100%', height: '100%' },
-  cardBody: { flex: 1 },
-  cardTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
-  cardAmount: { fontSize: 16, fontWeight: '800', color: '#0F172A', letterSpacing: -0.4, marginBottom: 2 },
-  roleBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  roleText: { fontSize: 11, fontWeight: '800' },
-  dateText: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
-  awbRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  awbText: { fontSize: 11, color: '#0F172A', fontWeight: '700' },
-  cardRight: { alignItems: 'flex-end', gap: 10, flexShrink: 0 },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1 },
-  statusText: { fontSize: 11, fontWeight: '800' },
 
   emptyWrap: { alignItems: 'center', paddingTop: 20 },
   emptyCard: {

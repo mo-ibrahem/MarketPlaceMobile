@@ -146,14 +146,17 @@ export default function LiveDiscoveryScreen() {
         )}
 
         <LinearGradient colors={['transparent', 'rgba(15,23,42,0.9)']} style={s.thumbFade} />
-      </View>
 
-      <Text style={s.cardSeller} numberOfLines={1}>
-        {displayName(item.seller?.full_name, 'Seller')}
-      </Text>
-      <Text style={s.cardTitle} numberOfLines={2}>
-        {isRTL ? item.title_ar || item.title : item.title}
-      </Text>
+        {/* Seller and title sit over the scrim, inside the card. */}
+        <View style={s.cardOverlay}>
+          <Text style={s.cardSeller} numberOfLines={1}>
+            {`${displayName(item.seller?.full_name, 'Seller')}${item.category ? ` · ${item.category}` : ''}`.toUpperCase()}
+          </Text>
+          <Text style={s.cardTitle} numberOfLines={2}>
+            {isRTL ? item.title_ar || item.title : item.title}
+          </Text>
+        </View>
+      </View>
     </TouchableOpacity>
   );
 
@@ -178,8 +181,7 @@ export default function LiveDiscoveryScreen() {
         <FlatList
           data={liveNow}
           keyExtractor={i => i.id}
-          numColumns={2}
-          columnWrapperStyle={liveNow.length > 0 ? s.row : undefined}
+
           contentContainerStyle={[s.list, { paddingBottom: insets.bottom + 96 }]}
           refreshControl={
             <RefreshControl
@@ -228,7 +230,15 @@ export default function LiveDiscoveryScreen() {
                           {displayName(u.seller?.full_name, 'Seller')}
                         </Text>
                       </View>
-                      <Text style={s.upcomingTag}>{T.scheduled}</Text>
+                      {/* The real scheduled time, not a static "scheduled"
+                          tag -- the mockup shows "TONIGHT 8PM". */}
+                      <Text style={s.upcomingTag}>
+                        {u.scheduled_at
+                          ? new Date(u.scheduled_at).toLocaleString(isRTL ? 'ar-EG' : 'en-US', {
+                              weekday: 'short', hour: 'numeric', minute: '2-digit',
+                            }).toUpperCase()
+                          : T.scheduled}
+                      </Text>
                     </View>
                   ))}
                 </View>
@@ -292,13 +302,13 @@ const s = StyleSheet.create({
   escrowChipText: { fontSize: 12, fontWeight: '800', color: '#047857' },
 
   list: { paddingHorizontal: 16 },
-  row: { gap: 14, marginBottom: 22 },
 
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 },
   liveDotLg: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' },
   section: { fontSize: 17, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3 },
 
-  card: { flex: 1 },
+  card: { marginBottom: 4 },
+  cardOverlay: { position: 'absolute', left: 14, right: 14, bottom: 12 },
   thumb: { borderRadius: 20, overflow: 'hidden', backgroundColor: '#0F172A' },
   thumbImg: { width: '100%', height: 210 },
   thumbFallback: { alignItems: 'center', justifyContent: 'center' },
@@ -319,8 +329,8 @@ const s = StyleSheet.create({
   },
   viewersText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
 
-  cardSeller: { fontSize: 12, fontWeight: '700', color: '#94A3B8', marginTop: 9 },
-  cardTitle: { fontSize: 15, fontWeight: '600', color: '#0F172A', lineHeight: 19, height: 38, marginTop: 1 },
+  cardSeller: { fontSize: 10, fontWeight: '700', letterSpacing: 1.4, color: 'rgba(255,255,255,0.65)' },
+  cardTitle: { fontSize: 17, fontWeight: '700', color: '#FFFFFF', lineHeight: 22, marginTop: 4 },
 
   empty: { alignItems: 'center', paddingTop: 40, paddingHorizontal: 24 },
   emptyIcon: {
@@ -329,12 +339,6 @@ const s = StyleSheet.create({
   },
   emptyTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A', letterSpacing: -0.4, textAlign: 'center' },
   emptySub: { fontSize: 14, color: '#64748B', lineHeight: 20, textAlign: 'center', marginTop: 8 },
-  notifyBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#0F172A', borderRadius: 999,
-    paddingHorizontal: 22, height: 48, marginTop: 22,
-  },
-  notifyText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
 
   upcomingWrap: { marginTop: 30, gap: 10 },
   upcomingRow: {
