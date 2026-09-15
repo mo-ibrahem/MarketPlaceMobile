@@ -1,5 +1,5 @@
 /**
- * Posts the launch catalogue (scripts/seed/catalogue.json) as one seller.
+ * Posts the launch catalogue (scripts/seed/catalogue.csv) as one seller.
  *
  * Deliberate constraints, do not "fix" them away:
  *
@@ -42,7 +42,51 @@ if (URL !== 'https://fpqbocohjzwlfcmfropr.supabase.co') throw Error('Expected th
 if (!DRY && (!email || !password)) throw Error('Pass --email and --password for the seller account (or --dry-run)');
 
 const PHOTO_DIR = path.join(__dirname, 'photos');
-const catalogue = JSON.parse(fs.readFileSync(path.join(__dirname, 'catalogue.json'), 'utf8')).listings;
+
+/**
+ * catalogue.csv is the source of truth so it can be edited in a
+ * spreadsheet. Columns: title, category, condition, price_egp,
+ * lead_time_days, photos (pipe-separated filenames), description.
+ */
+function readCatalogue() {
+  const text = fs.readFileSync(path.join(__dirname, 'catalogue.csv'), 'utf8').trim();
+  const rows = [];
+  let row = [], field = '', quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (ch === '"') quoted = false;
+      else field += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === ',') { row.push(field); field = ''; }
+    else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+    else if (ch !== '\r') field += ch;
+  }
+  if (field || row.length) { row.push(field); rows.push(row); }
+
+  const header = rows.shift().map(h => h.trim());
+  return rows.filter(r => r.some(c => c.trim())).map((r, n) => {
+    const o = Object.fromEntries(header.map((h, i) => [h, (r[i] ?? '').trim()]));
+    const price = Number(o.price_egp);
+    const lead = Number(o.lead_time_days);
+    if (!o.title) throw Error(`row ${n + 2}: missing title`);
+    if (!Number.isFinite(price) || price <= 0) throw Error(`row ${n + 2} (${o.title}): price_egp must be a positive number`);
+    if (!Number.isInteger(lead) || lead < 1 || lead > 30) throw Error(`row ${n + 2} (${o.title}): lead_time_days must be 1-30`);
+    if (!['New', 'Used'].includes(o.condition)) throw Error(`row ${n + 2} (${o.title}): condition must be New or Used`);
+    return {
+      title: o.title,
+      category: o.category,
+      condition: o.condition,
+      price,
+      lead_time_days: lead,
+      description: o.description,
+      photos: o.photos.split('|').map(x => x.trim()).filter(Boolean),
+    };
+  });
+}
+
+const catalogue = readCatalogue();
 
 const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.heic': 'image/heic' };
 
@@ -60,7 +104,7 @@ const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
     console.log(`\n${problems.length} listing photo(s) not ready in ${PHOTO_DIR}:\n`);
     for (const p of problems) console.log('  ' + p);
     console.log('\nDrop your own photos there with those filenames, then re-run. Nothing was posted.');
-    console.log('(Filenames are listed per item in scripts/seed/catalogue.json.)\n');
+    console.log('(Filenames are the "photos" column in scripts/seed/catalogue.csv.)\n');
     process.exitCode = 1;
     return;
   }

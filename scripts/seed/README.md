@@ -1,7 +1,21 @@
 # Launch catalogue
 
-Seeds the app with the listings in `catalogue.json`, posted by one seller
+Seeds the app with the listings in `catalogue.csv`, posted by one seller
 account, so the marketplace is not empty on day one.
+
+`catalogue.csv` opens in Excel or Google Sheets — edit prices, add rows,
+delete what you don't want to stock. Columns: `title`, `category`,
+`condition` (New/Used), `price_egp`, `lead_time_days` (1–30), `photos`
+(filenames separated by `|`), `description`.
+
+## On scraping
+
+Pulling **facts** off other marketplaces — which models sell, what they
+go for — is research, and the prices here came from exactly that. Pulling
+**listings** is a different thing: the photos and the wording belong to
+the sellers who wrote them, and republishing either is a takedown risk
+and an App Store rejection risk (5.2.1). So the sheet carries our own
+copy, and photos come from you.
 
 ## Before you run it
 
@@ -30,7 +44,18 @@ node scripts/seed/seed-listings.cjs --dry-run
 node scripts/seed/seed-listings.cjs --email seller@example.com --password '…'
 ```
 
-The dry run checks every photo is present and prints what would post.
+The dry run checks every photo is present and prints what would post. The
+CSV is validated on load — a bad price, a lead time outside 1–30, or a
+condition that isn't New/Used stops the run before anything is posted.
+
+## Clearing test listings
+
+`withdraw-junk.cjs` sets `status = 'removed'` on the placeholder listings
+("asd", an iPhone at 25 EGP, a car at 5,000,000). They leave the
+catalogue immediately but nothing is destroyed — ten products are
+referenced by orders and four by chat rooms, so a hard delete would fail
+or break history. `backup/products-before-cleanup.json` holds every row
+as it was.
 
 ## What gets posted
 
