@@ -48,7 +48,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { getProductBoostInfo } from '../../src/services/lib/boostService';
 import { DIGITAL_PURCHASES_ENABLED, PAYMENTS_ENABLED } from '../../src/services/lib/platformCommerce';
 import { isBackendMissing, reportContent, SAFETY_EMAIL } from '../../src/services/lib/moderationService';
-import { getOrCreateChatRoom, sendMessage } from '../../src/services/lib/chatService';
+import { getOrCreateChatRoom, sendMessage, sendOffer } from '../../src/services/lib/chatService';
+import { getSellerReplyBadge } from '../../src/services/lib/reputationStats';
 import { productService, type Product } from '../../src/services/lib/products';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { displayName } from '../../src/services/lib/displayName';
@@ -105,6 +106,9 @@ export default function ProductDetailScreen() {
   // Classifieds mode has no orders, so no reviews can exist -- the seller
   // card shows a listings count instead of a rating (see PLAN-CLASSIFIEDS-MODE.md).
   const [sellerListingsCount, setSellerListingsCount] = useState<number | null>(null);
+  const [replyBadge, setReplyBadge] = useState<string | null>(null);
+  const [comparable, setComparable] = useState<{ min: number; max: number; count: number } | null>(null);
+  const [askSending, setAskSending] = useState<string | null>(null);
 
   // Offer Modal State
   const [offerModalVisible, setOfferModalVisible] = useState(false);
@@ -129,6 +133,10 @@ export default function ProductDetailScreen() {
       if (data?.category) {
         const similar = await productService.getSimilarProducts(data.category, id, 6);
         setSimilarProducts(similar);
+        productService.getComparablePriceRange(data.category, id).then(setComparable).catch(() => {});
+      }
+      if (data?.seller_id) {
+        getSellerReplyBadge(data.seller_id).then(setReplyBadge).catch(() => {});
       }
 
       // Real engagement signal for the home hero's "Trending" ranking (see
@@ -239,8 +247,9 @@ export default function ProductDetailScreen() {
     try {
       setIsSendingOffer(true);
       const roomId = await getOrCreateChatRoom(product.seller_id, product.id);
-      const offerMsg = `🏷️ [OFFER / عرض شراء]\nI would like to offer ${formatEGP(offerAmount)} for "${product.title}" (Listed at ${formatEGP(product.price)}).`;
-      await sendMessage(roomId, offerMsg);
+      // A structured offer (approved build) -- accept/decline live on the
+      // message itself, not a plain-text guess the seller has to parse.
+      await sendOffer(roomId, Number(offerAmount));
       setOfferModalVisible(false);
       Toast.show({ type: 'success', text1: t('products.offerSent') });
       router.push(`/chat/${roomId}`);
@@ -248,6 +257,25 @@ export default function ProductDetailScreen() {
       Toast.show({ type: 'error', text1: 'Failed to send offer', text2: e.message });
     } finally {
       setIsSendingOffer(false);
+    }
+  };
+
+  /**
+   * "Ask in one tap" -- approved build's conversation rule: every listing
+   * surface carries a chip that sends immediately, never an empty composer.
+   */
+  const handleAskChip = async (text: string) => {
+    if (!user) { router.push('/login'); return; }
+    if (!product || user.id === product.seller_id) return;
+    setAskSending(text);
+    try {
+      const roomId = await getOrCreateChatRoom(product.seller_id, product.id);
+      await sendMessage(roomId, text);
+      router.push(`/chat/${roomId}`);
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Could not send', text2: e.message });
+    } finally {
+      setAskSending(null);
     }
   };
 
@@ -271,6 +299,16 @@ export default function ProductDetailScreen() {
   const images  = product.images?.length ? product.images : ['https://placehold.co/600x600/F1F5F9/64748B?text=Item'];
   const sellerName    = displayName(product.seller?.full_name, 'Seller');
   const sellerInitial = sellerName.charAt(0).toUpperCase();
+  // The sell form appends "\n\n📍 {location}\n📦 Stock: N" to the description
+  // it saves (see app/(tabs)/sell.tsx). Parsed back out here so the location
+  // renders as its own WHERE row instead of raw tag text sitting inside the
+  // description paragraph.
+  const locationMatch = product.description?.match(/^📍 (.+)$/m);
+  const locationTag = locationMatch?.[1]?.trim();
+  const cleanDescription = (product.description ?? '')
+    .replace(/\n*📍 .+$/m, '')
+    .replace(/\n*📦 Stock: \d+$/m, '')
+    .trim();
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -456,10 +494,48 @@ export default function ProductDetailScreen() {
                     </Text>
                   </View>
                 )}
+                {/* Real reply-speed badge (seller_reply_stats) -- never shown
+                    without at least a few real replies behind it. */}
+                {!!replyBadge && (
+                  <View style={styles.replyBadgeRow}>
+                    <View style={styles.replyBadgeDot} />
+                    <Text style={styles.replyBadgeText}>{replyBadge}</Text>
+                  </View>
+                )}
               </View>
               <ChevronRight color="#CBD5E1" size={18} />
             </View>
           </Reanimated.View>
+
+          {/* ── Ask in one tap ── */}
+          {!isOwner && (
+            <View style={styles.askSection}>
+              <Text style={styles.askLabel}>{isRTL ? 'اسأل في نقرة واحدة' : 'ASK IN ONE TAP'}</Text>
+              <View style={styles.askRow}>
+                <TouchableOpacity
+                  style={styles.askChipPrimary}
+                  disabled={askSending !== null}
+                  onPress={() => handleAskChip(isRTL ? 'هل ما زال متاحاً؟' : 'Is it still available?')}
+                >
+                  {askSending ? <ActivityIndicator size="small" color="white" /> : (
+                    <Text style={styles.askChipPrimaryText}>{isRTL ? 'هل ما زال متاحاً؟' : 'Is it still available?'}</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.askChip} onPress={handleOpenOfferModal}>
+                  <Text style={styles.askChipText}>
+                    {isRTL ? `هل تقبل ${formatEGP(Math.round(Number(product.price) * 0.9))}؟` : `Would you take ${formatEGP(Math.round(Number(product.price) * 0.9))}?`}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.askChip}
+                  disabled={askSending !== null}
+                  onPress={() => handleAskChip(isRTL ? 'هل يمكنني رؤيته اليوم؟' : 'Can I see it today?')}
+                >
+                  <Text style={styles.askChipText}>{isRTL ? 'هل يمكنني رؤيته اليوم؟' : 'Can I see it today?'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           {/* Safety tips: meet in public, inspect before paying -- worth
               surfacing on every listing, not just while payments are paused. */}
@@ -563,11 +639,51 @@ export default function ProductDetailScreen() {
             </View>
           </Reanimated.View>
 
+          {/* ── Data rows: condition / where / views ──
+              Location is a real string the seller typed on the sell form
+              (Step 2's "Cairo · District" field), parsed back out of the
+              tag it was saved with rather than duplicated as free text in
+              the description below. Distance is not shown -- see the note
+              at the top of app/(tabs)/index.tsx. */}
+          <Reanimated.View entering={FadeInDown.duration(350).delay(240)} style={styles.dataRows}>
+            <View style={styles.dataRow}>
+              <Text style={styles.dataRowLabel}>{isRTL ? 'الحالة' : 'CONDITION'}</Text>
+              <Text style={styles.dataRowValue}>{product.condition || 'Used'}</Text>
+            </View>
+            {!!locationTag && (
+              <View style={styles.dataRow}>
+                <Text style={styles.dataRowLabel}>{isRTL ? 'الموقع' : 'WHERE'}</Text>
+                <Text style={styles.dataRowValue}>{locationTag}</Text>
+              </View>
+            )}
+            <View style={[styles.dataRow, styles.dataRowLast]}>
+              <Text style={styles.dataRowLabel}>{isRTL ? 'المشاهدات' : 'VIEWS'}</Text>
+              <Text style={styles.dataRowValue}>{product.view_count ?? 0}</Text>
+            </View>
+          </Reanimated.View>
+
+          {/* "Priced to sell": the range of other active listings in the same
+              category right now. Never a range of sold prices -- see
+              getComparablePriceRange for why. */}
+          {!!comparable && (
+            <View style={styles.comparableBox}>
+              <View style={styles.replyBadgeRow}>
+                <View style={styles.replyBadgeDot} />
+                <Text style={styles.replyBadgeText}>{isRTL ? 'ضمن نطاق السوق' : 'Priced in range'}</Text>
+              </View>
+              <Text style={styles.comparableText}>
+                {isRTL
+                  ? `${comparable.count} إعلان مشابه في ${product.category} يتراوح سعرها بين ${formatEGP(comparable.min)} و${formatEGP(comparable.max)} حالياً.`
+                  : `${comparable.count} similar ${product.category} listings are currently priced between ${formatEGP(comparable.min)} and ${formatEGP(comparable.max)}.`}
+              </Text>
+            </View>
+          )}
+
           {/* Description */}
           <Reanimated.View entering={FadeInDown.duration(350).delay(260)}>
             <Text style={styles.sectionLabel}>{t('products.description')}</Text>
             <Text style={styles.description}>
-              {product.description || 'No description provided.'}
+              {cleanDescription || 'No description provided.'}
             </Text>
           </Reanimated.View>
 
@@ -799,26 +915,19 @@ export default function ProductDetailScreen() {
 
             {/* Submit button */}
             <TouchableOpacity
-              style={styles.sendOfferBtn}
+              style={[styles.sendOfferBtn, styles.sendOfferGradient]}
               onPress={handleSendOffer}
               disabled={isSendingOffer}
               activeOpacity={0.85}
             >
-              <LinearGradient
-                colors={['#7C3AED', '#2563EB']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.sendOfferGradient}
-              >
-                {isSendingOffer ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <>
-                    <Tag size={18} color="white" />
-                    <Text style={styles.sendOfferText}>{t('products.sendOffer')}</Text>
-                  </>
-                )}
-              </LinearGradient>
+              {isSendingOffer ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <Tag size={18} color="white" />
+                  <Text style={styles.sendOfferText}>{t('products.sendOffer')}</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -1023,6 +1132,26 @@ const styles = StyleSheet.create({
   sellerMetaText: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
   sellerDot: { color: '#CBD5E1', fontSize: 12 },
   sellerMetricsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  replyBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
+  replyBadgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
+  replyBadgeText: { fontSize: 12, fontWeight: '700', color: '#059669' },
+
+  askSection: { marginTop: 20 },
+  askLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, color: '#94A3B8', marginBottom: 10, textTransform: 'uppercase' },
+  askRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  askChipPrimary: { height: 36, paddingHorizontal: 14, borderRadius: 999, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center' },
+  askChipPrimaryText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  askChip: { height: 36, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center' },
+  askChipText: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+
+  dataRows: { marginTop: 20 },
+  dataRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+  dataRowLast: { borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  dataRowLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.4, color: '#94A3B8', textTransform: 'uppercase' },
+  dataRowValue: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+
+  comparableBox: { marginTop: 14, padding: 14, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14 },
+  comparableText: { fontSize: 13, color: '#475569', lineHeight: 19, marginTop: 6 },
   sellerMetricPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1330,6 +1459,10 @@ const styles = StyleSheet.create({
 
   sendOfferBtn: { borderRadius: 16, overflow: 'hidden' },
   sendOfferGradient: {
+    // Approved build: no gradients -- ink, the same action colour as the
+    // rest of the app. This used to be #7C3AED -> #2563EB, one of the
+    // colours the design explicitly retires.
+    backgroundColor: '#0F172A',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
