@@ -77,14 +77,14 @@ export default function SignUpScreen() {
       } else if (data?.user && !data?.session) {
         Toast.show({
           type: 'success',
-          text1: '🎉 Account Created!',
+          text1: 'Account created',
           text2: 'Please check your email to verify your account.',
         });
         router.back();
       } else {
         Toast.show({
           type: 'success',
-          text1: '🎉 Account Created!',
+          text1: 'Account created',
           text2: 'You can now sign in to your new EgyBay account.',
         });
         router.back();
@@ -126,7 +126,7 @@ export default function SignUpScreen() {
                 style={{ width: 175, height: 60, resizeMode: 'contain' }}
               />
             </View>
-            <Text style={styles.heroTagline}>Join EgyBay Today 🛍️</Text>
+            <Text style={styles.heroTagline}>Join Egbay today</Text>
             <Text style={styles.heroSub}>Buy and sell anything across Egypt</Text>
           </LinearGradient>
 

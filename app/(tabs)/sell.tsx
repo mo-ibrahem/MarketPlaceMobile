@@ -49,14 +49,14 @@ import { categoryHues } from "../../src/design/tokens";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const CATEGORIES = [
-  { value: "Electronics", labelKey: "sell.categories.electronics", emoji: "📱" },
-  { value: "Fashion",     labelKey: "sell.categories.fashion",     emoji: "👗" },
-  { value: "Home",        labelKey: "sell.categories.home",        emoji: "🏠" },
-  { value: "Toys",        labelKey: "sell.categories.toys",        emoji: "🧸" },
-  { value: "Books",       labelKey: "sell.categories.books",       emoji: "📚" },
-  { value: "Sports",      labelKey: "sell.categories.sports",      emoji: "⚽" },
-  { value: "Beauty",      labelKey: "sell.categories.beauty",      emoji: "💄" },
-  { value: "Automotive",  labelKey: "sell.categories.automotive",  emoji: "🚗" },
+  { value: "Electronics", labelKey: "sell.categories.electronics" },
+  { value: "Fashion",     labelKey: "sell.categories.fashion" },
+  { value: "Home",        labelKey: "sell.categories.home" },
+  { value: "Toys",        labelKey: "sell.categories.toys" },
+  { value: "Books",       labelKey: "sell.categories.books" },
+  { value: "Sports",      labelKey: "sell.categories.sports" },
+  { value: "Beauty",      labelKey: "sell.categories.beauty" },
+  { value: "Automotive",  labelKey: "sell.categories.automotive" },
 ];
 
 const CONDITIONS = [
@@ -453,7 +453,7 @@ export default function SellScreen() {
 
             {images.length === 0 && (
               <View style={styles.photoTip}>
-                <Text style={styles.photoTipText}>💡 Tip: Use natural light and a clean background for the best results.</Text>
+                <Text style={styles.photoTipText}>Daylight, a plain background, and one shot of any damage — that is what stops the &quot;any scratches?&quot; message.</Text>
               </View>
             )}
           </View>
@@ -509,7 +509,6 @@ export default function SellScreen() {
                     onPress={() => setCategory(cat.value)}
                     activeOpacity={0.85}
                   >
-                    <Text style={[styles.catEmoji, { color: hue.ink }]}>{cat.emoji}</Text>
                     <Text style={[styles.catLabel, { color: hue.ink }]} numberOfLines={1}>
                       {t(cat.labelKey)}
                     </Text>
@@ -575,10 +574,7 @@ export default function SellScreen() {
             )}
 
             {/* Available Stock Quantity */}
-            <Text style={[styles.fieldLabel, { marginTop: 18 }]}>
-              <Text style={styles.fieldLabelIcon}>📦 </Text>
-              Available Stock (Units)
-            </Text>
+            <Text style={[styles.fieldLabel, { marginTop: 18 }]}>How many</Text>
             <View style={[styles.priceInputWrapper, { height: 48, marginTop: 6 }]}>
               <TextInput
                 style={[styles.priceInput, { fontSize: 16, textAlign: 'left', paddingLeft: 16 }]}
@@ -594,10 +590,7 @@ export default function SellScreen() {
             </Text>
 
             {/* Condition */}
-            <Text style={[styles.fieldLabel, { marginTop: 24 }]}>
-              <Text style={styles.fieldLabelIcon}>✅ </Text>
-              {t("sell.productCondition")}
-            </Text>
+            <Text style={[styles.fieldLabel, { marginTop: 24 }]}>{t("sell.productCondition")}</Text>
             <View style={styles.conditionRow}>
               {CONDITIONS.map(c => (
                 <TouchableOpacity
@@ -606,9 +599,6 @@ export default function SellScreen() {
                   onPress={() => setCondition(c.value)}
                   activeOpacity={0.85}
                 >
-                  <View style={[styles.conditionIconBg, { backgroundColor: c.bg }]}>
-                    <Text style={{ fontSize: 22 }}>{c.value === "New" ? "✨" : "♻️"}</Text>
-                  </View>
                   <Text style={[styles.conditionLabel, condition === c.value && { color: c.color }]}>
                     {t(c.labelKey)}
                   </Text>
@@ -671,7 +661,7 @@ export default function SellScreen() {
                     </View>
                     {location ? (
                       <View style={[styles.summaryTag, { backgroundColor: '#F0FDF4' }]}>
-                        <Text style={[styles.summaryTagText, { color: '#166534' }]}>📍 {location}</Text>
+                        <Text style={[styles.summaryTagText, { color: '#166534' }]}>{location}</Text>
                       </View>
                     ) : null}
                   </View>

@@ -178,7 +178,7 @@ export default function CheckoutScreen() {
 
         Toast.show({
           type: 'success',
-          text1: 'Paid with Wallet Balance! 🛍️🎉',
+          text1: 'Paid with wallet balance',
           text2: `Order #${order.id.slice(-6)} placed with full Escrow Protection!`,
         });
         router.replace({
@@ -268,7 +268,7 @@ export default function CheckoutScreen() {
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
                   <Text style={styles.escrowTitle}>
-                    {isRTL ? 'ضمان إيجي باي لحماية أموالك 🛡️' : 'EgyBay escrow protection 🛡️'}
+                    {isRTL ? 'ضمان إيجي باي لحماية أموالك' : 'Egbay escrow protection'}
                   </Text>
                   <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '800' }}>
                     {isRTL ? 'كيف نحميك؟ ←' : 'How it works →'}
@@ -436,7 +436,7 @@ export default function CheckoutScreen() {
                 {useWalletBalance && walletBalance >= totalPrice && (
                   <View style={styles.walletSplitBreakdown}>
                     <Text style={[styles.walletSplitBreakdownText, { color: '#059669', fontWeight: '800' }]}>
-                      ✨ 100% Covered by Wallet — 1-Tap Instant Checkout!
+                      Fully covered by your wallet balance
                     </Text>
                   </View>
                 )}

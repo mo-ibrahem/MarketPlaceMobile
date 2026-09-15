@@ -197,7 +197,7 @@ export default function ProductDetailScreen() {
       was
         ? await productService.removeFromWishlist(product.id)
         : await productService.addToWishlist(product.id);
-      Toast.show({ type: 'success', text1: was ? 'Removed from wishlist' : '❤️ Added to wishlist' });
+      Toast.show({ type: 'success', text1: was ? 'Removed from saved' : 'Saved' });
     } catch {
       setIsWishlisted(was); // revert
       Toast.show({ type: 'error', text1: 'Could not update wishlist.' });

@@ -391,7 +391,7 @@ export default function ProfileScreen() {
     <View style={{ gap: 16 }}>
       {/* Profile section */}
       <View style={styles.settingsCard}>
-        <Text style={styles.settingsCardTitle}>👤  Edit Profile</Text>
+        <Text style={styles.settingsCardTitle}>Edit profile</Text>
 
         {/* Avatar */}
         <TouchableOpacity style={styles.avatarRow} onPress={handleAvatarUpload} activeOpacity={0.8}>
@@ -444,7 +444,7 @@ export default function ProfileScreen() {
 
       {/* Password section */}
       <View style={styles.settingsCard}>
-        <Text style={styles.settingsCardTitle}>🔒  Change Password</Text>
+        <Text style={styles.settingsCardTitle}>Change password</Text>
 
         <Text style={styles.fieldLabel}>New Password</Text>
         <View style={styles.passwordRow}>
@@ -479,7 +479,7 @@ export default function ProfileScreen() {
 
       {/* Language */}
       <View style={styles.settingsCard}>
-        <Text style={styles.settingsCardTitle}>🌐  {t('language.title')}</Text>
+        <Text style={styles.settingsCardTitle}>{t('language.title')}</Text>
         <View style={styles.langRow}>
           <TouchableOpacity
             style={[styles.langPill, language === 'en' && styles.langPillActive]}
@@ -500,14 +500,14 @@ export default function ProfileScreen() {
 
       {/* Legal & Compliance (Apple Mandated) */}
       <View style={styles.settingsCard}>
-        <Text style={styles.settingsCardTitle}>📜  Legal & Policies • الشروط والسياسات</Text>
+        <Text style={styles.settingsCardTitle}>Legal &amp; policies · الشروط والسياسات</Text>
         
         <TouchableOpacity
           style={styles.legalRow}
           onPress={() => router.push('/terms' as any)}
           activeOpacity={0.8}
         >
-          <Text style={styles.legalText}>📄 Terms of Service • الشروط والأحكام</Text>
+          <Text style={styles.legalText}>Terms of Service · الشروط والأحكام</Text>
           <ChevronRight size={16} color="#94A3B8" />
         </TouchableOpacity>
 
@@ -518,7 +518,7 @@ export default function ProfileScreen() {
           onPress={() => router.push('/privacy' as any)}
           activeOpacity={0.8}
         >
-          <Text style={styles.legalText}>🛡️ Privacy Policy • سياسة الخصوصية</Text>
+          <Text style={styles.legalText}>Privacy Policy · سياسة الخصوصية</Text>
           <ChevronRight size={16} color="#94A3B8" />
         </TouchableOpacity>
 
@@ -529,7 +529,7 @@ export default function ProfileScreen() {
           onPress={() => router.push('/safety' as any)}
           activeOpacity={0.8}
         >
-          <Text style={styles.legalText}>🤝 Safety Tips • نصائح الأمان</Text>
+          <Text style={styles.legalText}>Safety tips · نصائح الأمان</Text>
           <ChevronRight size={16} color="#94A3B8" />
         </TouchableOpacity>
       </View>

@@ -406,7 +406,7 @@ export default function ChatRoomScreen() {
                         ) : (
                           <Text style={[styles.offerWaiting, item.offer_status === 'accepted' && styles.offerAccepted]}>
                             {item.offer_status === 'accepted'
-                              ? (isRTL ? '✓ تم القبول' : '✓ Accepted')
+                              ? (isRTL ? 'تم القبول' : 'Accepted')
                               : (isRTL ? 'تم الرفض' : 'Declined')}
                           </Text>
                         )}

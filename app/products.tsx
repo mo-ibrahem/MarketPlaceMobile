@@ -276,7 +276,7 @@ export default function ProductsScreen() {
             onPress={() => { setLocOpen(v => !v); setCatOpen(false); }}
           >
             <Text style={[styles.chipText, (locOpen || selectedLocation) ? styles.chipTextActive : undefined]}>
-              {selectedLocation ? `📍 ${selectedLocation}` : 'Location'}
+              {selectedLocation || 'Location'}
             </Text>
           </TouchableOpacity>
 
@@ -316,7 +316,7 @@ export default function ProductsScreen() {
             ) : null}
             {selectedLocation ? (
               <TouchableOpacity style={styles.activePill} onPress={() => setSelectedLocation('')}>
-                <Text style={styles.activePillText}>📍 {selectedLocation}</Text>
+                <Text style={styles.activePillText}>{selectedLocation}</Text>
                 <X size={12} color="#2563EB" />
               </TouchableOpacity>
             ) : null}
@@ -541,8 +541,7 @@ function SkeletonGrid() {
 function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
   return (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyEmoji}>{hasFilters ? '🔍' : '📦'}</Text>
-      <Text style={styles.emptyTitle}>No products found</Text>
+            <Text style={styles.emptyTitle}>No products found</Text>
       <Text style={styles.emptySubtitle}>
         {hasFilters
           ? 'Try adjusting your search or clearing the filters.'
@@ -721,7 +720,6 @@ const styles = StyleSheet.create({
 
   // Empty state
   emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
-  emptyEmoji: { fontSize: 56, marginBottom: 16 },
   emptyTitle: {
     fontSize: 20,
     fontWeight: '800',

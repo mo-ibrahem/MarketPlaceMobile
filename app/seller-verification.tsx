@@ -240,9 +240,9 @@ export default function SellerVerificationScreen() {
                     <CheckCircle2 color={selectedTier === 2 ? '#2563EB' : '#CBD5E1'} size={20} />
                   </View>
                   <View style={styles.perksRow}>
-                    <Text style={styles.perkChip}>🛡️ 4% Fee (Reduced)</Text>
-                    <Text style={styles.perkChip}>📦 50 Active Listings</Text>
-                    <Text style={styles.perkChip}>💰 150,000 EGP Limit</Text>
+                    <Text style={styles.perkChip}>4% fee (reduced)</Text>
+                    <Text style={styles.perkChip}>50 active listings</Text>
+                    <Text style={styles.perkChip}>150,000 EGP limit</Text>
                   </View>
                 </TouchableOpacity>
 
@@ -263,9 +263,9 @@ export default function SellerVerificationScreen() {
                     <CheckCircle2 color={selectedTier === 3 ? '#2563EB' : '#CBD5E1'} size={20} />
                   </View>
                   <View style={styles.perksRow}>
-                    <Text style={styles.perkChip}>⭐ 2.5% Fee (Lowest)</Text>
-                    <Text style={styles.perkChip}>🚀 Instant Clearance</Text>
-                    <Text style={styles.perkChip}>♾️ Unlimited Listings</Text>
+                    <Text style={styles.perkChip}>2.5% fee (lowest)</Text>
+                    <Text style={styles.perkChip}>Faster clearance</Text>
+                    <Text style={styles.perkChip}>Unlimited listings</Text>
                   </View>
                 </TouchableOpacity>
 
@@ -295,7 +295,7 @@ export default function SellerVerificationScreen() {
                       <View style={styles.autoVerifyBadge}>
                         <CheckCircle2 color="#059669" size={16} />
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.autoVerifyTitle}>Valid National ID (Auto-Verified) ✓</Text>
+                          <Text style={styles.autoVerifyTitle}>Valid national ID</Text>
                           <Text style={styles.autoVerifySub}>
                             {validateEgyptianNationalId(nationalIdNum).governorate} • Born {validateEgyptianNationalId(nationalIdNum).birthDate} • {validateEgyptianNationalId(nationalIdNum).gender === 'male' ? 'Male' : 'Female'}
                           </Text>
@@ -470,7 +470,7 @@ export default function SellerVerificationScreen() {
               ) : (
                 <>
                   <Text style={styles.nextStepText}>
-                    {step === 3 ? 'Activate Verified Seller 🛡️' : 'Continue to Next Step'}
+                    {step === 3 ? 'Activate verified seller' : 'Continue'}
                   </Text>
                   <ChevronRight color="white" size={18} />
                 </>

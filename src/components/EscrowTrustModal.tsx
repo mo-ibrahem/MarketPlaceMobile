@@ -35,7 +35,7 @@ export default function EscrowTrustModal({ visible, onClose }: EscrowTrustModalP
               <ShieldCheck color="#2563EB" size={24} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.headerTitle}>ضمان إيجي باي لحماية أموالك 🛡️</Text>
+              <Text style={styles.headerTitle}>ضمان إيجي باي لحماية أموالك</Text>
               <Text style={styles.headerSub}>EgyBay 100% Buyer & Seller Escrow Protection</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}
@@ -53,7 +53,7 @@ export default function EscrowTrustModal({ visible, onClose }: EscrowTrustModalP
               end={{ x: 1, y: 1 }}
               style={styles.heroCallout}
             >
-              <Text style={styles.heroCalloutBadge}>🔒 أمانك أولويتنا المطلقة</Text>
+              <Text style={styles.heroCalloutBadge}>أمانك أولويتنا</Text>
               <Text style={styles.heroCalloutTitle}>
                 البائع لا يستلم جنيهاً واحداً إلا بعد استلامك ومعاينتك للمنتج والتأكيد!
               </Text>
@@ -73,7 +73,7 @@ export default function EscrowTrustModal({ visible, onClose }: EscrowTrustModalP
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.stepNumber}>الخطوة 1</Text>
-                  <Text style={styles.stepTitle}>حفظ المبلغ في خزنة آمنة 🏦</Text>
+                  <Text style={styles.stepTitle}>حفظ المبلغ في حساب ضمان</Text>
                   <Text style={styles.stepDesc}>
                     عند الدفع (فيزا، فودافون كاش، إنستاباي)، يتم تجميد المبلغ في حساب وسيط آمن (Escrow Vault) لحمايتك من أي محاولة احتيال.
                   </Text>
@@ -87,7 +87,7 @@ export default function EscrowTrustModal({ visible, onClose }: EscrowTrustModalP
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.stepNumber, { color: '#059669' }]}>الخطوة 2</Text>
-                  <Text style={styles.stepTitle}>حق المعاينة والتجربة 100% 📦</Text>
+                  <Text style={styles.stepTitle}>حق المعاينة والتجربة</Text>
                   <Text style={styles.stepDesc}>
                     المندوب يسلمك الشحنة في منزلك. لك كامل الحق في فتح الطرد ومعاينة المنتج والتأكد من حالته ومطابقته للصور والمواصفات.
                   </Text>
@@ -101,7 +101,7 @@ export default function EscrowTrustModal({ visible, onClose }: EscrowTrustModalP
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.stepNumber, { color: '#D97706' }]}>الخطوة 3</Text>
-                  <Text style={styles.stepTitle}>الإفراج عن المبلغ أو الاسترجاع الفوري 💸</Text>
+                  <Text style={styles.stepTitle}>الإفراج عن المبلغ أو الاسترجاع</Text>
                   <Text style={styles.stepDesc}>
                     إذا كنت راضياً، نرسل الأرباح للبائع. وإذا كان المنتج غير مطابق، ترفض الاستلام وتسترد 100% من أموالك فوراً إلى محفظتك أو حسابك!
                   </Text>
@@ -143,7 +143,7 @@ export default function EscrowTrustModal({ visible, onClose }: EscrowTrustModalP
           {/* Bottom Close Button */}
           <View style={styles.bottomBar}>
             <TouchableOpacity style={styles.okBtn} onPress={onClose} activeOpacity={0.9}>
-              <Text style={styles.okBtnText}>فهمت، تسوق بأمان تام 🛡️</Text>
+              <Text style={styles.okBtnText}>فهمت</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -174,7 +174,6 @@ export default function BookLiveScreen() {
               )}
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <Text style={{ fontSize: 24 }}>{pass.badge}</Text>
                   <View>
                     <Text style={[s.passName, isSelected && { color: '#1D4ED8' }]}>{pass.name_ar}</Text>
                     <Text style={s.passDetails}>{pass.durationMinutes} دقيقة • حتى {pass.maxViewers} مشاهد</Text>

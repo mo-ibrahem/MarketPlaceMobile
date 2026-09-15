@@ -62,8 +62,7 @@ export function ChatList({ chatRooms, loading }: { chatRooms: ChatRoomInfo[]; lo
   if (chatRooms.length === 0) {
     return (
       <View style={styles.emptyState}>
-        <Text style={styles.emptyEmoji}>💬</Text>
-        <Text style={styles.emptyTitle}>{t('chat.noConversations')}</Text>
+                <Text style={styles.emptyTitle}>{t('chat.noConversations')}</Text>
         <Text style={styles.emptySubtitle}>{t('chat.startConversation')}</Text>
       </View>
     );
@@ -109,7 +108,6 @@ export function ChatList({ chatRooms, loading }: { chatRooms: ChatRoomInfo[]; lo
 
 const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: 48 },
-  emptyEmoji: { fontSize: 48, marginBottom: 12 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: '#1E293B', marginBottom: 6, textAlign: 'center' },
   emptySubtitle: { fontSize: 14, color: '#94A3B8', textAlign: 'center' },
   chatCard: {

@@ -16,7 +16,6 @@ export interface LivePass {
   priceEGP: number;
   features: string[];
   features_ar: string[];
-  badge: string;
   color: string;
   recommended?: boolean;
 }
@@ -87,7 +86,6 @@ export const LIVE_PASSES: LivePass[] = [
     durationMinutes: 30,
     maxViewers: 30,
     priceEGP: 79,
-    badge: '⚡',
     color: '#F59E0B',
     features: ['30 minutes live', 'Up to 30 viewers', 'Live chat', 'Pin up to 3 products'],
     features_ar: ['بث لمدة ٣٠ دقيقة', 'حتى ٣٠ مشاهد', 'دردشة مباشرة', 'تثبيت ٣ منتجات'],
@@ -99,7 +97,6 @@ export const LIVE_PASSES: LivePass[] = [
     durationMinutes: 60,
     maxViewers: 100,
     priceEGP: 149,
-    badge: '🔥',
     color: '#3665F3',
     recommended: true,
     features: ['60 min live', 'Up to 100 viewers', 'Chat + reactions', 'Pin up to 10 products', 'Push notification to all users'],
@@ -112,7 +109,6 @@ export const LIVE_PASSES: LivePass[] = [
     durationMinutes: 90,
     maxViewers: 300,
     priceEGP: 299,
-    badge: '👑',
     color: '#7C3AED',
     features: ['90 min live', 'Up to 300 viewers', 'Priority CDN', 'Unlimited product pins', 'Featured on homepage'],
     features_ar: ['بث لمدة ٩٠ دقيقة', 'حتى ٣٠٠ مشاهد', 'شبكة توصيل مميزة', 'تثبيت منتجات بلا حدود', 'عرض على الصفحة الرئيسية'],

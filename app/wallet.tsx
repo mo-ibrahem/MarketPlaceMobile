@@ -141,7 +141,7 @@ export default function WalletScreen() {
       // Show a toast that payment is being verified by the server
       Toast.show({
         type: 'info',
-        text1: 'Verifying Payment... 🔄',
+        text1: 'Verifying payment…',
         text2: 'Please wait a moment while we confirm your top-up.',
       });
       
@@ -222,7 +222,7 @@ export default function WalletScreen() {
       const res = await requestPayout(user.id, amount, selectedMethod);
       // Never "Processed": the backend files a pending payout request for
       // review and transfers nothing.
-      Toast.show({ type: 'success', text1: 'Payout Requested 💸', text2: res.message });
+      Toast.show({ type: 'success', text1: 'Payout requested', text2: res.message });
       setWithdrawModalVisible(false);
       setWithdrawAmount('');
       await loadWalletData();
@@ -469,7 +469,7 @@ export default function WalletScreen() {
               onPress={() => setTxFilter('escrow')}
             >
               <Text style={[styles.filterChipText, txFilter === 'escrow' && styles.filterChipTextActive]}>
-                🟢 Sales (Escrow)
+                Sales (escrow)
               </Text>
             </TouchableOpacity>
 
@@ -478,7 +478,7 @@ export default function WalletScreen() {
               onPress={() => setTxFilter('payout')}
             >
               <Text style={[styles.filterChipText, txFilter === 'payout' && styles.filterChipTextActive]}>
-                🔴 Payouts
+                Payouts
               </Text>
             </TouchableOpacity>
 
@@ -487,7 +487,7 @@ export default function WalletScreen() {
               onPress={() => setTxFilter('top_up')}
             >
               <Text style={[styles.filterChipText, txFilter === 'top_up' && styles.filterChipTextActive]}>
-                ➕ Deposits
+                Deposits
               </Text>
             </TouchableOpacity>
 
@@ -496,7 +496,7 @@ export default function WalletScreen() {
               onPress={() => setTxFilter('boost')}
             >
               <Text style={[styles.filterChipText, txFilter === 'boost' && styles.filterChipTextActive]}>
-                ⚡ Ad Boosts
+                Ad boosts
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -590,7 +590,7 @@ export default function WalletScreen() {
       <Modal visible={topUpModalVisible} animationType="slide" transparent>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Add Funds to Wallet 💳</Text>
+            <Text style={styles.modalTitle}>Add funds to wallet</Text>
             <Text style={styles.modalSub}>
               Deposit with an Egyptian bank card. Funds appear once Paymob confirms the payment.
             </Text>
@@ -741,7 +741,7 @@ export default function WalletScreen() {
               <Text style={styles.modalTitle}>Seller Tier Verification</Text>
             </View>
             <Text style={styles.modalSub}>
-              Upgrade to <Text style={{ fontWeight: '800', color: '#0F172A' }}>Tier 2 (Verified Trader)</Text> to reduce commission to 4%, increase monthly selling limit to 150,000 EGP, and get the Verified Trader Badge 🛡️.
+              Upgrade to <Text style={{ fontWeight: '800', color: '#0F172A' }}>Tier 2 (Verified Trader)</Text> to reduce commission to 4%, increase monthly selling limit to 150,000 EGP, and get the Verified Trader badge.
             </Text>
 
             {/* National ID Input */}

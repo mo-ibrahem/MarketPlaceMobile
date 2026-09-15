@@ -23,6 +23,7 @@ import {
   ChevronDown,
   Heart,
   MessageSquare,
+  Pin,
   Send,
   Share2,
   ShoppingBag,
@@ -427,7 +428,7 @@ export default function LiveViewerScreen() {
               if (msg.msg_type === 'purchase') {
                 return (
                   <View style={{ backgroundColor: '#451A03', borderWidth: 1, borderColor: '#F59E0B', borderRadius: 10, padding: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={{ fontSize: 14 }}>🎉</Text>
+                    <ShoppingBag size={13} color="#FCD34D" />
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 11, fontWeight: '800', color: '#FCD34D' }}>طلب مؤكد بالبث!</Text>
                       <Text style={{ fontSize: 11, color: '#34D399', fontWeight: '700' }}>{msg.message}</Text>
@@ -438,7 +439,7 @@ export default function LiveViewerScreen() {
               if (msg.msg_type === 'pin') {
                 return (
                   <View style={{ backgroundColor: '#1E1B4B', borderWidth: 1, borderColor: '#6366F1', borderRadius: 8, padding: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ fontSize: 11 }}>📌</Text>
+                    <Pin size={11} color="#C7D2FE" />
                     <Text style={{ fontSize: 11, color: '#C7D2FE', fontWeight: '600' }}>{msg.message}</Text>
                   </View>
                 );
@@ -446,11 +447,11 @@ export default function LiveViewerScreen() {
               return (
                 <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start' }}>
                   <View style={[styles.chatAvatar, msg.is_host && { backgroundColor: '#EF4444' }]}>
-                    <Text style={styles.chatAvatarText}>{msg.is_host ? '👑' : (msg.username?.[0]?.toUpperCase() || '?')}</Text>
+                    <Text style={styles.chatAvatarText}>{msg.username?.[0]?.toUpperCase() || '?'}</Text>
                   </View>
                   <View style={styles.chatBubble}>
                     <Text style={[styles.chatAuthor, msg.is_host && { color: '#FCA5A5', fontWeight: '800' }]}>
-                      {msg.is_host ? '👑 ' : ''}{msg.username} {msg.is_host ? '(HOST)' : ''}
+                      {msg.username} {msg.is_host ? '(HOST)' : ''}
                     </Text>
                     <Text style={styles.chatMsg}>{msg.message}</Text>
                   </View>

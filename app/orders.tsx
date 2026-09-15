@@ -30,7 +30,7 @@ type TabKey = 'all' | 'purchases' | 'sales';
 
 const STATUS_CONFIG: Record<MarketplaceOrder['status'], { label: string; label_ar: string; color: string; icon: any }> = {
   pending_payment: { label: 'Pending', label_ar: 'قيد الدفع', color: '#F59E0B', icon: Clock },
-  escrow_secured: { label: 'Secured ✓', label_ar: 'في الضمان', color: '#3B82F6', icon: ShieldCheck },
+  escrow_secured: { label: 'Secured', label_ar: 'في الضمان', color: '#3B82F6', icon: ShieldCheck },
   shipped: { label: 'Shipped', label_ar: 'تم الشحن', color: '#8B5CF6', icon: Truck },
   out_for_delivery: { label: 'Out for Delivery', label_ar: 'خرج للتوصيل', color: '#F97316', icon: Truck },
   delivered: { label: 'Delivered', label_ar: 'تم التوصيل', color: '#10B981', icon: CheckCircle2 },

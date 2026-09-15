@@ -68,7 +68,7 @@ const BOSTA_STEPS: { status: MarketplaceOrder['status'][]; label: string; label_
   { status: ['escrow_secured'], label: 'Funds Secured', short: 'Paid', short_ar: 'مدفوع', label_ar: 'أموال في الضمان', icon: ShieldCheck },
   { status: ['shipped'], label: 'Dispatched to Bosta', short: 'Shipped', short_ar: 'شُحن', label_ar: 'تم التسليم لبوسطة', icon: Truck },
   { status: ['out_for_delivery'], label: 'Out for Delivery', short: 'On the way', short_ar: 'في الطريق', label_ar: 'خرج للتوصيل', icon: MapPin },
-  { status: ['delivered', 'completed'], label: 'Delivered ✓', short: 'Delivered', short_ar: 'تم التسليم', label_ar: 'تم التوصيل ✓', icon: CheckCircle2 },
+  { status: ['delivered', 'completed'], label: 'Delivered', short: 'Delivered', short_ar: 'تم التسليم', label_ar: 'تم التوصيل', icon: CheckCircle2 },
 ];
 
 const ORDER_STATUS_RANK: Record<MarketplaceOrder['status'], number> = {
@@ -277,7 +277,7 @@ export default function OrderDetailScreen() {
       [
         { text: (isRTL ? 'إلغاء' : 'Cancel'), style: 'cancel' },
         {
-          text: (isRTL ? 'تأكيد الاستلام ✓' : 'Confirm receipt ✓'),
+          text: (isRTL ? 'تأكيد الاستلام' : 'Confirm receipt'),
           style: 'default',
           onPress: async () => {
             if (!orderId) return;
@@ -350,18 +350,18 @@ export default function OrderDetailScreen() {
   const isInEscrow = !isAwaitingPayment && !isCancelled;
 
   const statusBadge = isDisputed
-    ? '⚠️ نزاع'
+    ? 'نزاع'
     : isAwaitingPayment
       ? '⏳ بانتظار الدفع'
       : isCancelled
-        ? '✕ ملغي'
+        ? 'ملغي'
         : order.status === 'completed'
-          ? '✓ مكتمل'
+          ? 'مكتمل'
           : order.status === 'shipped'
-            ? '🚚 شحن'
+            ? 'شحن'
             : order.status === 'delivered'
-              ? '📦 وصل'
-              : (isRTL ? '🔒 ضمان' : '🔒 Escrow');
+              ? 'وصل'
+              : (isRTL ? 'ضمان' : 'Escrow');
 
   const reviewGate = canReviewOrder(order, user?.id, myReview);
 
@@ -564,7 +564,7 @@ export default function OrderDetailScreen() {
                 disabled={approving}
               >
                 {approving ? <ActivityIndicator color="white" size="small" /> : <ThumbsUp color="white" size={16} />}
-                <Text style={s.approveBtnText}>{isRTL ? 'تأكيد الاستلام ✓' : 'Confirm receipt ✓'}</Text>
+                <Text style={s.approveBtnText}>{isRTL ? 'تأكيد الاستلام' : 'Confirm receipt'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.disputeBtn} onPress={() => setShowDisputeModal(true)}>
                 <ShieldAlert color="#EF4444" size={16} />

@@ -142,8 +142,8 @@ export default function PaymentScreen() {
     Toast.show({
       type: 'success',
       text1: isTopUp
-        ? `EGP ${Number(topUpAmount).toLocaleString()} Added to Wallet! 💳`
-        : 'Payment Confirmed! 🎉',
+        ? `EGP ${Number(topUpAmount).toLocaleString()} added to wallet`
+        : 'Payment confirmed',
       text2: isTopUp
         ? 'Your spendable balance has been updated.'
         : 'Funds secured in Escrow. Track your order status below.',

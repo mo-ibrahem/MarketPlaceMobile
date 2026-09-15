@@ -293,7 +293,7 @@ export default function EditProductScreen() {
                 onPress={() => setLocation(prev => prev === gov ? '' : gov)}
               >
                 <Text style={[styles.chipText, location === gov && styles.chipTextActive]}>
-                  {location === gov ? `📍 ${gov}` : gov}
+                  {gov}
                 </Text>
               </TouchableOpacity>
             ))}

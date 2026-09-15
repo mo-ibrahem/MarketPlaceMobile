@@ -103,7 +103,7 @@ export default function BoostProductScreen() {
       const res = await boostProduct(product.id, user.id, selectedTier);
       Toast.show({
         type: 'success',
-        text1: 'Boost Activated! ⚡🚀',
+        text1: 'Boost activated',
         text2: res.message,
       });
       router.back();
@@ -221,7 +221,7 @@ export default function BoostProductScreen() {
               >
                 {tierKey === 'featured' && (
                   <View style={styles.popularRibbon}>
-                    <Text style={styles.popularRibbonText}>MOST POPULAR ⭐</Text>
+                    <Text style={styles.popularRibbonText}>MOST POPULAR</Text>
                   </View>
                 )}
 
@@ -307,7 +307,7 @@ export default function BoostProductScreen() {
             ) : (
               <>
                 <Zap color="white" size={18} />
-                <Text style={styles.activateText}>Activate Boost ⚡</Text>
+                <Text style={styles.activateText}>Activate boost</Text>
               </>
             )}
           </LinearGradient>

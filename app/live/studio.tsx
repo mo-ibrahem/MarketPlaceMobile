@@ -66,8 +66,8 @@ let micEnabled = false, cameraEnabled = false;
 const status = (t) => { document.getElementById('status').textContent = t; };
 const emit = (type, extra = {}) => window.ReactNativeWebView.postMessage(JSON.stringify({ type, ...extra }));
 client.on('connection-state-change', (cur) => {
-  if (cur === 'RECONNECTING') status('⚠️ إعادة الاتصال...');
-  else if (cur === 'CONNECTED' && localVideoTrack) status('🔴 LIVE');
+  if (cur === 'RECONNECTING') status('إعادة الاتصال...');
+  else if (cur === 'CONNECTED' && localVideoTrack) status('LIVE');
   else if (cur === 'DISCONNECTED') status('انقطع الاتصال');
   window.ReactNativeWebView.postMessage('STATE:' + cur);
 });
@@ -100,7 +100,7 @@ async function start() {
     }
 
     await client.publish(localAudioTrack ? [localAudioTrack, localVideoTrack] : [localVideoTrack]);
-    status('🔴 LIVE');
+    status('LIVE');
     emit('LIVE_STARTED', { hasAudio: !!localAudioTrack });
   } catch (e) {
     status('Error: ' + e.message);
@@ -229,7 +229,7 @@ export default function StudioScreen() {
       const { token, channel } = await startLiveSession(sessionId, uid);
       setAgoraToken(token);
       setIsLive(true);
-      await sendChatMessage({ sessionId, userId: user.id, username: 'EgyBay', message: '🔴 البث انطلق! مرحباً بالجميع 🎉', isHost: true, msgType: 'chat' });
+      await sendChatMessage({ sessionId, userId: user.id, username: 'EgyBay', message: 'البث انطلق. مرحباً بالجميع', isHost: true, msgType: 'chat' });
     } catch (err: any) {
       setError(err?.message || 'تعذر بدء البث');
     } finally {
@@ -384,7 +384,7 @@ export default function StudioScreen() {
               style={{ backgroundColor: '#EF4444', borderRadius: 20, paddingHorizontal: 28, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20, opacity: starting ? 0.6 : 1 }}
             >
               {starting ? <ActivityIndicator color="white" size="small" /> : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'white' }} />}
-              <Text style={{ fontSize: 16, fontWeight: '900', color: 'white' }}>{starting ? 'جاري الاتصال...' : 'ابدأ البث المباشر 🔴'}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: 'white' }}>{starting ? 'جاري الاتصال...' : 'ابدأ البث المباشر'}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -461,7 +461,7 @@ export default function StudioScreen() {
               if (msg.msg_type === 'purchase') {
                 return (
                   <View style={{ backgroundColor: '#451A03', borderWidth: 1, borderColor: '#F59E0B', borderRadius: 10, padding: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={{ fontSize: 14 }}>🎉</Text>
+                    <ShoppingBag size={13} color="#FCD34D" />
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 11, fontWeight: '800', color: '#FCD34D' }}>طلب جديد!</Text>
                       <Text style={{ fontSize: 11, color: '#34D399', fontWeight: '700' }}>{msg.message}</Text>
@@ -472,7 +472,7 @@ export default function StudioScreen() {
               if (msg.msg_type === 'pin') {
                 return (
                   <View style={{ backgroundColor: '#1E1B4B', borderWidth: 1, borderColor: '#6366F1', borderRadius: 8, padding: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ fontSize: 11 }}>📌</Text>
+                    <Pin size={11} color="#C7D2FE" />
                     <Text style={{ fontSize: 11, color: '#C7D2FE', fontWeight: '600' }}>{msg.message}</Text>
                   </View>
                 );
@@ -480,7 +480,7 @@ export default function StudioScreen() {
               return (
                 <View style={{ flexDirection: 'row', gap: 6 }}>
                   <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: msg.is_host ? '#DC2626' : '#374151', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 11, color: 'white', fontWeight: '800' }}>{msg.is_host ? '👑' : (msg.username?.[0]?.toUpperCase() || '?')}</Text>
+                    <Text style={{ fontSize: 11, color: 'white', fontWeight: '800' }}>{msg.username?.[0]?.toUpperCase() || '?'}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 11, color: msg.is_host ? '#FCA5A5' : '#9CA3AF', fontWeight: msg.is_host ? '800' : '500' }}>

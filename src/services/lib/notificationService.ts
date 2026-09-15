@@ -79,8 +79,8 @@ export function getNotificationCopy(
   switch (n.type) {
     case 'order_placed':
       return isRTL
-        ? { title: '🎉 تم بيع إعلانك', message: `تم طلب "${productTitle}"${amountText ? ` بقيمة ${amountText}` : ''}. جهّز السلعة للشحن.` }
-        : { title: '🎉 Item sold', message: `"${productTitle}" was ordered${amountText ? ` for ${amountText}` : ''}. Get it ready to ship.` };
+        ? { title: 'تم بيع إعلانك', message: `تم طلب "${productTitle}"${amountText ? ` بقيمة ${amountText}` : ''}. جهّز السلعة للشحن.` }
+        : { title: 'Item sold', message: `"${productTitle}" was ordered${amountText ? ` for ${amountText}` : ''}. Get it ready to ship.` };
 
     case 'escrow_secured':
       return isRTL
@@ -136,7 +136,7 @@ export function getNotificationCopy(
 
     case 'review_received': {
       const rating = n.payload?.rating;
-      const stars = rating ? '⭐'.repeat(Number(rating)) : '';
+      const stars = rating ? `${Number(rating)}/5` : '';
       return isRTL
         ? { title: 'تقييم جديد', message: `حصلت على تقييم ${stars} على "${productTitle}".` }
         : { title: 'New review', message: `You received a ${stars} rating on "${productTitle}".` };

@@ -126,7 +126,7 @@ export const SELLER_TIERS: Record<1 | 2 | 3, SellerTierConfig> = {
   1: {
     tier: 1,
     name: 'Casual Trader',
-    badge: '🟡 Casual',
+    badge: 'Casual',
     commissionFeePercent: 0.035, // 3.5% platform fee
     listingLimitCount: 5,
     listingLimitAmount: 25000,
@@ -137,7 +137,7 @@ export const SELLER_TIERS: Record<1 | 2 | 3, SellerTierConfig> = {
   2: {
     tier: 2,
     name: 'Verified Trader',
-    badge: '🛡️ Verified',
+    badge: 'Verified',
     commissionFeePercent: 0.025, // 2.5% platform fee
     listingLimitCount: 50,
     listingLimitAmount: 150000,
@@ -152,7 +152,7 @@ export const SELLER_TIERS: Record<1 | 2 | 3, SellerTierConfig> = {
   3: {
     tier: 3,
     name: 'EgyBay Pro / Store',
-    badge: '⭐ Pro Merchant',
+    badge: 'Pro Merchant',
     commissionFeePercent: 0.015, // 1.5% platform fee
     listingLimitCount: 999999,
     listingLimitAmount: 99999999,
