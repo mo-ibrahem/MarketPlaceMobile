@@ -9,6 +9,7 @@ import {
   CheckCircle,
   FileText,
   ImagePlus,
+  Info,
   MapPin,
   ShieldCheck,
   Sparkles,
@@ -73,6 +74,7 @@ const STEPS = [
   { id: 1, label: "Photos",  icon: Camera    },
   { id: 2, label: "Details", icon: FileText  },
   { id: 3, label: "Pricing", icon: Tag },
+  { id: 4, label: "Review",  icon: CheckCircle },
 ];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -184,11 +186,18 @@ export default function SellScreen() {
   const canAdvance = () => {
     if (step === 1) return images.length > 0;
     if (step === 2) return title.trim().length > 0;
+    if (step === 3) return parseFloat(price) > 0;
     return true;
   };
 
-  const goNext = () => { if (step < 3) setStep(s => s + 1); };
+  const goNext = () => { if (step < 4) setStep(s => s + 1); };
   const goBack = () => { if (step > 1) setStep(s => s - 1); };
+
+  const [comparable, setComparable] = useState<{ min: number; max: number; count: number } | null>(null);
+  useEffect(() => {
+    if (step !== 3 || !category) return;
+    productService.getComparablePriceRange(category).then(setComparable).catch(() => setComparable(null));
+  }, [step, category]);
 
   // Submit
   const handleSubmit = async () => {
@@ -276,7 +285,7 @@ export default function SellScreen() {
             <View style={{ width: 32 }} />
           )}
           <Text style={styles.headerTitle}>{t("sell.screenTitle")}</Text>
-          <Text style={styles.stepLabel}>{step} / 3</Text>
+          <Text style={styles.stepLabel}>{step} / 4</Text>
         </View>
 
         {/* ── Progress bar ── */}
@@ -544,34 +553,83 @@ export default function SellScreen() {
                 and quoted an ad fee and view multipliers nothing in the backend
                 reads or charges. Boosts live at /boost/[productId]. */}
 
-            {/* Listing summary card */}
-            {(title || price) && (
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryCardTitle}>LISTING PREVIEW</Text>
-                <View style={styles.summaryRow}>
-                  {images[0] && (
-                    <Image source={{ uri: images[0].uri }} style={styles.summaryThumb} />
-                  )}
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.summaryItemTitle} numberOfLines={2}>{title || "—"}</Text>
-                    <Text style={styles.summaryItemPrice}>
-                      {price ? `EGP ${Math.round(parseFloat(price || '0')).toLocaleString('en-EG')}` : "—"}
-                    </Text>
-                    <View style={styles.summaryTags}>
-                      <View style={styles.summaryTag}><Text style={styles.summaryTagText}>{category}</Text></View>
-                      <View style={[styles.summaryTag, { backgroundColor: condition === "New" ? "#D1FAE5" : "#FEF3C7" }]}>
-                        <Text style={[styles.summaryTagText, { color: condition === "New" ? "#065F46" : "#92400E" }]}>{condition}</Text>
-                      </View>
-                      {location ? (
-                        <View style={[styles.summaryTag, { backgroundColor: '#F0FDF4' }]}>
-                          <Text style={[styles.summaryTagText, { color: '#166534' }]}>📍 {location}</Text>
-                        </View>
-                      ) : null}
+            {/* "Priced to sell": the real range of other active listings in
+                this category right now -- never a range of sold prices this
+                app does not reliably track (see getComparablePriceRange). */}
+            {!!comparable && (
+              <View style={styles.comparableBox}>
+                <View style={styles.comparableDotRow}>
+                  <View style={styles.comparableDot} />
+                  <Text style={styles.comparableDotLabel}>Priced to sell</Text>
+                </View>
+                <Text style={styles.comparableText}>
+                  {comparable.count} similar {category} listings are currently priced between{' '}
+                  <Text style={{ fontWeight: '800', color: '#0F172A' }}>EGP {comparable.min.toLocaleString('en-EG')}</Text>
+                  {' '}and{' '}
+                  <Text style={{ fontWeight: '800', color: '#0F172A' }}>EGP {comparable.max.toLocaleString('en-EG')}</Text>.
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ════ STEP 4 — REVIEW ════ */}
+        {step === 4 && (
+          <View>
+            <Text style={styles.stepHeading}>This is what buyers see</Text>
+            <Text style={styles.stepSub}>Check it over, then post.</Text>
+
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryCardTitle}>IN THE FEED</Text>
+              <View style={styles.summaryRow}>
+                {images[0] && (
+                  <Image source={{ uri: images[0].uri }} style={styles.summaryThumb} />
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.summaryItemTitle} numberOfLines={2}>{title || "—"}</Text>
+                  <Text style={styles.summaryItemPrice}>
+                    {price ? `EGP ${Math.round(parseFloat(price || '0')).toLocaleString('en-EG')}` : "—"}
+                  </Text>
+                  <View style={styles.summaryTags}>
+                    <View style={styles.summaryTag}><Text style={styles.summaryTagText}>{category}</Text></View>
+                    <View style={[styles.summaryTag, { backgroundColor: condition === "New" ? "#D1FAE5" : "#FEF3C7" }]}>
+                      <Text style={[styles.summaryTagText, { color: condition === "New" ? "#065F46" : "#92400E" }]}>{condition}</Text>
                     </View>
+                    {location ? (
+                      <View style={[styles.summaryTag, { backgroundColor: '#F0FDF4' }]}>
+                        <Text style={[styles.summaryTagText, { color: '#166534' }]}>📍 {location}</Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
               </View>
-            )}
+            </View>
+
+            <View style={styles.reviewRows}>
+              <View style={styles.reviewRow}>
+                <Text style={styles.reviewRowLabel}>CATEGORY</Text>
+                <Text style={styles.reviewRowValue}>{category}</Text>
+              </View>
+              <View style={styles.reviewRow}>
+                <Text style={styles.reviewRowLabel}>CONDITION</Text>
+                <Text style={styles.reviewRowValue}>{condition}</Text>
+              </View>
+              <View style={styles.reviewRow}>
+                <Text style={styles.reviewRowLabel}>PHOTOS</Text>
+                <Text style={styles.reviewRowValue}>{images.length}</Text>
+              </View>
+              <View style={[styles.reviewRow, styles.reviewRowLast]}>
+                <Text style={styles.reviewRowLabel}>QUANTITY</Text>
+                <Text style={styles.reviewRowValue}>{stock || '1'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.confirmRow}>
+              <Info size={14} color="#94A3B8" style={{ marginTop: 2 }} />
+              <Text style={styles.confirmText}>
+                By posting you confirm the item is yours to sell and allowed on Egbay.
+              </Text>
+            </View>
           </View>
         )}
 
@@ -581,48 +639,31 @@ export default function SellScreen() {
 
       {/* ── Bottom CTA ── */}
       <View style={styles.bottomBar}>
-        {step < 3 ? (
+        {step < 4 ? (
           <TouchableOpacity
-            style={[styles.ctaButton, !canAdvance() && styles.ctaButtonDisabled]}
+            style={[styles.ctaButton, styles.ctaFlat, !canAdvance() && styles.ctaButtonDisabled]}
             onPress={goNext}
             disabled={!canAdvance()}
             activeOpacity={0.85}
           >
-            <LinearGradient
-              colors={canAdvance() ? ["#4F46E5", "#7C3AED"] : ["#E2E8F0", "#E2E8F0"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.ctaGradient}
-            >
-              <Text style={[styles.ctaText, !canAdvance() && styles.ctaTextDisabled]}>
-                Continue
-              </Text>
-              <ArrowRight color={canAdvance() ? "white" : "#94A3B8"} size={20} />
-            </LinearGradient>
+            <Text style={[styles.ctaText, !canAdvance() && styles.ctaTextDisabled]}>
+              Continue
+            </Text>
+            <ArrowRight color={canAdvance() ? "white" : "#94A3B8"} size={20} />
           </TouchableOpacity>
         ) : (
           <Animated.View style={{ transform: [{ scale: submitScale }], width: "100%" }}>
             <TouchableOpacity
-              style={styles.ctaButton}
+              style={[styles.ctaButton, styles.ctaFlat]}
               onPress={handleSubmit}
               disabled={loading}
               activeOpacity={0.85}
             >
-              <LinearGradient
-                colors={["#16A34A", "#059669"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.ctaGradient}
-              >
-                {loading ? (
-                  <ActivityIndicator color="white" size="small" />
-                ) : (
-                  <>
-                    <Text style={styles.ctaText}>{t("sell.listProduct")}</Text>
-                    <CheckCircle color="white" size={20} />
-                  </>
-                )}
-              </LinearGradient>
+              {loading ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text style={styles.ctaText}>{t("sell.listProduct")}</Text>
+              )}
             </TouchableOpacity>
           </Animated.View>
         )}
@@ -1048,14 +1089,33 @@ const styles = StyleSheet.create({
     borderTopColor: "#F1F5F9",
   },
   ctaButton: { width: "100%", borderRadius: 18, overflow: "hidden" },
-  ctaGradient: {
+  // Approved build: no gradients -- the Continue and Post pills used
+  // #4F46E5->#7C3AED and #16A34A->#059669; both are flat ink now, the same
+  // action colour as every other pill in the app.
+  ctaFlat: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 10,
     paddingVertical: 17,
+    backgroundColor: "#0F172A",
   },
-  ctaButtonDisabled: { opacity: 0.7 },
+  ctaButtonDisabled: { opacity: 0.4 },
   ctaText: { fontSize: 17, fontWeight: "800", color: "white" },
   ctaTextDisabled: { color: "#94A3B8" },
+
+  comparableBox: { marginTop: 14, padding: 14, borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 14 },
+  comparableDotRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  comparableDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#10B981" },
+  comparableDotLabel: { fontSize: 13, fontWeight: "800", color: "#059669" },
+  comparableText: { fontSize: 13, color: "#475569", lineHeight: 19, marginTop: 6 },
+
+  reviewRows: { marginTop: 22 },
+  reviewRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, borderTopWidth: 1, borderTopColor: "#E2E8F0" },
+  reviewRowLast: { borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
+  reviewRowLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 1.4, color: "#94A3B8" },
+  reviewRowValue: { fontSize: 14, fontWeight: "700", color: "#0F172A" },
+
+  confirmRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 18 },
+  confirmText: { fontSize: 12.5, color: "#94A3B8", fontWeight: "600", lineHeight: 18, flex: 1 },
 });
