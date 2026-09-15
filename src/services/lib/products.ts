@@ -12,6 +12,11 @@ export interface Product {
   images: string[]
   seller_id: string
   status: string
+  /** 'in_hand' (default) or 'sourced_to_order' -- see the products.fulfilment
+   *  column comment. A sourced listing always renders its badge, so it can
+   *  never read as stock the seller is holding. */
+  fulfilment?: 'in_hand' | 'sourced_to_order'
+  lead_time_days?: number | null
   created_at: string
   updated_at: string
   view_count?: number
@@ -46,6 +51,8 @@ export const productService = {
     condition: string
     location?: string
     images: string[]
+    fulfilment?: 'in_hand' | 'sourced_to_order'
+    lead_time_days?: number | null
   }) => {
     const {
       data: { user },

@@ -511,6 +511,21 @@ export default function ProductDetailScreen() {
               <Text style={styles.dataRowLabel}>{isRTL ? 'التسليم' : 'HANDOVER'}</Text>
               <Text style={styles.dataRowValue}>{isRTL ? 'مقابلة شخصية أو شحن' : 'Meet up, or shipping'}</Text>
             </View>
+            {/* Sourced listings say it here too, with the seller's own
+                stated lead time -- the buyer should never have to infer
+                that the item is not already in hand. */}
+            {product.fulfilment === 'sourced_to_order' && (
+              <View style={styles.dataRow}>
+                <Text style={styles.dataRowLabel}>{isRTL ? 'التوفر' : 'AVAILABILITY'}</Text>
+                <Text style={styles.dataRowValue}>
+                  {product.lead_time_days
+                    ? (isRTL
+                        ? `يُطلب خصيصاً · ${product.lead_time_days} أيام`
+                        : `Sourced to order · ${product.lead_time_days} days`)
+                    : (isRTL ? 'يُطلب خصيصاً' : 'Sourced to order')}
+                </Text>
+              </View>
+            )}
             <View style={[styles.dataRow, styles.dataRowLast]}>
               <Text style={styles.dataRowLabel}>{isRTL ? 'المشاهدات' : 'VIEWS'}</Text>
               <Text style={styles.dataRowValue}>{product.view_count ?? 0}</Text>

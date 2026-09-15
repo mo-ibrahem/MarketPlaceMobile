@@ -107,6 +107,10 @@ export default function SellScreen() {
   const [condition, setCondition] = useState("New");
   const [location,  setLocation]  = useState("");
   const [stock,     setStock]     = useState("1");
+  // Do you have it, or do you get it once someone agrees? A sourced listing
+  // carries a visible badge so it can never read as stock in hand.
+  const [sourced,   setSourced]   = useState(false);
+  const [leadDays,  setLeadDays]  = useState("3");
   const [loading,   setLoading]   = useState(false);
   const [done,      setDone]      = useState(false);
   const [postedId,  setPostedId]  = useState<string | null>(null);
@@ -138,6 +142,8 @@ export default function SellScreen() {
       setCategory('Electronics');
       setCondition('New');
       setLocation('');
+      setSourced(false);
+      setLeadDays('3');
       setLoading(false);
       setDone(false);
       setPostedId(null);
@@ -209,6 +215,8 @@ export default function SellScreen() {
     setCategory('Electronics');
     setCondition('New');
     setLocation('');
+    setSourced(false);
+    setLeadDays('3');
   };
 
   const [comparable, setComparable] = useState<{ min: number; max: number; count: number } | null>(null);
@@ -251,6 +259,8 @@ export default function SellScreen() {
         category,
         condition,
         images: imageUrls,
+        fulfilment: sourced ? 'sourced_to_order' : 'in_hand',
+        lead_time_days: sourced ? Math.min(30, Math.max(1, parseInt(leadDays, 10) || 3)) : null,
       });
       // The success screen (8e) is a real destination the seller reads and
       // acts on -- share it, open it, list another -- not a toast that
@@ -589,6 +599,54 @@ export default function SellScreen() {
               When the last item sells, this listing is automatically removed from the market.
             </Text>
 
+            {/* Availability. A buyer should never have to guess whether the
+                seller is holding the item; a sourced listing says so on the
+                card and on its own page. */}
+            <Text style={[styles.fieldLabel, { marginTop: 24 }]}>{isRTL ? 'التوفر' : 'Availability'}</Text>
+            <View style={styles.availRow}>
+              <TouchableOpacity
+                style={[styles.availPill, !sourced && styles.availPillOn]}
+                onPress={() => setSourced(false)}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.availText, !sourced && styles.availTextOn]}>
+                  {isRTL ? 'لديّ الآن' : 'I have it now'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.availPill, sourced && styles.availPillOn]}
+                onPress={() => setSourced(true)}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.availText, sourced && styles.availTextOn]}>
+                  {isRTL ? 'أوفّره عند الطلب' : 'Sourced to order'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {sourced ? (
+              <>
+                <View style={styles.leadRow}>
+                  <Text style={styles.leadLabel}>{isRTL ? 'خلال كم يوم؟' : 'Within how many days?'}</Text>
+                  <TextInput
+                    style={styles.leadInput}
+                    value={leadDays}
+                    onChangeText={t => setLeadDays(t.replace(/[^0-9]/g, '').slice(0, 2))}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                  />
+                </View>
+                <Text style={styles.availNote}>
+                  {isRTL
+                    ? 'سيظهر على الإعلان أنك توفّره عند الطلب خلال هذه المدة. الصدق هنا يمنع النزاعات.'
+                    : 'Buyers see a "Sourced to order" badge and this lead time. Being upfront here is what stops disputes later.'}
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.availNote}>
+                {isRTL ? 'الإعلان يظهر كأن السلعة متاحة لديك الآن.' : 'The listing reads as an item you have in hand.'}
+              </Text>
+            )}
+
             {/* Condition */}
             <Text style={[styles.fieldLabel, { marginTop: 24 }]}>{t("sell.productCondition")}</Text>
             <View style={styles.conditionRow}>
@@ -682,9 +740,17 @@ export default function SellScreen() {
                 <Text style={styles.reviewRowLabel}>PHOTOS</Text>
                 <Text style={styles.reviewRowValue}>{images.length}</Text>
               </View>
-              <View style={[styles.reviewRow, styles.reviewRowLast]}>
+              <View style={styles.reviewRow}>
                 <Text style={styles.reviewRowLabel}>QUANTITY</Text>
                 <Text style={styles.reviewRowValue}>{stock || '1'}</Text>
+              </View>
+              <View style={[styles.reviewRow, styles.reviewRowLast]}>
+                <Text style={styles.reviewRowLabel}>{isRTL ? 'التوفر' : 'AVAILABILITY'}</Text>
+                <Text style={styles.reviewRowValue}>
+                  {sourced
+                    ? (isRTL ? `عند الطلب · ${leadDays || 3} أيام` : `Sourced · ${leadDays || 3} days`)
+                    : (isRTL ? 'لديّ الآن' : 'In hand')}
+                </Text>
               </View>
             </View>
 
@@ -1063,6 +1129,22 @@ const styles = StyleSheet.create({
   ctaButtonDisabled: { opacity: 0.4 },
   ctaText: { fontSize: 17, fontWeight: "800", color: "white" },
   ctaTextDisabled: { color: "#94A3B8" },
+
+  availRow: { flexDirection: "row", gap: 10, marginTop: 6 },
+  availPill: {
+    flex: 1, height: 44, borderRadius: 999, borderWidth: 1, borderColor: "#CBD5E1",
+    alignItems: "center", justifyContent: "center",
+  },
+  availPillOn: { backgroundColor: "#0F172A", borderColor: "#0F172A" },
+  availText: { fontSize: 14, fontWeight: "700", color: "#475569" },
+  availTextOn: { color: "#FFFFFF", fontWeight: "800" },
+  leadRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    marginTop: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: "#E2E8F0",
+  },
+  leadLabel: { fontSize: 14, fontWeight: "600", color: "#0F172A" },
+  leadInput: { fontSize: 19, fontWeight: "800", color: "#0F172A", minWidth: 44, textAlign: "right", padding: 0 },
+  availNote: { fontSize: 12.5, color: "#94A3B8", fontWeight: "600", lineHeight: 18, marginTop: 10 },
 
   comparableBox: { marginTop: 14, padding: 14, borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 14 },
   comparableDotRow: { flexDirection: "row", alignItems: "center", gap: 6 },

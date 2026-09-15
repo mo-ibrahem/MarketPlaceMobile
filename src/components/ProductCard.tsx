@@ -65,6 +65,13 @@ export function ProductCard({
           source={{ uri: item.images?.[0] || 'https://placehold.co/400x300/F1F5F9/64748B?text=Item' }}
           style={[s.img, !!imageHeight && { height: imageHeight }]}
         />
+        {/* A sourced-to-order listing always says so, on the photo, so it
+            can never be mistaken for stock the seller is holding. */}
+        {item.fulfilment === 'sourced_to_order' && (
+          <View style={s.sourcedBadge}>
+            <Text style={s.sourcedBadgeText}>SOURCED TO ORDER</Text>
+          </View>
+        )}
         {/* Without an ask chip the heart still needs a home: a quiet circle
             on the photo, the only thing the design floats over an image. */}
         {!askLabel && !!onToggleWishlist && (
@@ -190,6 +197,12 @@ const s = StyleSheet.create({
 
   imgWrap: { position: 'relative', borderRadius: radius.lg, overflow: 'hidden', backgroundColor: color.border },
   img: { width: '100%', height: 190 },
+
+  sourcedBadge: {
+    position: 'absolute', left: space.sm, bottom: space.sm,
+    backgroundColor: 'rgba(15,23,42,0.82)', borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4,
+  },
+  sourcedBadgeText: { fontSize: 9, fontWeight: weight.heavy, letterSpacing: 0.8, color: color.textInverse },
 
   heartOnPhoto: {
     position: 'absolute',
