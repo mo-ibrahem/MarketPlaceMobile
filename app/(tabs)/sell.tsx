@@ -1,16 +1,18 @@
 import { Picker } from "@react-native-picker/picker";
 import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   ArrowLeft,
   ArrowRight,
   Camera,
   CheckCircle,
+  Eye,
   FileText,
   ImagePlus,
   Info,
   MapPin,
+  Plus as PlusIcon,
+  Share2,
   ShieldCheck,
   Sparkles,
   Tag,
@@ -27,6 +29,7 @@ import {
   Linking,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -106,6 +109,7 @@ export default function SellScreen() {
   const [stock,     setStock]     = useState("1");
   const [loading,   setLoading]   = useState(false);
   const [done,      setDone]      = useState(false);
+  const [postedId,  setPostedId]  = useState<string | null>(null);
 
   // Progress animation
   const [progressAnim] = useState(() => new Animated.Value(0));
@@ -136,6 +140,7 @@ export default function SellScreen() {
       setLocation('');
       setLoading(false);
       setDone(false);
+      setPostedId(null);
     }, [])
   );
 
@@ -193,6 +198,19 @@ export default function SellScreen() {
   const goNext = () => { if (step < 4) setStep(s => s + 1); };
   const goBack = () => { if (step > 1) setStep(s => s - 1); };
 
+  const resetForm = () => {
+    setDone(false);
+    setPostedId(null);
+    setStep(1);
+    setImages([]);
+    setTitle('');
+    setDesc('');
+    setPrice('');
+    setCategory('Electronics');
+    setCondition('New');
+    setLocation('');
+  };
+
   const [comparable, setComparable] = useState<{ min: number; max: number; count: number } | null>(null);
   useEffect(() => {
     if (step !== 3 || !category) return;
@@ -226,7 +244,7 @@ export default function SellScreen() {
       const fullDescription = `${desc.trim()}\n\n${tags}`;
 
       const imageUrls = await Promise.all(images.map(uploadImage));
-      await productService.createProduct({
+      const created = await productService.createProduct({
         title: title.trim(),
         description: fullDescription,
         price: parseFloat(price),
@@ -234,21 +252,12 @@ export default function SellScreen() {
         condition,
         images: imageUrls,
       });
+      // The success screen (8e) is a real destination the seller reads and
+      // acts on -- share it, open it, list another -- not a toast that
+      // auto-dismisses. It used to reset the whole form and drop the
+      // screen after 2.4s, before anyone could tap "View your listing".
+      setPostedId(created.id);
       setDone(true);
-      // Reset the form after the success screen so the next visit starts fresh.
-      // We do NOT call router.back() because this is a tab screen — there is
-      // nothing on the stack to go back to, and the tab stays mounted anyway.
-      setTimeout(() => {
-        setDone(false);
-        setStep(1);
-        setImages([]);
-        setTitle('');
-        setDesc('');
-        setPrice('');
-        setCategory('Electronics');
-        setCondition('New');
-        setLocation('');
-      }, 2400);
     } catch (err: any) {
       Toast.show({ type: "error", text1: t("common.error"), text2: err.message || t("sell.errorMessage") });
     } finally {
@@ -258,14 +267,78 @@ export default function SellScreen() {
 
   // ── Success screen ──────────────────────────────────────────────────────────
   if (done) {
+    const shareUrl = postedId ? `https://www.egbay.shop/products/${postedId}` : '';
+    const shareText = `${title} — EGP ${Math.round(parseFloat(price || '0')).toLocaleString('en-EG')}\n${shareUrl}`;
     return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
-        <View style={styles.successContainer}>
-          <LinearGradient colors={["#D1FAE5", "#A7F3D0"]} style={styles.successIcon}>
-            <CheckCircle color="#10B981" size={52} />
-          </LinearGradient>
-          <Text style={styles.successTitle}>Listed! 🎉</Text>
-          <Text style={styles.successSub}>{t("sell.successMessage")}</Text>
+        <ScrollView contentContainerStyle={styles.postedScroll} showsVerticalScrollIndicator={false}>
+          <View style={styles.postedCheck}>
+            <CheckCircle color="#059669" size={28} />
+          </View>
+          <Text style={styles.postedTitle}>
+            {location ? `It is live in ${location}` : 'It is live'}
+          </Text>
+          <Text style={styles.postedSub}>
+            Buyers can see it now. Their questions land in Chats — the faster you answer, the higher your listing ranks.
+          </Text>
+
+          <View style={styles.postedRow}>
+            {images[0] && <Image source={{ uri: images[0].uri }} style={styles.postedThumb} />}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.postedItemTitle} numberOfLines={1}>{title}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <Text style={styles.postedLive}>LIVE</Text>
+                <Text style={{ color: '#CBD5E1' }}>·</Text>
+                <Text style={styles.postedJustNow}>just now</Text>
+              </View>
+            </View>
+            <Text style={styles.postedPrice}>
+              {price ? Math.round(parseFloat(price)).toLocaleString('en-EG') : ''}
+            </Text>
+          </View>
+
+          <Text style={styles.postedSectionLabel}>GET IT SEEN</Text>
+          <TouchableOpacity
+            style={styles.postedActionRow}
+            onPress={() => {
+              const encoded = encodeURIComponent(shareText);
+              Linking.openURL(`https://wa.me/?text=${encoded}`).catch(() => {
+                Share.share({ message: shareText });
+              });
+            }}
+          >
+            <View style={styles.postedActionLeft}>
+              <Share2 size={18} color="#0F172A" />
+              <Text style={styles.postedActionText}>Share on WhatsApp</Text>
+            </View>
+            <ArrowRight color="#CBD5E1" size={16} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.postedActionRow}
+            disabled={!postedId}
+            onPress={() => postedId && router.push(`/products/${postedId}` as any)}
+          >
+            <View style={styles.postedActionLeft}>
+              <Eye size={18} color="#0F172A" />
+              <Text style={styles.postedActionText}>View your listing</Text>
+            </View>
+            <ArrowRight color="#CBD5E1" size={16} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.postedActionRow, { borderBottomWidth: 0 }]} onPress={resetForm}>
+            <View style={styles.postedActionLeft}>
+              <PlusIcon size={18} color="#0F172A" strokeWidth={2.4} />
+              <Text style={styles.postedActionText}>Sell another item</Text>
+            </View>
+            <ArrowRight color="#CBD5E1" size={16} />
+          </TouchableOpacity>
+        </ScrollView>
+        <View style={styles.postedBottomBar}>
+          <TouchableOpacity
+            style={[styles.ctaButton, styles.ctaFlat]}
+            onPress={() => { resetForm(); router.push('/(tabs)' as any); }}
+          >
+            <Text style={styles.ctaText}>Back to home</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -352,19 +425,12 @@ export default function SellScreen() {
             <Text style={styles.stepHeading}>Add your photos</Text>
             <Text style={styles.stepSub}>Great photos help your item sell faster. Add up to 6.</Text>
 
-            {/* Photo grid */}
+            {/* Photo grid -- filled thumbnails first (cover badge on the
+                first, remove on each), the dashed add-tile last with a real
+                count. Used to be one big indigo-gradient "Add photos" tile
+                first and thumbnails trailing it; the approved build's grid
+                reads left-to-right in posting order, cover first. */}
             <View style={styles.photoGrid}>
-              {/* Add button */}
-              <TouchableOpacity style={styles.addPhotoBtn} onPress={handlePickImage} activeOpacity={0.8}>
-                <LinearGradient colors={["#EEF2FF", "#E0E7FF"]} style={styles.addPhotoBtnInner}>
-                  <ImagePlus color="#6366F1" size={28} />
-                  <Text style={styles.addPhotoLabel}>
-                    {images.length === 0 ? "Add photos" : `Add more (${images.length}/6)`}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* Preview thumbnails */}
               {images.map((img, idx) => (
                 <View key={idx} style={styles.thumbWrapper}>
                   <Image source={{ uri: img.uri }} style={styles.thumb} />
@@ -378,6 +444,16 @@ export default function SellScreen() {
                   </TouchableOpacity>
                 </View>
               ))}
+
+              {images.length < 6 && (
+                <TouchableOpacity style={styles.addPhotoBtn} onPress={handlePickImage} activeOpacity={0.8}>
+                  <View style={styles.addPhotoIconCircle}>
+                    <ImagePlus color="#0F172A" size={22} />
+                  </View>
+                  <Text style={styles.addPhotoLabel}>Add photo</Text>
+                  <Text style={styles.addPhotoCount}>{images.length} OF 6</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {images.length === 0 && (
@@ -702,18 +778,28 @@ const THUMB_SIZE = (SCREEN_WIDTH - 48 - 12) / 3; // 3-column grid
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F8FAFC" },
 
-  // Success
-  successContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: 40 },
-  successIcon: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 24,
+  // Success / posted (8e)
+  postedScroll: { padding: 20, paddingTop: 100, paddingBottom: 40 },
+  postedCheck: { width: 56, height: 56, borderRadius: 28, backgroundColor: "#ECFDF5", alignItems: "center", justifyContent: "center" },
+  postedTitle: { fontSize: 32, fontWeight: "800", letterSpacing: -1.5, color: "#0F172A", lineHeight: 38, marginTop: 20 },
+  postedSub: { fontSize: 15, color: "#64748B", lineHeight: 22, marginTop: 8 },
+  postedRow: {
+    flexDirection: "row", alignItems: "center", gap: 12, marginTop: 26,
+    paddingVertical: 14, borderTopWidth: 1, borderTopColor: "#E2E8F0", borderBottomWidth: 1, borderBottomColor: "#E2E8F0",
   },
-  successTitle: { fontSize: 30, fontWeight: "800", color: "#1E293B", marginBottom: 10 },
-  successSub: { fontSize: 16, color: "#64748B", textAlign: "center", lineHeight: 24 },
+  postedThumb: { width: 60, height: 60, borderRadius: 10 },
+  postedItemTitle: { fontSize: 14, fontWeight: "600", color: "#0F172A", lineHeight: 19 },
+  postedLive: { fontSize: 10, fontWeight: "700", letterSpacing: 1, color: "#059669" },
+  postedJustNow: { fontSize: 11, fontWeight: "600", color: "#94A3B8" },
+  postedPrice: { fontSize: 17, fontWeight: "800", color: "#0F172A", letterSpacing: -0.5 },
+  postedSectionLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1.4, color: "#94A3B8", marginTop: 26, marginBottom: 12 },
+  postedActionRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: "#F1F5F9",
+  },
+  postedActionLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  postedActionText: { fontSize: 15, fontWeight: "700", color: "#0F172A" },
+  postedBottomBar: { borderTopWidth: 1, borderTopColor: "#E2E8F0", padding: 20, paddingTop: 12 },
 
   // Header
   header: {
@@ -796,25 +882,23 @@ const styles = StyleSheet.create({
     width: THUMB_SIZE,
     height: THUMB_SIZE,
     borderRadius: 16,
-    overflow: "hidden",
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "#A5B4FC",
-  },
-  addPhotoBtnInner: {
-    flex: 1,
+    borderColor: "#CBD5E1",
     justifyContent: "center",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
   },
-  addPhotoLabel: { fontSize: 11, color: "#6366F1", fontWeight: "600", textAlign: "center" },
+  addPhotoIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center" },
+  addPhotoLabel: { fontSize: 13, color: "#0F172A", fontWeight: "700", textAlign: "center" },
+  addPhotoCount: { fontSize: 10, fontWeight: "700", letterSpacing: 1, color: "#94A3B8" },
   thumbWrapper: { width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: 16, overflow: "hidden", position: "relative" },
   thumb: { width: "100%", height: "100%" },
   coverBadge: {
     position: "absolute",
     bottom: 6,
     left: 6,
-    backgroundColor: "#6366F1",
+    backgroundColor: "#0F172A",
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 3,
