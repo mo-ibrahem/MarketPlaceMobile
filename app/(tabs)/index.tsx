@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Bell, MessageCircle, Plus, Search, X } from 'lucide-react-native';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Image,
   Modal,
@@ -14,14 +14,15 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ProductCard, formatEGP } from '../../src/components/ProductCard';
+import { FeaturedProductCard, ProductCard, formatEGP } from '../../src/components/ProductCard';
 import { categoryHues, color, font, radius, space, weight } from '../../src/design/tokens';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { getUnreadNotificationCount } from '../../src/services/lib/notificationService';
 import { productService, type Product } from '../../src/services/lib/products';
 import { getActiveLiveSessions, isGenuinelyLive, type LiveSession } from '../../src/services/lib/liveService';
 import { getRecentReplies, type RecentReply } from '../../src/services/lib/homeActivity';
-import { getAskCounts } from '../../src/services/lib/reputationStats';
+import { getAskCounts, getSellerReplyBadge } from '../../src/services/lib/reputationStats';
+import { getOrCreateChatRoom, sendMessage } from '../../src/services/lib/chatService';
 import { useAuth } from '../../hooks/useAuth';
 import { LIVE_ENABLED } from '../../src/services/lib/platformCommerce';
 
@@ -78,6 +79,8 @@ export default function HomeScreen() {
   const [replies, setReplies] = useState<RecentReply[]>([]);
   const [askCounts, setAskCounts] = useState<Record<string, number>>({});
   const [sortByAsked, setSortByAsked] = useState(false);
+  const [leadReplyBadge, setLeadReplyBadge] = useState<string | null>(null);
+  const [asking, setAsking] = useState<string | null>(null);
 
   // ── Data ──────────────────────────────────────────────────────────────────
 
@@ -120,6 +123,25 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [loadProducts, loadContext]);
 
+  /**
+   * The design's rule: every listing surface carries a tap-to-send question
+   * chip, and it sends the message rather than opening a blank composer.
+   */
+  const askAboutListing = useCallback(async (product: Product) => {
+    if (!user) { router.push('/login' as any); return; }
+    if (!product.seller_id || product.seller_id === user.id) return;
+    setAsking(product.id);
+    try {
+      const roomId = await getOrCreateChatRoom(product.seller_id, product.id);
+      await sendMessage(roomId, isArabic ? 'هل ما زال متاحاً؟' : 'Is it still available?');
+      router.push(`/chat/${roomId}` as any);
+    } catch (e) {
+      console.error('[Home] ask failed', e);
+    } finally {
+      setAsking(null);
+    }
+  }, [user, router, isArabic]);
+
   const toggleWishlist = async (product: Product) => {
     const was = wishlistIds.has(product.id);
     setWishlistIds(prev => { const n = new Set(prev); was ? n.delete(product.id) : n.add(product.id); return n; });
@@ -143,14 +165,41 @@ export default function HomeScreen() {
     return [...m.entries()].map(([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n);
   }, [products]);
 
+  /**
+   * The quiet state leads with one listing at full width (7b). It is the
+   * most asked-about item with a photo -- a real signal, not the newest
+   * upload -- and it only appears when there is no reply digest above it
+   * and no category filter narrowing the page.
+   */
+  const lead = useMemo(() => {
+    if (replies.length > 0 || category || query.trim()) return null;
+    const withPhotos = products.filter(p => p.images?.[0]);
+    if (withPhotos.length < 3) return null;
+    return [...withPhotos].sort((a, b) =>
+      (askCounts[b.id] ?? 0) - (askCounts[a.id] ?? 0) ||
+      (b.view_count ?? 0) - (a.view_count ?? 0)
+    )[0] ?? null;
+  }, [products, askCounts, replies.length, category, query]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const sellerId = lead?.seller_id;
+    (async () => {
+      const badge = sellerId ? await getSellerReplyBadge(sellerId).catch(() => null) : null;
+      if (!cancelled) setLeadReplyBadge(badge);
+    })();
+    return () => { cancelled = true; };
+  }, [lead?.seller_id]);
+
   const feed = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = products
+      .filter(p => p.id !== lead?.id)
       .filter(p => !category || (p as any).category === category)
       .filter(p => !q || p.title.toLowerCase().includes(q));
     if (!sortByAsked) return list;
     return [...list].sort((a, b) => (askCounts[b.id] ?? 0) - (askCounts[a.id] ?? 0));
-  }, [products, category, query, sortByAsked, askCounts]);
+  }, [products, lead, category, query, sortByAsked, askCounts]);
 
   // Two masonry lanes balanced by estimated height; every third card is tall.
   const lanes = useMemo(() => {
@@ -304,6 +353,22 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {!!lead && (
+          <View style={s.leadWrap}>
+            <FeaturedProductCard
+              item={lead}
+              width={Math.min(width, 520) - space.lg * 2}
+              isWishlisted={wishlistIds.has(lead.id)}
+              onPress={() => router.push(`/products/${lead.id}` as any)}
+              onToggleWishlist={() => toggleWishlist(lead)}
+              onAsk={() => askAboutListing(lead)}
+              askLabel={asking === lead.id ? (isArabic ? 'جارٍ الإرسال…' : 'Sending…') : (isArabic ? 'هل ما زال متاحاً؟' : 'Is it still available?')}
+              trustLine={leadReplyBadge ?? askBadge(lead.id)}
+              metaRight={lead.condition || undefined}
+            />
+          </View>
+        )}
+
         {!loading && feed.length === 0 ? (
           <View style={s.empty}>
             <Text style={s.emptyTitle}>{T.empty}</Text>
@@ -313,7 +378,7 @@ export default function HomeScreen() {
           <View style={[s.lanes, { paddingHorizontal: space.lg }]}>
             {lanes.map((lane, li) => (
               <View key={li} style={{ gap: 14, width: laneWidth }}>
-                {lane.map(({ item, tall }) => (
+                {lane.map(({ item, tall }, i) => (
                   <ProductCard
                     key={item.id}
                     item={item}
@@ -323,6 +388,15 @@ export default function HomeScreen() {
                     onPress={() => router.push(`/products/${item.id}` as any)}
                     onToggleWishlist={() => toggleWishlist(item)}
                     trustLine={askBadge(item.id)}
+                    metaRight={item.condition || undefined}
+                    /* One ask chip per lane, on the lead card -- the design
+                       puts it on the prominent tile, not on every tile. */
+                    askLabel={i === 0 && item.seller_id !== user?.id
+                      ? (asking === item.id
+                          ? (isArabic ? 'جارٍ الإرسال…' : 'Sending…')
+                          : (isArabic ? 'هل ما زال متاحاً؟' : 'Still available?'))
+                      : undefined}
+                    onAsk={i === 0 ? () => askAboutListing(item) : undefined}
                   />
                 ))}
                 {li === 1 && (
@@ -425,6 +499,7 @@ const s = StyleSheet.create({
   h2: { fontSize: font.title1, fontWeight: weight.heavy, color: color.text, letterSpacing: -1 },
   sortLink: { fontSize: font.footnote, fontWeight: weight.bold, color: color.primary },
 
+  leadWrap: { paddingHorizontal: space.lg, paddingBottom: 18, marginBottom: 18, borderBottomWidth: 1, borderBottomColor: color.border },
   lanes: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   sellCard: { borderRadius: 22, backgroundColor: color.ink, padding: space.lg, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   sellCardTitle: { color: color.textInverse, fontSize: font.headline, fontWeight: weight.heavy, letterSpacing: -0.4, lineHeight: 21 },

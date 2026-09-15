@@ -23,6 +23,39 @@ export interface RecentReply {
 
 const AWAY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * How many conversations are waiting on this user -- the number on the
+ * Chats tab. There is no read_at column on messages, so "unread" cannot be
+ * computed exactly; this is the honest, useful equivalent: rooms whose
+ * newest message came from the other person. No time window, because a
+ * reply you never answered is still waiting three days later.
+ */
+export async function getWaitingReplyCount(): Promise<number> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  const { data: rooms, error } = await supabase
+    .from('chat_rooms')
+    .select('id')
+    .not('deleted_for', 'cs', `{${user.id}}`)
+    .contains('participant_ids', [user.id])
+    .limit(40);
+  if (error || !rooms?.length) return 0;
+
+  const flags = await Promise.all(
+    rooms.map(async room => {
+      const { data } = await supabase
+        .from('messages')
+        .select('sender_id')
+        .eq('room_id', room.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      return !!data?.[0] && data[0].sender_id !== user.id;
+    })
+  );
+  return flags.filter(Boolean).length;
+}
+
 export async function getRecentReplies(limit = 2): Promise<RecentReply[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];

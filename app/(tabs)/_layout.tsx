@@ -1,16 +1,28 @@
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs, useFocusEffect } from "expo-router";
 import { House, Video, Package, User, MessageCircle, Heart } from "lucide-react-native";
+import React, { useCallback, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../hooks/useAuth";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { color, font, space } from "../../src/design/tokens";
 import { LIVE_ENABLED, PAYMENTS_ENABLED } from "../../src/services/lib/platformCommerce";
+import { getWaitingReplyCount } from "../../src/services/lib/homeActivity";
 
 export default function TabsLayout() {
   const { user, loading } = useAuth();
   const { isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
+
+  // The red count on Chats: conversations whose last message is theirs, so
+  // it only ever appears when someone is actually waiting on a reply.
+  const [waiting, setWaiting] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) { setWaiting(0); return; }
+      getWaitingReplyCount().then(setWaiting).catch(() => setWaiting(0));
+    }, [user])
+  );
 
   // Tab labels are the most-read text in the app and were English-only, on an
   // app that ships a language switcher for an Egyptian market.
@@ -130,6 +142,8 @@ export default function TabsLayout() {
         name="chats"
         options={{
           title: L.chats,
+          tabBarBadge: waiting > 0 ? (waiting > 9 ? '9+' : waiting) : undefined,
+          tabBarBadgeStyle: { backgroundColor: color.danger, fontSize: 10, fontWeight: '800' },
           tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={22} />,
         }}
       />
