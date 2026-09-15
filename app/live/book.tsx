@@ -10,7 +10,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle2, AlertCircle, Video, Wallet } from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
@@ -119,7 +118,8 @@ export default function BookLiveScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-      <LinearGradient colors={['#0F172A', '#1C2541']} style={s.header}>
+      {/* Approved build: flat ink, not a gradient. */}
+      <View style={[s.header, { backgroundColor: '#0F172A' }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <ArrowLeft color="white" size={20} />
         </TouchableOpacity>
@@ -127,7 +127,7 @@ export default function BookLiveScreen() {
           <Text style={s.headerTitle}>احجز بثك المباشر</Text>
           <Text style={s.headerSub}>Book a Live Show</Text>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 80 }]} showsVerticalScrollIndicator={false}>
 
