@@ -57,6 +57,29 @@ const get = async (u, tries = 4) => {
   }
   throw Error('429 after retries');
 };
+/**
+ * Wikimedia renders thumbnails on demand, so ask for a sensible width
+ * instead of pulling a 40MB original and throwing it away for being over
+ * the bucket limit. This is what made the first run crawl -- and is why
+ * the Galaxy S24 Ultra, whose every candidate is 12,000px, had nothing
+ * usable at all.
+ *   .../commons/0/07/File.jpg  ->  .../commons/thumb/0/07/File.jpg/1280px-File.jpg
+ *
+ * Arbitrary widths are rejected with HTTP 400 ("Use thumbnail sizes listed
+ * on https://w.wiki/GHai") -- only a preset list is rendered. These four
+ * are verified to work; they are tried largest-first so we take the best
+ * quality that the bucket's size cap still allows.
+ */
+const THUMB_WIDTHS = [1920, 1280, 960, 500];
+
+const scaled = (url) => {
+  const m = url.match(/^(https:\/\/upload\.wikimedia\.org\/wikipedia\/[^/]+)\/([0-9a-f])\/([0-9a-f]{2})\/(.+)$/);
+  if (!m) return [];
+  const [, base, a, b, file] = m;
+  if (/\.svg$/i.test(file)) return [];
+  return THUMB_WIDTHS.map(px => `${base}/thumb/${a}/${b}/${file}/${px}px-${file}`);
+};
+
 const creditOf = (x) => {
   const who = x.creator || 'Unknown';
   const lic = `${(x.license || '').toUpperCase()}${x.license_version ? ' ' + x.license_version : ''}`;
@@ -64,7 +87,11 @@ const creditOf = (x) => {
 };
 
 (async () => {
+  const onlyIdx = process.argv.indexOf('--only');
+  const only = onlyIdx > -1 ? process.argv[onlyIdx + 1].toLowerCase() : null;
+
   for (const m of MODELS) {
+    if (only && !`${m.brand} ${m.name}`.toLowerCase().includes(only)) continue;
     try {
       const api = `https://api.openverse.org/v1/images/?q=${encodeURIComponent(m.q)}&license_type=commercial&page_size=20&mature=false`;
       const { results = [] } = await (await get(api)).json();
@@ -94,12 +121,14 @@ const creditOf = (x) => {
       for (const p of candidates) {
         if (i >= PHOTOS_PER_MODEL) break;
         let bytes;
-        try {
-          bytes = Buffer.from(await (await get(p.url)).arrayBuffer());
-        } catch (e) {
-          continue;  // dead URL -- try the next candidate
+        const sources = [...scaled(p.url), p.url];
+        for (const src of sources) {
+          try {
+            const buf = Buffer.from(await (await get(src)).arrayBuffer());
+            if (buf.length <= MAX_BYTES) { bytes = buf; break; }
+          } catch { /* try the next source, then the next candidate */ }
         }
-        if (bytes.length > MAX_BYTES) continue;
+        if (!bytes) continue;
 
         const key = `models/${model.id}/${i}.jpg`;
         const { error: upErr } = await admin.storage.from('product-images')
